@@ -1,0 +1,252 @@
+WARC/1.0
+WARC-IP-Address: 3.220.112.94
+WARC-Type: response
+WARC-Record-ID: <urn:uuid:a5470680-5f25-43e2-9d14-45a000b16cd8>
+WARC-Target-URI: https://httpbin.org/anything/utf8=%E2%9C%93?query=test&a=b&1=%E2%9C%93
+WARC-Date: 2020-07-09T20:41:58Z
+WARC-Payload-Digest: sha1:APPCHQ3MPXOSGO3CDWKQD2TIOJGCLD7B
+WARC-Block-Digest: sha1:6X2SE5VSJI4EQHXZ7C5AWTU5H2HXKXMW
+Content-Type: application/http; msgtype=response
+Content-Length: 818
+
+HTTP/1.1 200 OK
+Date: Thu, 09 Jul 2020 20:41:58 GMT
+Content-Type: application/json
+Content-Length: 588
+Connection: keep-alive
+Server: gunicorn/19.9.0
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Credentials: true
+
+{
+  "args": {
+    "1": "\u2713", 
+    "a": "b", 
+    "query": "test"
+  }, 
+  "data": "", 
+  "files": {}, 
+  "form": {}, 
+  "headers": {
+    "Accept": "*/*", 
+    "Accept-Encoding": "gzip, deflate", 
+    "Host": "httpbin.org", 
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36", 
+    "X-Amzn-Trace-Id": "Root=1-5f078116-58ed90b44cbd1e86b92d2c19"
+  }, 
+  "json": null, 
+  "method": "GET", 
+  "origin": "161.35.72.192", 
+  "url": "https://httpbin.org/anything/utf8=\u2713?query=test&a=b&1=\u2713"
+}
+
+
+WARC/1.0
+WARC-IP-Address: 3.220.112.94
+WARC-Type: request
+WARC-Record-ID: <urn:uuid:fb41a22e-8dfb-4729-bdc9-3db5cea8bfc1>
+WARC-Target-URI: https://httpbin.org/anything/utf8=%E2%9C%93?query=test&a=b&1=%E2%9C%93
+WARC-Date: 2020-07-09T20:41:58Z
+WARC-Payload-Digest: sha1:3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ
+WARC-Concurrent-To: <urn:uuid:a5470680-5f25-43e2-9d14-45a000b16cd8>
+WARC-Block-Digest: sha1:CJ2JE5XZQ6K2BY2ILND5LBBKSWJWFG44
+Content-Type: application/http; msgtype=request
+Content-Length: 291
+
+GET /anything/utf8=%E2%9C%93?query=test&a=b&1=%E2%9C%93 HTTP/1.1
+Host: httpbin.org
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36
+Accept-Encoding: gzip, deflate
+Accept: */*
+Connection: keep-alive
+
+
+
+WARC/1.0
+WARC-IP-Address: 3.220.112.94
+WARC-Type: response
+WARC-Record-ID: <urn:uuid:5051b25d-f62e-4e04-a4da-fe0aadace54c>
+WARC-Target-URI: https://httpbin.org/anything/utf8=%E2%9C%93?query=test&a=b&1=%E2%9C%93
+WARC-Date: 2020-07-12T04:55:45Z
+WARC-Payload-Digest: sha1:3C2SYPEZC3KIGXFSCKVWEC3NE3WIQOAI
+WARC-Block-Digest: sha1:VFMTQFAU7C4XNASY5LAXE2JH3PEDJNHW
+Content-Type: application/http; msgtype=response
+Content-Length: 818
+
+HTTP/1.1 200 OK
+Date: Sun, 12 Jul 2020 04:55:45 GMT
+Content-Type: application/json
+Content-Length: 588
+Connection: keep-alive
+Server: gunicorn/19.9.0
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Credentials: true
+
+{
+  "args": {
+    "1": "\u2713", 
+    "a": "b", 
+    "query": "test"
+  }, 
+  "data": "", 
+  "files": {}, 
+  "form": {}, 
+  "headers": {
+    "Accept": "*/*", 
+    "Accept-Encoding": "gzip, deflate", 
+    "Host": "httpbin.org", 
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36", 
+    "X-Amzn-Trace-Id": "Root=1-5f0a97d1-68b1d51c705ee29c610f8d2b"
+  }, 
+  "json": null, 
+  "method": "GET", 
+  "origin": "161.35.72.192", 
+  "url": "https://httpbin.org/anything/utf8=\u2713?query=test&a=b&1=\u2713"
+}
+
+
+WARC/1.0
+WARC-IP-Address: 3.220.112.94
+WARC-Type: request
+WARC-Record-ID: <urn:uuid:f1a8e5bf-3405-4781-bb75-074f507a22a3>
+WARC-Target-URI: https://httpbin.org/anything/utf8=%E2%9C%93?query=test&a=b&1=%E2%9C%93
+WARC-Date: 2020-07-12T04:55:45Z
+WARC-Payload-Digest: sha1:3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ
+WARC-Concurrent-To: <urn:uuid:5051b25d-f62e-4e04-a4da-fe0aadace54c>
+WARC-Block-Digest: sha1:CJ2JE5XZQ6K2BY2ILND5LBBKSWJWFG44
+Content-Type: application/http; msgtype=request
+Content-Length: 291
+
+GET /anything/utf8=%E2%9C%93?query=test&a=b&1=%E2%9C%93 HTTP/1.1
+Host: httpbin.org
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36
+Accept-Encoding: gzip, deflate
+Accept: */*
+Connection: keep-alive
+
+
+
+WARC/1.0
+WARC-IP-Address: 54.236.246.173
+WARC-Type: response
+WARC-Record-ID: <urn:uuid:1e3d7e6f-b7a1-4f88-8ce9-78f850ed4865>
+WARC-Target-URI: https://httpbin.org/anything/Saint-Exup%C3%A9ry?foo=bar
+WARC-Date: 2020-07-12T04:55:45Z
+WARC-Payload-Digest: sha1:AH45AISVSL5WPLO7KFHMYYQUGHU3QM7I
+WARC-Block-Digest: sha1:LAYKJWASNW67SCJNBSPRCLHA57WR5B3M
+Content-Type: application/http; msgtype=response
+Content-Length: 771
+
+HTTP/1.1 200 OK
+Date: Sun, 12 Jul 2020 04:55:45 GMT
+Content-Type: application/json
+Content-Length: 541
+Connection: keep-alive
+Server: gunicorn/19.9.0
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Credentials: true
+
+{
+  "args": {
+    "foo": "bar"
+  }, 
+  "data": "", 
+  "files": {}, 
+  "form": {}, 
+  "headers": {
+    "Accept": "*/*", 
+    "Accept-Encoding": "gzip, deflate", 
+    "Host": "httpbin.org", 
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36", 
+    "X-Amzn-Trace-Id": "Root=1-5f0a97d1-3e7c0264c617439a850ca5a5"
+  }, 
+  "json": null, 
+  "method": "GET", 
+  "origin": "161.35.72.192", 
+  "url": "https://httpbin.org/anything/Saint-Exup\u00e9ry?foo=bar"
+}
+
+
+WARC/1.0
+WARC-IP-Address: 54.236.246.173
+WARC-Type: request
+WARC-Record-ID: <urn:uuid:29d386e3-b0f2-4327-9486-b08d996a6b4f>
+WARC-Target-URI: https://httpbin.org/anything/Saint-Exup%C3%A9ry?foo=bar
+WARC-Date: 2020-07-12T04:55:45Z
+WARC-Payload-Digest: sha1:3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ
+WARC-Concurrent-To: <urn:uuid:1e3d7e6f-b7a1-4f88-8ce9-78f850ed4865>
+WARC-Block-Digest: sha1:PZFUDJ3ZKH5JZQ66M7E47TD2GP4ZZABR
+Content-Type: application/http; msgtype=request
+Content-Length: 276
+
+GET /anything/Saint-Exup%C3%A9ry?foo=bar HTTP/1.1
+Host: httpbin.org
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36
+Accept-Encoding: gzip, deflate
+Accept: */*
+Connection: keep-alive
+
+
+
+WARC/1.0
+WARC-IP-Address: 54.236.246.173
+WARC-Type: response
+WARC-Record-ID: <urn:uuid:5c23550a-f7ad-4c7d-a8da-b59c60f479f5>
+WARC-Target-URI: https://httpbin.org/anything/test?foo=%C3%A9
+WARC-Date: 2020-07-12T04:55:46Z
+WARC-Payload-Digest: sha1:UWV3XF55NFX2YU23BUEY52H6LK54LV7G
+WARC-Block-Digest: sha1:EDHXZSWGEJUKE6WMJZYKZHC2SLQEM5U5
+Content-Type: application/http; msgtype=response
+Content-Length: 763
+
+HTTP/1.1 200 OK
+Date: Sun, 12 Jul 2020 04:55:45 GMT
+Content-Type: application/json
+Content-Length: 533
+Connection: keep-alive
+Server: gunicorn/19.9.0
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Credentials: true
+
+{
+  "args": {
+    "foo": "\u00e9"
+  }, 
+  "data": "", 
+  "files": {}, 
+  "form": {}, 
+  "headers": {
+    "Accept": "*/*", 
+    "Accept-Encoding": "gzip, deflate", 
+    "Host": "httpbin.org", 
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36", 
+    "X-Amzn-Trace-Id": "Root=1-5f0a97d1-61e09380e5ba93c0c33af8c0"
+  }, 
+  "json": null, 
+  "method": "GET", 
+  "origin": "161.35.72.192", 
+  "url": "https://httpbin.org/anything/test?foo=\u00e9"
+}
+
+
+WARC/1.0
+WARC-IP-Address: 54.236.246.173
+WARC-Type: request
+WARC-Record-ID: <urn:uuid:41b605f0-2f10-4518-8363-e9020440cc9d>
+WARC-Target-URI: https://httpbin.org/anything/test?foo=%C3%A9
+WARC-Date: 2020-07-12T04:55:46Z
+WARC-Payload-Digest: sha1:3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ
+WARC-Concurrent-To: <urn:uuid:5c23550a-f7ad-4c7d-a8da-b59c60f479f5>
+WARC-Block-Digest: sha1:R5RVON3BIZ6XHBHC2CNZACZXOQU2TKSA
+Content-Type: application/http; msgtype=request
+Content-Length: 265
+
+GET /anything/test?foo=%C3%A9 HTTP/1.1
+Host: httpbin.org
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36
+Accept-Encoding: gzip, deflate
+Accept: */*
+Connection: keep-alive
+
+
+
