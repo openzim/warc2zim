@@ -29,7 +29,7 @@ import requests
 # Shared logger
 logger = logging.getLogger('warc2zim')
 
-DEFAULT_REPLAY_SOURCE_URL = 'https://cdn.jsdelivr.net/npm/replaywebpage/'
+DEFAULT_REPLAY_SOURCE_URL = 'https://cdn.jsdelivr.net/npm/replaywebpage@1.1.0-alpha.0/'
 
 
 
