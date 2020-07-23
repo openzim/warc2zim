@@ -10,7 +10,7 @@ Each WARC record results in two ZIM articles:
 - The WARC payload is stored under /A/<url>
 - The WARC headers + HTTP headers are stored under the /H/<url>
 
-Given a WARC response record for 'https://example.com/', two ZIM articles are created /A/https://example.com/ and /H/https://example.com/ are created.
+Given a WARC response record for 'https://example.com/', two ZIM articles are created /A/example.com/ and /H/example.com/ are created.
 
 Only WARC response and resource records are stored.
 
@@ -28,6 +28,8 @@ import requests
 
 # Shared logger
 logger = logging.getLogger('warc2zim')
+
+DEFAULT_REPLAY_SOURCE_URL = 'https://cdn.jsdelivr.net/npm/replaywebpage/'
 
 
 
@@ -70,7 +72,7 @@ class WARCHeadersArticle(BaseWARCArticle):
         self.url = record.rec_headers.get('WARC-Target-URI')
 
     def get_url(self):
-        return 'H/' + self.url
+        return 'H/' + self.url.split('//', 2)[1]
 
     def get_mime_type(self):
         return 'application/warc-headers'
@@ -97,8 +99,13 @@ class WARCPayloadArticle(BaseWARCArticle):
         self.mime = self._compute_mime()
         # TODO: converting text/html to application/octet-stream to avoid rewriting by kiwix
         # original mime type still preserved in the headers block
-        if not self.mime or self.mime == 'text/html':
+        if self.mime:
+            self.mime = self.mime.split(';', 1)[0]
+            if self.mime == 'text/html':
+                self.mime = 'text/unchanged-html'
+        else:
             self.mime = 'application/octet-stream'
+
 
     def _compute_mime(self):
         if self.record.http_headers:
@@ -109,7 +116,7 @@ class WARCPayloadArticle(BaseWARCArticle):
             return self.record.rec_headers['Content-Type']
 
     def get_url(self):
-        return 'A/' + self.url
+        return 'A/' + self.url.split('//', 2)[1]
 
     def get_mime_type(self):
         return self.mime
@@ -277,7 +284,7 @@ def warc2zim(args=None):
 
     parser.add_argument('-r', '--replay-viewer-source',
                         help='''URL from which to load the ReplayWeb.page replay viewer from''',
-                        default='https://cdn.jsdelivr.net/npm/replaywebpage/')
+                        default=DEFAULT_REPLAY_SOURCE_URL)
 
     parser.add_argument('-u', '--main-url',
                         help='''The main url that should be loaded in the viewer on init''')

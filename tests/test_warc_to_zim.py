@@ -58,14 +58,15 @@ class TestWarc2Zim(object):
                     continue
 
                 # parse headers as record, ensure headers match
-                headers = zim_fh.get_article('H/' + url)
+                url_no_scheme = url.split('//', 2)[1]
+                headers = zim_fh.get_article('H/' + url_no_scheme)
                 parsed_record = next(ArchiveIterator(BytesIO(headers.content.tobytes())))
 
                 assert record.rec_headers == parsed_record.rec_headers
                 assert record.http_headers == parsed_record.http_headers
 
                 # ensure payloads match
-                payload = zim_fh.get_article('A/' + url)
+                payload = zim_fh.get_article('A/' + url_no_scheme)
 
                 if record.rec_type == 'revisit':
                     assert payload == None
