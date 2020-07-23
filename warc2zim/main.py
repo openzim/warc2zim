@@ -94,17 +94,25 @@ class WARCPayloadArticle(BaseWARCArticle):
         super(WARCPayloadArticle, self).__init__(record)
         self.payload = record.content_stream().read()
         self.url = record.rec_headers.get('WARC-Target-URI')
+        self.mime = self._compute_mime()
+        # TODO: converting text/html to application/octet-stream to avoid rewriting by kiwix
+        # original mime type still preserved in the headers block
+        if not self.mime or self.mime == 'text/html':
+            self.mime = 'application/octet-stream'
 
-    def get_url(self):
-        return 'A/' + self.url
-
-    def get_mime_type(self):
+    def _compute_mime(self):
         if self.record.http_headers:
         # if the record has HTTP headers, use the Content-Type from those (eg. 'response' record)
             return self.record.http_headers['Content-Type']
         else:
         # otherwise, use the Content-Type from WARC headers
             return self.record.rec_headers['Content-Type']
+
+    def get_url(self):
+        return 'A/' + self.url
+
+    def get_mime_type(self):
+        return self.mime
 
     def get_data(self):
         return Blob(self.payload)
@@ -155,7 +163,7 @@ class RWPViewerArticle(BaseArticle):
   <head>
     <style>
     body {{
-      width: 100%
+      width: 100%;
       height: 100%;
       overflow-y: hidden;
       margin: 0px;
@@ -209,8 +217,20 @@ class WARC2Zim:
             self.replay_articles.append(RWPStaticArticle(self.replay_viewer_source, filename))
 
         with Creator(self.name, main_page='viewer.html', index_language='', min_chunk_size=8192) as zimcreator:
+            # add replay system
+            for article in self.replay_articles:
+                zimcreator.add_article(article)
+
+            zimcreator.add_article(RWPViewerArticle('viewer.html', self.main_url))
+
             for warcfile in self.inputs:
                 self.warc2zim(warcfile, zimcreator)
+
+            # process revisits, headers only
+            for url, record in self.revisits.items():
+                if url not in self.indexed_urls:
+                    logger.debug('Adding revisit {0} -> {1}'.format(url, record.rec_headers['WARC-Refers-To-Target-URI']))
+                    zimcreator.add_article(WARCHeadersArticle(record))
 
     def warc2zim(self, warcfile, zimcreator):
         with open(warcfile, 'rb') as warc_fh:
@@ -231,24 +251,12 @@ class WARC2Zim:
 
                     elif record.rec_headers['WARC-Refers-To-Target-URI'] != url and url not in self.revisits:
                         self.revisits[url] = record
+                        record.raw_stream = None
 
 
                 except KeyboardInterrupt:  #pragma: no cover
                     print('Cancelling...')
                     return 1
-
-        # process revisits, headers only
-        for url, record in self.revisits.items():
-            if url not in self.indexed_urls:
-                logger.debug('Adding revisit {0} -> {1}'.format(url, record.rec_headers['WARC-Refers-To-Target-URI']))
-                zimcreator.add_article(WARCHeadersArticle(record))
-
-
-        # add replay system
-        for article in self.replay_articles:
-            zimcreator.add_article(article)
-
-        zimcreator.add_article(RWPViewerArticle('viewer.html', self.main_url))
 
 
 # ============================================================================
