@@ -4,6 +4,8 @@ import shutil
 import os
 import pytest
 
+from io import BytesIO
+
 import libzim.reader
 from warcio import ArchiveIterator
 
@@ -73,8 +75,13 @@ class TestWarc2Zim(object):
                 headers = zim_fh.get_article('H/' + url)
                 payload = zim_fh.get_article('A/' + url)
 
+                # ensure payloads match
                 assert payload.content.tobytes() == record.content_stream().read()
+
+                # parse headers as record, ensure headers match
+                parsed_record = next(ArchiveIterator(BytesIO(headers.content.tobytes())))
+
+                assert record.rec_headers == parsed_record.rec_headers
+                assert record.http_headers == parsed_record.http_headers
+
                 warc_urls.add(url)
-
-
-

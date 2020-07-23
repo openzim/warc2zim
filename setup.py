@@ -20,6 +20,7 @@ setup(
     install_requires=[
         'warcio',
         'libzim',
+        'requests',
     ],
     zip_safe=True,
     entry_points="""

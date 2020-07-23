@@ -1,1 +1,37 @@
 # war2zim
+
+warc2zim provides a way to convert WARC files to ZIM, storing the WARC payload and WARC+HTTP headers separately.
+
+Additionally, the [ReplayWeb.page](https://replayweb.page) is also added to the ZIM, creating a self-contained ZIM
+that can render its content in a modern browser.
+
+## Usage
+
+Ex: `warc2zim ./path/to/myarchive.warc -u https://example.com/`
+
+The above will create a ZIM file `./path/to/myarchive.zim` with `https://example.com/` set as the main page.
+
+See `warc2zim -h` for other options.
+
+
+## ZIM Entry Layout
+
+The WARC to ZIM conversion is performed by splitting the WARC (and HTTP) headers from the payload.
+
+For `response` records, the WARC + HTTP headers are stored under `H/<url>` while the payload is stored under `A/<url>`
+
+For `resource` records, the WARC headers are stored under `H/<url>` while the payload is stored under `A/<url>`. (Three are no HTTP headers for resource records).
+
+For `revisit` records, the WARC + optional HTTP headers are stored under `H/<url>`, while no payload record is created.
+
+### Duplicate URIs
+
+WARCs allow multiple records for the same URL, while ZIM does not. As a result, only the first encountered response or resource record is stored in the ZIM,
+and subsequent records are ignored.
+
+For revisit records, they are only added if pointing to a different URL, and are processed after response/revisit records. A revisit record to the same URL
+will always be ignored.
+
+All other WARC records are skipped.
+
+
