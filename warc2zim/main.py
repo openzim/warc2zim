@@ -206,11 +206,7 @@ class WARC2Zim:
 
     def run(self):
         for filename in self.REPLAY_STATIC_FILES:
-            try:
-                self.replay_articles.append(RWPStaticArticle(self.replay_viewer_source, filename))
-            except:
-                logger.error('ZIM writing canceled, exiting...')
-                return 1
+            self.replay_articles.append(RWPStaticArticle(self.replay_viewer_source, filename))
 
         with Creator(self.name, main_page='viewer.html', index_language='', min_chunk_size=8192) as zimcreator:
             for warcfile in self.inputs:
@@ -282,7 +278,7 @@ def warc2zim(args=None):
 
     r = parser.parse_args(args=args)
     warc2zim = WARC2Zim(r)
-    warc2zim.run()
+    return warc2zim.run()
 
 
 # ============================================================================

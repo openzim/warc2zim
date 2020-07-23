@@ -33,6 +33,47 @@ class TestWarc2Zim(object):
         os.chdir(cls.orig_cwd)
         shutil.rmtree(cls.root_dir)
 
+    def verify_warc_and_zim(self, warcfile, zimfile):
+        assert os.path.isfile(warcfile)
+        assert os.path.isfile(zimfile)
+
+        # track to avoid checking duplicates, which are not written to ZIM
+        warc_urls = set()
+
+        zim_fh = libzim.reader.File(zimfile)
+        with open(warcfile, 'rb') as warc_fh:
+            for record in ArchiveIterator(warc_fh):
+                url = record.rec_headers['WARC-Target-URI']
+                if not url:
+                    continue
+
+                if url in warc_urls:
+                    continue
+
+                if record.rec_type not in (('response', 'resource', 'revisit')):
+                    continue
+
+                # ignore revisit records that are to the same url
+                if record.rec_type == 'revisit' and record.rec_headers['WARC-Refers-To-Target-URI'] == url:
+                    continue
+
+                # parse headers as record, ensure headers match
+                headers = zim_fh.get_article('H/' + url)
+                parsed_record = next(ArchiveIterator(BytesIO(headers.content.tobytes())))
+
+                assert record.rec_headers == parsed_record.rec_headers
+                assert record.http_headers == parsed_record.http_headers
+
+                # ensure payloads match
+                payload = zim_fh.get_article('A/' + url)
+
+                if record.rec_type == 'revisit':
+                    assert payload == None
+                else:
+                    assert payload.content.tobytes() == record.content_stream().read()
+
+                warc_urls.add(url)
+
     def test_warc_to_zim_specify_output(self):
         zim_output = os.path.join(self.root_dir, 'zim-out-filename.zim')
         warc2zim(['-v', os.path.join(self.test_data_dir, 'example-response.warc'), '-n', zim_output])
@@ -52,36 +93,9 @@ class TestWarc2Zim(object):
 
         self.verify_warc_and_zim(warcfile, zimfile)
 
-    def verify_warc_and_zim(self, warcfile, zimfile):
-        assert os.path.isfile(warcfile)
-        assert os.path.isfile(zimfile)
+    def test_error_bad_replay_viewer_url(self):
+        zim_output = os.path.join(self.root_dir, 'zim-out-filename.zim')
+        with pytest.raises(Exception) as e:
+            warc2zim(['-v', os.path.join(self.test_data_dir, 'example-response.warc'), '-r', 'x-invalid-x'])
 
-        # track to avoid checking duplicates, which are not written to ZIM
-        warc_urls = set()
 
-        zim_fh = libzim.reader.File(zimfile)
-        with open(warcfile, 'rb') as warc_fh:
-            for record in ArchiveIterator(warc_fh):
-                url = record.rec_headers['WARC-Target-URI']
-                if not url:
-                    continue
-
-                if url in warc_urls:
-                    continue
-
-                if record.rec_type not in (('response', 'resource')):
-                    continue
-
-                headers = zim_fh.get_article('H/' + url)
-                payload = zim_fh.get_article('A/' + url)
-
-                # ensure payloads match
-                assert payload.content.tobytes() == record.content_stream().read()
-
-                # parse headers as record, ensure headers match
-                parsed_record = next(ArchiveIterator(BytesIO(headers.content.tobytes())))
-
-                assert record.rec_headers == parsed_record.rec_headers
-                assert record.http_headers == parsed_record.http_headers
-
-                warc_urls.add(url)

@@ -32,3 +32,6 @@ jobs:
       - name: Test with tox
         run: tox -e $toxpyv
 
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v1
+
