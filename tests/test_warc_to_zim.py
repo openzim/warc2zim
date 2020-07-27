@@ -96,8 +96,11 @@ class TestWarc2Zim(object):
         self.verify_warc_and_zim(warcfile, zimfile)
 
     def test_error_bad_replay_viewer_url(self):
-        zim_output = os.path.join(self.root_dir, 'zim-out-filename.zim')
+        zim_output_not_created = os.path.join(self.root_dir, 'zim-out-not-created.zim')
         with pytest.raises(Exception) as e:
-            warc2zim(['-v', os.path.join(self.test_data_dir, 'example-response.warc'), '-r', 'x-invalid-x'])
+            warc2zim(['-v', os.path.join(self.test_data_dir, 'example-response.warc'), '-r', 'x-invalid-x', '-n', zim_output_not_created])
+
+        # zim file should not have been created since replay viewer could not be loaded
+        assert not os.path.isfile(zim_output_not_created)
 
 
