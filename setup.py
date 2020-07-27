@@ -28,6 +28,7 @@ setup(
       if not line.strip().startswith("#")
     ],
     zip_safe=True,
+    include_package_data=True,
     entry_points="""
         [console_scripts]
         warc2zim = warc2zim.main:warc2zim

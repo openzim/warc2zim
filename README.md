@@ -1,4 +1,4 @@
-# war2zim
+# warc2zim
 ![CI](https://github.com/openzim/warc2zim/workflows/CI/badge.svg)
 [![codecov](https://codecov.io/gh/openzim/warc2zim/branch/master/graph/badge.svg)](https://codecov.io/gh/openzim/warc2zim)
 
