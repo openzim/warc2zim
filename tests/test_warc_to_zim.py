@@ -1,13 +1,14 @@
-from warc2zim.main import warc2zim
 import tempfile
 import shutil
 import os
-import pytest
-
 from io import BytesIO
+
+import pytest
 
 import libzim.reader
 from warcio import ArchiveIterator
+
+from warc2zim.main import warc2zim
 
 
 WARCS = ['example-response.warc', 'example-resource.warc.gz', 'example-utf8.warc', 'netpreserve-twitter.warc']

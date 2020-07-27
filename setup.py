@@ -2,15 +2,20 @@
 # -*- coding: utf-8 -*-
 # vim: ai ts=4 sts=4 et sw=4 nu
 
+import pathlib
 from setuptools import setup, find_packages
 
-__version__ = '0.1.0'
+root_dir = pathlib.Path(__file__).parent
+
+def read(*names, **kwargs):
+    with open(root_dir.joinpath(*names), "r") as fh:
+        return fh.read()
 
 setup(
     name="warc2zim",
-    version=__version__,
+    version=read("warc2zim", "VERSION").strip(),
     description="Convert WARC to ZIM",
-    long_description=open("README.md").read(),
+    long_description=read("README.md"),
     long_description_content_type="text/markdown",
     author="Webrecorder Software",
     author_email="info@webrecorder.net",
@@ -18,9 +23,9 @@ setup(
     packages=find_packages(exclude=['tests']),
     provides=['warc2zim'],
     install_requires=[
-        'warcio',
-        'libzim',
-        'requests',
+      line.strip()
+      for line in read("requirements.txt").splitlines()
+      if not line.strip().startswith("#")
     ],
     zip_safe=True,
     entry_points="""

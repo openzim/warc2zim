@@ -19,12 +19,12 @@ If the WARC contains multiple entries for the same URL, only the first entry is 
 """
 
 from argparse import ArgumentParser, RawTextHelpFormatter
-
-from warcio import ArchiveIterator
-from libzim.writer import Article, Blob, Creator
 import os
 import logging
 import requests
+
+from warcio import ArchiveIterator
+from libzim.writer import Article, Blob, Creator
 
 # Shared logger
 logger = logging.getLogger('warc2zim')
@@ -94,10 +94,9 @@ class WARCPayloadArticle(BaseWARCArticle):
     """
     def __init__(self, record):
         super(WARCPayloadArticle, self).__init__(record)
-        self.payload = record.content_stream().read()
         self.url = record.rec_headers.get('WARC-Target-URI')
         self.mime = self._compute_mime()
-        # TODO: converting text/html to application/octet-stream to avoid rewriting by kiwix
+        # TODO: converting text/html to text/unchanged-html to avoid rewriting by kiwix
         # original mime type still preserved in the headers block
         if self.mime:
             self.mime = self.mime.split(';', 1)[0]
@@ -122,7 +121,7 @@ class WARCPayloadArticle(BaseWARCArticle):
         return self.mime
 
     def get_data(self):
-        return Blob(self.payload)
+        return Blob(self.record.content_stream().read())
 
 
 # ============================================================================
@@ -231,7 +230,7 @@ class WARC2Zim:
             zimcreator.add_article(RWPViewerArticle('viewer.html', self.main_url))
 
             for warcfile in self.inputs:
-                self.warc2zim(warcfile, zimcreator)
+                self.process_warc(warcfile, zimcreator)
 
             # process revisits, headers only
             for url, record in self.revisits.items():
@@ -239,7 +238,7 @@ class WARC2Zim:
                     logger.debug('Adding revisit {0} -> {1}'.format(url, record.rec_headers['WARC-Refers-To-Target-URI']))
                     zimcreator.add_article(WARCHeadersArticle(record))
 
-    def warc2zim(self, warcfile, zimcreator):
+    def process_warc(self, warcfile, zimcreator):
         with open(warcfile, 'rb') as warc_fh:
             for record in ArchiveIterator(warc_fh):
                 try:
