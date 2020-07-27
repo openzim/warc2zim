@@ -31,7 +31,7 @@ jobs:
           pip install tox
 
       - name: Test with tox
-        run: tox -e $toxpyv
+        run: tox -e $toxpyv,black
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1

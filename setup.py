@@ -7,29 +7,34 @@ from setuptools import setup, find_packages
 
 root_dir = pathlib.Path(__file__).parent
 
+
 def read(*names, **kwargs):
     with open(root_dir.joinpath(*names), "r") as fh:
         return fh.read()
 
+
 setup(
     name="warc2zim",
-    version=read("warc2zim", "VERSION").strip(),
+    version=read("src", "warc2zim", "VERSION").strip(),
     description="Convert WARC to ZIM",
     long_description=read("README.md"),
     long_description_content_type="text/markdown",
     author="Webrecorder Software",
     author_email="info@webrecorder.net",
     url="https://github.com/openzim/warc2zim",
-    packages=find_packages(exclude=['tests']),
+    packages=find_packages("src"),
+    package_dir={"": "src"},
     install_requires=[
-      line.strip()
-      for line in read("requirements.txt").splitlines()
-      if not line.strip().startswith("#")
+        line.strip()
+        for line in read("requirements.txt").splitlines()
+        if not line.strip().startswith("#")
     ],
     zip_safe=True,
     include_package_data=True,
-    data_files={'requirements.txt', 'requirements.txt',
-                'warc2zim/VERSION', 'warc2zim/VERSION'},
+    data_files={
+        "requirements.txt": "requirements.txt",
+        "src/warc2zim/VERSION": root_dir.joinpath("src", "warc2zim", "VERSION"),
+    },
     entry_points="""
         [console_scripts]
         warc2zim = warc2zim.main:warc2zim
