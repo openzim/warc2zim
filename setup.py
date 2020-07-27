@@ -21,7 +21,6 @@ setup(
     author_email="info@webrecorder.net",
     url="https://github.com/openzim/warc2zim",
     packages=find_packages(exclude=['tests']),
-    provides=['warc2zim'],
     install_requires=[
       line.strip()
       for line in read("requirements.txt").splitlines()
@@ -29,6 +28,8 @@ setup(
     ],
     zip_safe=True,
     include_package_data=True,
+    data_files={'requirements.txt', 'requirements.txt',
+                'warc2zim/VERSION', 'warc2zim/VERSION'},
     entry_points="""
         [console_scripts]
         warc2zim = warc2zim.main:warc2zim
