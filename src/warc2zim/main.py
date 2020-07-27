@@ -171,6 +171,7 @@ class RWPViewerArticle(BaseArticle):
         content = """
 <html>
   <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
     body {{
       height: -webkit-fill-available;
