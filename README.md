@@ -1,5 +1,6 @@
 # warc2zim
 ![CI](https://github.com/openzim/warc2zim/workflows/CI/badge.svg)
+[![Docker Build Status](https://img.shields.io/docker/build/openzim/warc2zim)](https://hub.docker.com/r/openzim/warc2zim)
 [![codecov](https://codecov.io/gh/openzim/warc2zim/branch/master/graph/badge.svg)](https://codecov.io/gh/openzim/warc2zim)
 
 warc2zim provides a way to convert WARC files to ZIM, storing the WARC payload and WARC+HTTP headers separately.
@@ -47,3 +48,8 @@ To add a new locale (`fr` in this example, use only ISO-639-1):
 3. update your locale's catalog `python setup.py update_catalog`
 3. translate the PO file ([poedit](https://poedit.net/) is your friend)
 4. compile updated translation `python setup.py compile_catalog`
+
+## License
+
+[GPLv3](https://www.gnu.org/licenses/gpl-3.0) or later, see
+[LICENSE](LICENSE) for more details.
