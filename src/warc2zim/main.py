@@ -21,6 +21,8 @@ If the WARC contains multiple entries for the same URL, only the first entry is 
 from argparse import ArgumentParser, RawTextHelpFormatter
 import os
 import logging
+import mimetypes
+import pkg_resources
 import requests
 
 from warcio import ArchiveIterator
@@ -28,8 +30,6 @@ from libzim.writer import Article, Blob, Creator
 
 # Shared logger
 logger = logging.getLogger("warc2zim")
-
-DEFAULT_REPLAY_SOURCE_URL = "https://cdn.jsdelivr.net/npm/replaywebpage@1.1.0-alpha.1/"
 
 
 # ============================================================================
@@ -74,7 +74,7 @@ class WARCHeadersArticle(BaseWARCArticle):
         self.url = record.rec_headers.get("WARC-Target-URI")
 
     def get_url(self):
-        return "H/" + self.url.split("//", 2)[1]
+        return "H/" + canonicalize(self.url)
 
     def get_mime_type(self):
         return "application/warc-headers"
@@ -112,12 +112,15 @@ class WARCPayloadArticle(BaseWARCArticle):
         if self.record.http_headers:
             # if the record has HTTP headers, use the Content-Type from those (eg. 'response' record)
             return self.record.http_headers["Content-Type"]
-        else:
-            # otherwise, use the Content-Type from WARC headers
-            return self.record.rec_headers["Content-Type"]
+
+        # otherwise, use the Content-Type from WARC headers
+        return self.record.rec_headers["Content-Type"]
 
     def get_url(self):
-        return "A/" + self.url.split("//", 2)[1]
+        return "A/" + canonicalize(self.url)
+
+    def get_title(self):
+        return self.url
 
     def get_mime_type(self):
         return self.mime
@@ -125,11 +128,14 @@ class WARCPayloadArticle(BaseWARCArticle):
     def get_data(self):
         return Blob(self.record.content_stream().read())
 
+    def should_index(self):
+        return True
+
 
 # ============================================================================
-class RWPStaticArticle(BaseArticle):
+class RWPRemoteArticle(BaseArticle):
     def __init__(self, prefix, filename):
-        super(RWPStaticArticle, self).__init__()
+        super(RWPRemoteArticle, self).__init__()
         self.prefix = prefix
         self.filename = filename
 
@@ -155,55 +161,33 @@ class RWPStaticArticle(BaseArticle):
 
 
 # ============================================================================
-class RWPViewerArticle(BaseArticle):
+class RWPStaticArticle(BaseArticle):
     def __init__(self, filename, main_url):
-        super(RWPViewerArticle, self).__init__()
+        super(RWPStaticArticle, self).__init__()
         self.filename = filename
         self.main_url = main_url
+
+        self.mime, _ = mimetypes.guess_type(filename)
+        self.content = pkg_resources.resource_string(
+            "warc2zim", "replay/" + filename
+        ).decode("utf-8")
 
     def get_url(self):
         return "A/" + self.filename
 
     def get_mime_type(self):
-        return "text/html"
+        return self.mime
 
     def get_data(self):
-        content = """
-<html>
-  <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-    body {{
-      height: -webkit-fill-available;
-      overflow-y: hidden;
-      margin: 0px;
-      padding: 0px;
-    }}
-    </style>
-    <script src="./ui.js"></script>
-  </head>
-  <body>
-    <replay-web-page
-     source="proxy:../"
-     config='{{"type": "kiwix"}}'
-     replayBase="./"
-     url="{0}"
-     embed="replayonly"
-     deepLink="true"
-     />
-  </body>
-</html>
-""".format(
-            self.main_url
-        )
-
+        if self.mime == "text/html":
+            content = self.content.format(url=self.main_url)
+        else:
+            content = self.content
         return Blob(content.encode("utf-8"))
 
 
 # ============================================================================
 class WARC2Zim:
-    REPLAY_STATIC_FILES = ["index.html", "ui.js", "sw.js"]
-
     def __init__(self, args):
         logging.basicConfig(format="[%(levelname)s] %(message)s")
         if args.verbose:
@@ -224,20 +208,27 @@ class WARC2Zim:
         self.replay_articles = []
         self.revisits = {}
 
+    def add_remote_or_local(self, filename):
+        if self.replay_viewer_source:
+            article = RWPRemoteArticle(self.replay_viewer_source, filename)
+        else:
+            article = RWPStaticArticle(filename, self.main_url)
+
+        self.replay_articles.append(article)
+
     def run(self):
-        for filename in self.REPLAY_STATIC_FILES:
-            self.replay_articles.append(
-                RWPStaticArticle(self.replay_viewer_source, filename)
-            )
+        self.add_remote_or_local("sw.js")
+
+        for filename in pkg_resources.resource_listdir("warc2zim", "replay"):
+            if filename != "sw.js":
+                self.replay_articles.append(RWPStaticArticle(filename, self.main_url))
 
         with Creator(
-            self.name, main_page="viewer.html", index_language="", min_chunk_size=8192
+            self.name, main_page="index.html", index_language="en"
         ) as zimcreator:
             # add replay system
             for article in self.replay_articles:
                 zimcreator.add_article(article)
-
-            zimcreator.add_article(RWPViewerArticle("viewer.html", self.main_url))
 
             for warcfile in self.inputs:
                 self.process_warc(warcfile, zimcreator)
@@ -309,7 +300,6 @@ def warc2zim(args=None):
         "-r",
         "--replay-viewer-source",
         help="""URL from which to load the ReplayWeb.page replay viewer from""",
-        default=DEFAULT_REPLAY_SOURCE_URL,
     )
 
     parser.add_argument(
@@ -326,9 +316,15 @@ def warc2zim(args=None):
 
 
 # ============================================================================
-def get_version():
-    import pkg_resources
+def canonicalize(url):
+    """ Return a 'canonical' version of the url under which it is stored in the ZIM
+    For now, just removing the scheme
+    """
+    return url.split("//", 2)[1]
 
+
+# ============================================================================
+def get_version():
     return "%(prog)s " + pkg_resources.get_distribution("warc2zim").version
 
 
