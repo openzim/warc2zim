@@ -266,12 +266,13 @@ class WARC2Zim:
                         if len(payload_article.payload) != 0:
                             zimcreator.add_article(payload_article)
 
+                        self.indexed_urls.add(url)
+
                     elif (
                         record.rec_headers["WARC-Refers-To-Target-URI"] != url
                         and url not in self.revisits
                     ):
                         self.revisits[url] = record
-                        record.raw_stream = None
 
                 except KeyboardInterrupt:  # pragma: no cover
                     print("Cancelling...")
