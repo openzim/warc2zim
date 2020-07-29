@@ -133,6 +133,9 @@ class WARCPayloadArticle(BaseWARCArticle):
     def should_index(self):
         return True
 
+    def should_index(self):
+        return True
+
 
 # ============================================================================
 class RWPRemoteArticle(BaseArticle):
@@ -182,7 +185,7 @@ class RWPStaticArticle(BaseArticle):
 
     def get_data(self):
         if self.mime == "text/html":
-            content = self.content.replace("$MAIN_URL", self.main_url)
+            content = self.content.format(url=self.main_url)
         else:
             content = self.content
         return Blob(content.encode("utf-8"))
