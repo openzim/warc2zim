@@ -1,0 +1,18 @@
+<html>
+<head>
+<script>
+if (window.parent === window.top) {{
+  const URL = "$URL";
+
+  if (window.block_path) {{
+    window.parent.location.href = encodeURI(block_path + "?source=" + URL);
+  }} else {{
+    window.parent.location.href = URL;
+  }}
+}}
+</script>
+</head>
+<body>
+Sorry, file not found.
+</body>
+</html>

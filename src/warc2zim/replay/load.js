@@ -33,7 +33,7 @@ async function main() {
     file: {"sourceUrl": "proxy:../"},
     root: true,
     skipExisting: true,
-    extraConfig: {"sourceType": "kiwix", mainDomains},
+    extraConfig: {"sourceType": "kiwix", mainDomains, redirLiveUrl: "./redirLive.html"},
     topTemplateUrl: "./topFrame.html"
   });
 }

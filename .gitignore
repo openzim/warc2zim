@@ -127,3 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# automatically downloaded from npm, so avoid saving duplicate
+src/warc2zim/replay/sw.js
