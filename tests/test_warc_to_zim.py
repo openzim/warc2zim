@@ -82,7 +82,7 @@ class TestWarc2Zim(object):
                 # ensure payloads match
                 try:
                     payload = zim_fh.get_article("A/" + url_no_scheme)
-                except:
+                except KeyError:
                     payload = None
 
                 if record.rec_type == "revisit" or (
