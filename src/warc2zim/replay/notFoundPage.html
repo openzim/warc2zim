@@ -1,0 +1,26 @@
+<html>
+<head>
+<script>
+  const URL = "$URL";
+  const mainUrl = "$MAIN_URL";
+
+  if (window.parent === window.top) {
+
+    // check if URL is from same domain as the main url
+    if (!URL.startsWith(mainUrl)) {
+      // check if kiwix-serve 'blocking' is enabled, show interstitional if it is
+      if (window.block_path) {
+        window.parent.location.href = encodeURI(block_path + "?source=" + URL);
+      } else {
+        // otherwise, just redirect
+        window.parent.location.href = URL;
+      }
+    }
+  }
+</script>
+</head>
+<body>
+<h3></h3>
+<script>document.querySelector("h3").innerText = `Sorry, the url ${URL} is not found on this server`;</script>
+</body>
+</html>

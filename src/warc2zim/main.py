@@ -108,6 +108,8 @@ class WARCPayloadArticle(BaseWARCArticle):
         else:
             self.mime = "application/octet-stream"
 
+        self.payload = self.record.content_stream().read()
+
     def _compute_mime(self):
         if self.record.http_headers:
             # if the record has HTTP headers, use the Content-Type from those (eg. 'response' record)
@@ -126,7 +128,7 @@ class WARCPayloadArticle(BaseWARCArticle):
         return self.mime
 
     def get_data(self):
-        return Blob(self.record.content_stream().read())
+        return Blob(self.payload)
 
     def should_index(self):
         return True
@@ -180,7 +182,7 @@ class RWPStaticArticle(BaseArticle):
 
     def get_data(self):
         if self.mime == "text/html":
-            content = self.content.format(url=self.main_url)
+            content = self.content.replace("$MAIN_URL", self.main_url)
         else:
             content = self.content
         return Blob(content.encode("utf-8"))
@@ -259,8 +261,10 @@ class WARC2Zim:
 
                     if record.rec_type != "revisit":
                         zimcreator.add_article(WARCHeadersArticle(record))
-                        zimcreator.add_article(WARCPayloadArticle(record))
-                        self.indexed_urls.add(url)
+                        payload_article = WARCPayloadArticle(record)
+
+                        if len(payload_article.payload) != 0:
+                            zimcreator.add_article(payload_article)
 
                     elif (
                         record.rec_headers["WARC-Refers-To-Target-URI"] != url
@@ -306,6 +310,7 @@ def warc2zim(args=None):
         "-u",
         "--main-url",
         help="""The main url that should be loaded in the viewer on init""",
+        default="https://example.com/"
     )
 
     parser.add_argument("-o", "--overwrite", action="store_true")
