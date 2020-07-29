@@ -1,0 +1,25 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+    body {{
+      height: -webkit-fill-available;
+      overflow-y: hidden;
+      margin: 0px;
+      padding: 0px;
+    }}
+    </style>
+    <script src="./ui.js"></script>
+  </head>
+  <body>
+    <replay-web-page
+     source="proxy:../"
+     config='{{"type": "kiwix"}}'
+     replayBase="./"
+     url="{url}"
+     embed="replayonly"
+     deepLink="true"
+     />
+  </body>
+</html>
+
