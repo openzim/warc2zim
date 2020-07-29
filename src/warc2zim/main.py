@@ -133,9 +133,6 @@ class WARCPayloadArticle(BaseWARCArticle):
     def should_index(self):
         return True
 
-    def should_index(self):
-        return True
-
 
 # ============================================================================
 class RWPRemoteArticle(BaseArticle):
@@ -185,7 +182,7 @@ class RWPStaticArticle(BaseArticle):
 
     def get_data(self):
         if self.mime == "text/html":
-            content = self.content.format(url=self.main_url)
+            content = self.content.replace("$MAIN_URL", self.main_url)
         else:
             content = self.content
         return Blob(content.encode("utf-8"))
@@ -269,8 +266,6 @@ class WARC2Zim:
                         if len(payload_article.payload) != 0:
                             zimcreator.add_article(payload_article)
 
-                        self.indexed_urls.add(url)
-
                     elif (
                         record.rec_headers["WARC-Refers-To-Target-URI"] != url
                         and url not in self.revisits
@@ -314,7 +309,7 @@ def warc2zim(args=None):
         "-u",
         "--main-url",
         help="""The main url that should be loaded in the viewer on init""",
-        default="https://example.com/",
+        default="https://example.com/"
     )
 
     parser.add_argument("-o", "--overwrite", action="store_true")

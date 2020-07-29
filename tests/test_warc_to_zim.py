@@ -82,13 +82,10 @@ class TestWarc2Zim(object):
                 # ensure payloads match
                 try:
                     payload = zim_fh.get_article("A/" + url_no_scheme)
-                except KeyError:
+                except:
                     payload = None
 
-                if record.rec_type == "revisit" or (
-                    record.http_headers
-                    and record.http_headers.get("Content-Length") == "0"
-                ):
+                if record.rec_type == "revisit" or (record.http_headers and record.http_headers.get('Content-Length') == '0'):
                     assert payload == None
                 else:
                     assert payload.content.tobytes() == record.content_stream().read()

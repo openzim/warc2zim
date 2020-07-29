@@ -3,18 +3,18 @@
 <head>
 <style>
 html, body
-{{
+{
   height: 100%;
   margin: 0px;
   padding: 0px;
   border: 0px;
   overflow: hidden;
-}}
+}
 
-iframe {{
+iframe {
   width: 100%;
   height: 100%;
-}}
+}
 
 </style>
 </head>
@@ -27,14 +27,14 @@ iframe {{
   const iframe = document.querySelector("iframe");
 
   // update URL when iframe changes
-  window.addEventListener("message", function() {{
-    if (event.data.wb_type === "load" || event.data.wb_type === "replace-url") {{
+  window.addEventListener("message", function() {
+    if (event.data.wb_type === "load" || event.data.wb_type === "replace-url") {
       
       // remove scheme to be consistent with current canonicalization
       const urlNoScheme = event.data.url.slice(event.data.url.indexOf("//") + 2);
       window.history.replaceState(null, "", PREFIX + urlNoScheme);
-    }}
-  }});
+    }
+  });
 
   iframe.src = PREFIX + "mp_/" + URL;
 </script>

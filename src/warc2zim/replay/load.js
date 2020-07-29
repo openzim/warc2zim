@@ -18,22 +18,13 @@ async function main() {
     }
   });
 
-  const mainDomains = [];
-
-  try {
-    const origin = new URL(window.mainUrl).origin + "/";
-    mainDomains.push(origin);
-  } catch (e) {
-    console.log("Couldn't parse mainUrl domain: ", e);
-  }
-        
   worker.postMessage({
     msg_type: "addColl",
     name: name,
     file: {"sourceUrl": "proxy:../"},
     root: true,
     skipExisting: true,
-    extraConfig: {"sourceType": "kiwix", mainDomains, redirLiveUrl: "./redirLive.html"},
+    extraConfig: {"sourceType": "kiwix", notFoundPageUrl: "./notFoundPage.html"},
     topTemplateUrl: "./topFrame.html"
   });
 }
