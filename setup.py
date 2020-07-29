@@ -15,15 +15,12 @@ def read(*names, **kwargs):
 
 
 # DEFAULT_REPLAY_SOURCE_URL = "https://cdn.jsdelivr.net/npm/replaywebpage@1.1.0-alpha.2/"
-DEFAULT_REPLAY_SOURCE_URL = (
-    "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.1.0-dev.3/dist/"
-)
+REPLAY_SOURCE_URL = "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.1.0-dev.3/dist/"
 
 
 def download_replay(name):
-    url = DEFAULT_REPLAY_SOURCE_URL + name
-    print("Downloading {0}".format(url))
-    with urllib.request.urlopen(url) as response:
+    print("Downloading " + REPLAY_SOURCE_URL + name)
+    with urllib.request.urlopen(REPLAY_SOURCE_URL + name) as response:
         with open(root_dir.joinpath("src", "warc2zim", "replay", name), "wb") as fh:
             fh.write(response.read())
 
