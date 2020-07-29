@@ -310,7 +310,7 @@ def warc2zim(args=None):
         "-u",
         "--main-url",
         help="""The main url that should be loaded in the viewer on init""",
-        default="https://example.com/"
+        default="https://example.com/",
     )
 
     parser.add_argument("-o", "--overwrite", action="store_true")
