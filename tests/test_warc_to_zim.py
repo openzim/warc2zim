@@ -11,17 +11,17 @@ from warcio import ArchiveIterator
 from warc2zim.main import warc2zim
 
 
-WARCS = [
-    "example-response.warc",
-    "example-resource.warc.gz",
-    "example-revisit.warc.gz",
-    "example-utf8.warc",
-    "netpreserve-twitter.warc",
+CMDLINES = [
+    ["example-response.warc"],
+    ["example-resource.warc.gz"],
+    ["example-revisit.warc.gz", "-a"],
+    ["example-utf8.warc", "-u", "https://httpbin.org/anything/utf8=%E2%9C%93?query=test&a=b&1=%E2%9C%93"],
+    ["netpreserve-twitter.warc", "-a"]
 ]
 
 
-@pytest.fixture(params=WARCS)
-def filename(request):
+@pytest.fixture(params=CMDLINES)
+def cmdline(request):
     return request.param
 
 
@@ -143,6 +143,7 @@ class TestWarc2Zim(object):
             "A/topFrame.html": "topFrame.html",
             # ZIM metadata
             "M/Counter": "Counter",
+            "M/Creator": "Creator",
             "M/Date": "Date",
             "M/Description": "Description",
             "M/Flavour": "Flavour",
@@ -161,13 +162,14 @@ class TestWarc2Zim(object):
         assert self.get_article(zim_output, "M/Description") == b"test zim"
         assert self.get_article(zim_output, "M/Tags") == b"some;foo;bar"
 
-    def test_warc_to_zim(self, filename):
+    def test_warc_to_zim(self, cmdline):
+        filename = cmdline[0]
         warcfile = os.path.join(self.root_dir, filename)
 
         # copy test WARCs to test dir to test different output scenarios
         shutil.copy(os.path.join(self.test_data_dir, filename), warcfile)
 
-        warc2zim([warcfile])
+        warc2zim([warcfile] + cmdline[1:])
 
         zimfile, ext = os.path.splitext(warcfile)
         zimfile += ".zim"
