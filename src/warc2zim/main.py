@@ -115,9 +115,8 @@ class WARCPayloadArticle(BaseWARCArticle):
             self.mime = "text/unchanged-html"
             self.title = self._parse_title()
 
-
     def _parse_title(self):
-        soup = BeautifulSoup(self.payload, 'html.parser')
+        soup = BeautifulSoup(self.payload, "html.parser")
         try:
             return soup.title.string or self.url
         except AttributeError:
@@ -254,11 +253,13 @@ class WARC2Zim:
                 self.replay_articles.append(RWPStaticArticle(filename, self.main_url))
 
         with Creator(
-            self.output, main_page="index.html", language="eng", **self.metadata
+            self.output, main_page="index.html", language=self.language
         ) as zimcreator:
 
             for article in self.generate_all_articles():
                 zimcreator.add_zim_article(article)
+
+            zimcreator.update_metadata(**self.metadata)
 
     def generate_all_articles(self):
         # add replay system

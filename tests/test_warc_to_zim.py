@@ -121,7 +121,7 @@ class TestWarc2Zim(object):
                 "--desc",
                 "test zim",
                 "--tags",
-                "bar"
+                "bar",
             ]
         )
 
