@@ -15,8 +15,12 @@ CMDLINES = [
     ["example-response.warc"],
     ["example-resource.warc.gz"],
     ["example-revisit.warc.gz", "-a"],
-    ["example-utf8.warc", "-u", "https://httpbin.org/anything/utf8=%E2%9C%93?query=test&a=b&1=%E2%9C%93"],
-    ["netpreserve-twitter.warc", "-a"]
+    [
+        "example-utf8.warc",
+        "-u",
+        "https://httpbin.org/anything/utf8=%E2%9C%93?query=test&a=b&1=%E2%9C%93",
+    ],
+    ["netpreserve-twitter.warc", "-a"],
 ]
 
 
