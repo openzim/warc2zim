@@ -42,6 +42,15 @@ class TestWarc2Zim(object):
         os.chdir(cls.orig_cwd)
         shutil.rmtree(cls.root_dir)
 
+    def list_articles(self, zimfile):
+        zim_fh = libzim.reader.File(zimfile)
+        for x in range(zim_fh.article_count):
+            yield zim_fh.get_article_by_id(x)
+
+    def get_article(self, zimfile, path):
+        zim_fh = libzim.reader.File(zimfile)
+        return zim_fh.get_article(path).content.tobytes()
+
     def verify_warc_and_zim(self, warcfile, zimfile):
         assert os.path.isfile(warcfile)
         assert os.path.isfile(zimfile)
@@ -95,20 +104,62 @@ class TestWarc2Zim(object):
 
                 warc_urls.add(url)
 
-    def test_warc_to_zim_specify_output_and_viewer(self):
+    def test_warc_to_zim_specify_params_and_metadata(self):
         zim_output = os.path.join(self.root_dir, "zim-out-filename.zim")
         warc2zim(
             [
                 "-v",
                 os.path.join(self.test_data_dir, "example-response.warc"),
-                "-n",
+                "-o",
                 zim_output,
                 "-r",
                 "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.1.0-dev.3/dist/",
+                "--tags",
+                "some",
+                "--tags",
+                "foo",
+                "--desc",
+                "test zim",
+                "--tags",
+                "bar"
             ]
         )
 
         assert os.path.isfile(zim_output)
+
+        all_articles = {
+            article.longurl: article.title for article in self.list_articles(zim_output)
+        }
+
+        assert all_articles == {
+            # entries from WARC
+            "A/example.com/": "Example Domain",
+            "H/example.com/": "http://example.com/",
+            # replay system files
+            "A/index.html": "index.html",
+            "A/load.js": "load.js",
+            "A/notFoundPage.html": "notFoundPage.html",
+            "A/sw.js": "sw.js",
+            "A/topFrame.html": "topFrame.html",
+            # ZIM metadata
+            "M/Counter": "Counter",
+            "M/Date": "Date",
+            "M/Description": "Description",
+            "M/Flavour": "Flavour",
+            "M/Language": "Language",
+            "M/Name": "Name",
+            "M/Publisher": "Publisher",
+            "M/Scraper": "Scraper",
+            "M/Source": "Source",
+            "M/Tags": "Tags",
+            "M/Title": "Title",
+            # Xapian
+            "X/fulltext/xapian": "Xapian Fulltext Index",
+            "X/title/xapian": "Xapian Title Index",
+        }
+
+        assert self.get_article(zim_output, "M/Description") == b"test zim"
+        assert self.get_article(zim_output, "M/Tags") == b"some;foo;bar"
 
     def test_warc_to_zim(self, filename):
         warcfile = os.path.join(self.root_dir, filename)
@@ -132,7 +183,7 @@ class TestWarc2Zim(object):
                     os.path.join(self.test_data_dir, "example-response.warc"),
                     "-r",
                     "x-invalid-x",
-                    "-n",
+                    "-o",
                     zim_output_not_created,
                 ]
             )

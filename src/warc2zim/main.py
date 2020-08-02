@@ -26,7 +26,10 @@ import pkg_resources
 import requests
 
 from warcio import ArchiveIterator
-from libzim.writer import Article, Blob, Creator
+from libzim.writer import Article, Blob
+from zimscraperlib.zim.creator import Creator
+from bs4 import BeautifulSoup
+
 
 # Shared logger
 logger = logging.getLogger("warc2zim")
@@ -76,6 +79,9 @@ class WARCHeadersArticle(BaseWARCArticle):
     def get_url(self):
         return "H/" + canonicalize(self.url)
 
+    def get_title(self):
+        return self.url
+
     def get_mime_type(self):
         return "application/warc-headers"
 
@@ -99,16 +105,23 @@ class WARCPayloadArticle(BaseWARCArticle):
         super(WARCPayloadArticle, self).__init__(record)
         self.url = record.rec_headers.get("WARC-Target-URI")
         self.mime = self._compute_mime()
+        self.title = self.url
+        self.payload = self.record.content_stream().read()
+
         # TODO: converting text/html to text/unchanged-html to avoid rewriting by kiwix
         # original mime type still preserved in the headers block
-        if self.mime:
-            self.mime = self.mime.split(";", 1)[0]
-            if self.mime == "text/html":
-                self.mime = "text/unchanged-html"
-        else:
-            self.mime = "application/octet-stream"
+        self.mime = self.mime.split(";", 1)[0]
+        if self.mime == "text/html":
+            self.mime = "text/unchanged-html"
+            self.title = self._parse_title()
 
-        self.payload = self.record.content_stream().read()
+
+    def _parse_title(self):
+        soup = BeautifulSoup(self.payload, 'html.parser')
+        try:
+            return soup.title.string or self.url
+        except AttributeError:
+            return self.url
 
     def _compute_mime(self):
         if self.record.http_headers:
@@ -122,7 +135,7 @@ class WARCPayloadArticle(BaseWARCArticle):
         return "A/" + canonicalize(self.url)
 
     def get_title(self):
-        return self.url
+        return self.title
 
     def get_mime_type(self):
         return self.mime
@@ -198,14 +211,29 @@ class WARC2Zim:
             logger.setLevel(logging.INFO)
 
         self.indexed_urls = set({})
-        self.name = args.name
-        if not self.name:
-            self.name, ext = os.path.splitext(args.inputs[0])
-            self.name += ".zim"
+        self.output = args.output
+        if not self.output:
+            self.output, ext = os.path.splitext(args.inputs[0])
+            self.output += ".zim"
 
         self.inputs = args.inputs
         self.replay_viewer_source = args.replay_viewer_source
-        self.main_url = args.main_url
+        self.main_url = args.url
+
+        self.language = args.lang
+
+        print(args.tags)
+
+        self.metadata = {
+            "name": args.name,
+            "title": args.title,
+            "description": args.desc,
+            "publisher": args.publisher,
+            "tags": ";".join(args.tags) or None,
+            "source": args.source,
+            "flavour": "fromWARC",
+            "scraper": "warc2zim " + get_version(),
+        }
 
         self.replay_articles = []
         self.revisits = {}
@@ -226,57 +254,58 @@ class WARC2Zim:
                 self.replay_articles.append(RWPStaticArticle(filename, self.main_url))
 
         with Creator(
-            self.name, main_page="index.html", index_language="en"
+            self.output, main_page="index.html", language="eng", **self.metadata
         ) as zimcreator:
-            # add replay system
-            for article in self.replay_articles:
-                zimcreator.add_article(article)
 
-            for warcfile in self.inputs:
-                self.process_warc(warcfile, zimcreator)
+            for article in self.generate_all_articles():
+                zimcreator.add_zim_article(article)
 
-            # process revisits, headers only
-            for url, record in self.revisits.items():
-                if url not in self.indexed_urls:
-                    logger.debug(
-                        "Adding revisit {0} -> {1}".format(
-                            url, record.rec_headers["WARC-Refers-To-Target-URI"]
-                        )
+    def generate_all_articles(self):
+        # add replay system
+        for article in self.replay_articles:
+            yield article
+
+        for warcfile in self.inputs:
+            yield from self.generate_warc_articles(warcfile)
+
+        # process revisits, headers only
+        for url, record in self.revisits.items():
+            if url not in self.indexed_urls:
+                logger.debug(
+                    "Adding revisit {0} -> {1}".format(
+                        url, record.rec_headers["WARC-Refers-To-Target-URI"]
                     )
-                    zimcreator.add_article(WARCHeadersArticle(record))
+                )
+                yield WARCHeadersArticle(record)
+                self.indexed_urls.add(url)
 
-    def process_warc(self, warcfile, zimcreator):
+    def generate_warc_articles(self, warcfile):
         with open(warcfile, "rb") as warc_fh:
             for record in ArchiveIterator(warc_fh):
-                try:
-                    if record.rec_type not in ("resource", "response", "revisit"):
-                        continue
+                if record.rec_type not in ("resource", "response", "revisit"):
+                    continue
 
-                    url = record.rec_headers["WARC-Target-URI"]
-                    if url in self.indexed_urls:
-                        logger.warning(
-                            "Skipping duplicate {0}, already added to ZIM".format(url)
-                        )
-                        continue
+                url = record.rec_headers["WARC-Target-URI"]
+                if url in self.indexed_urls:
+                    logger.warning(
+                        "Skipping duplicate {0}, already added to ZIM".format(url)
+                    )
+                    continue
 
-                    if record.rec_type != "revisit":
-                        zimcreator.add_article(WARCHeadersArticle(record))
-                        payload_article = WARCPayloadArticle(record)
+                if record.rec_type != "revisit":
+                    yield WARCHeadersArticle(record)
+                    payload_article = WARCPayloadArticle(record)
 
-                        if len(payload_article.payload) != 0:
-                            zimcreator.add_article(payload_article)
+                    if len(payload_article.payload) != 0:
+                        yield payload_article
 
-                        self.indexed_urls.add(url)
+                    self.indexed_urls.add(url)
 
-                    elif (
-                        record.rec_headers["WARC-Refers-To-Target-URI"] != url
-                        and url not in self.revisits
-                    ):
-                        self.revisits[url] = record
-
-                except KeyboardInterrupt:  # pragma: no cover
-                    print("Cancelling...")
-                    return 1
+                elif (
+                    record.rec_headers["WARC-Refers-To-Target-URI"] != url
+                    and url not in self.revisits
+                ):
+                    self.revisits[url] = record
 
 
 # ============================================================================
@@ -294,11 +323,10 @@ def warc2zim(args=None):
     )
 
     parser.add_argument(
-        "-n",
-        "--name",
-        help="""Base name for WARC file, appropriate extension will be
-                                added automatically.""",
-        metavar="name",
+        "-o",
+        "--output",
+        help="""Output filename for ZIM file (.zim extension will be added)""",
+        metavar="output",
     )
 
     parser.add_argument(
@@ -309,12 +337,19 @@ def warc2zim(args=None):
 
     parser.add_argument(
         "-u",
-        "--main-url",
+        "--url",
         help="""The main url that should be loaded in the viewer on init""",
         default="https://example.com/",
     )
 
-    parser.add_argument("-o", "--overwrite", action="store_true")
+    # optional metadata
+    parser.add_argument("--name", help="The name of the ZIM", default="")
+    parser.add_argument("--title", help="The Title", default="")
+    parser.add_argument("--desc", help="The Description", default="")
+    parser.add_argument("--tags", action="append", help="One or more tags", default=[])
+    parser.add_argument("--lang", help="Language", default="eng")
+    parser.add_argument("--publisher", help="ZIM publisher", default="-")
+    parser.add_argument("--source", help="ZIM source", default="-")
 
     r = parser.parse_args(args=args)
     warc2zim = WARC2Zim(r)
