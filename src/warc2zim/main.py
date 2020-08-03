@@ -169,6 +169,7 @@ class RWPStaticArticle(BaseArticle):
         self.main_url = main_url
 
         self.mime, _ = mimetypes.guess_type(filename)
+        self.mime = self.mime or "application/octet-stream"
         self.content = pkg_resources.resource_string(
             "warc2zim", "replay/" + filename
         ).decode("utf-8")

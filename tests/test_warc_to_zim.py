@@ -146,7 +146,7 @@ class TestWarc2Zim(object):
             # replay system files
             "A/index.html": "index.html",
             "A/load.js": "load.js",
-            "A/notFoundPage.html": "notFoundPage.html",
+            "A/notFoundPage.dat": "notFoundPage.dat",
             "A/sw.js": "sw.js",
             "A/topFrame.html": "topFrame.html",
             # ZIM metadata

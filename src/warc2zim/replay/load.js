@@ -24,7 +24,7 @@ async function main() {
     file: {"sourceUrl": "proxy:../"},
     root: true,
     skipExisting: false,
-    extraConfig: {"sourceType": "kiwix", notFoundPageUrl: "./notFoundPage.html"},
+    extraConfig: {"sourceType": "kiwix", notFoundPageUrl: "./notFoundPage.dat"},
     topTemplateUrl: "./topFrame.html"
   });
 }
