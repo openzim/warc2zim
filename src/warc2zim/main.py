@@ -196,15 +196,6 @@ class FaviconArticle(BaseArticle):
     def get_url(self):
         return "-/favicon"
 
-    def should_compress(self):
-        return False
-
-    def get_mime_type(self):
-        return ""
-
-    def get_data(self):
-        return ""
-
     def is_redirect(self):
         return True
 
@@ -309,7 +300,15 @@ class WARC2Zim:
 
             url = record.rec_headers["WARC-Target-URI"]
 
-            if not self.main_url and mime == "text/html":
+            if (
+                not self.main_url
+                and mime == "text/html"
+                and record.payload_length != 0
+                and (
+                    not record.http_headers
+                    or record.http_headers.get_statuscode() == "200"
+                )
+            ):
                 self.main_url = url
                 if not self.include_all and not self.include_domains:
                     self.include_domains = [urlsplit(self.main_url).netloc]

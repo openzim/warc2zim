@@ -20,7 +20,7 @@ CMDLINES = [
         "-u",
         "https://httpbin.org/anything/utf8=%E2%9C%93?query=test&a=b&1=%E2%9C%93",
     ],
-    ["netpreserve-twitter.warc", "-a"],
+    ["single-page-test.warc", "-a"],
 ]
 
 
@@ -54,6 +54,10 @@ class TestWarc2Zim(object):
     def get_article(self, zimfile, path):
         zim_fh = libzim.reader.File(zimfile)
         return zim_fh.get_article(path).content.tobytes()
+
+    def get_article_raw(self, zimfile, path):
+        zim_fh = libzim.reader.File(zimfile)
+        return zim_fh.get_article(path)
 
     def verify_warc_and_zim(self, warcfile, zimfile):
         assert os.path.isfile(warcfile)
@@ -180,6 +184,23 @@ class TestWarc2Zim(object):
 
         self.verify_warc_and_zim(warcfile, zimfile)
 
+    def test_include_domains_favicon_and_language(self):
+        zim_output = os.path.join(self.root_dir, "spt.zim")
+        warc2zim([os.path.join(self.test_data_dir, "single-page-test.warc"), "-i", "reseau-canope.fr", "-o", zim_output])
+
+        for article in self.list_articles(zim_output):
+            url = article.longurl
+            if url.startswith("A/") and len(url.split("/")) > 2:
+                assert "reseau-canope.fr" in url
+
+        # test detected language
+        assert self.get_article(zim_output, "M/Language") == b"fr"
+
+        # test detected favicon
+        favicon = self.get_article_raw(zim_output, "-/favicon")
+        assert favicon.is_redirect
+        assert favicon.get_redirect_article().longurl == "A/lesfondamentaux.reseau-canope.fr/fileadmin/template/img/favicon.ico"
+
     def test_error_bad_replay_viewer_url(self):
         zim_output_not_created = os.path.join(self.root_dir, "zim-out-not-created.zim")
         with pytest.raises(Exception) as e:
@@ -196,3 +217,19 @@ class TestWarc2Zim(object):
 
         # zim file should not have been created since replay viewer could not be loaded
         assert not os.path.isfile(zim_output_not_created)
+
+    def test_error_bad_main_page(self):
+        zim_output_not_created = os.path.join(self.root_dir, "zim-out-not-created.zim")
+        with pytest.raises(Exception) as e:
+            warc2zim(
+                [
+                    "-v",
+                    os.path.join(self.test_data_dir, "example-response.warc"),
+                    "-u",
+                    "https://no-such-url.example.com",
+                    "-o",
+                    zim_output_not_created,
+                ]
+            )
+
+
