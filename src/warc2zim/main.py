@@ -111,18 +111,11 @@ class WARCPayloadArticle(BaseArticle):
         self.title = self.url
         self.payload = self.record.content_stream().read()
 
-        # TODO: converting text/html to text/unchanged-html to avoid rewriting by kiwix
+        # TODO: converting text/html to application/octet-stream to avoid rewriting by kiwix
         # original mime type still preserved in the headers block
         if self.mime == "text/html":
-            self.mime = "text/unchanged-html"
-            self.title = self._parse_title()
-
-    def _parse_title(self):
-        soup = BeautifulSoup(self.payload, "html.parser")
-        try:
-            return soup.title.string or self.url
-        except AttributeError:
-            return self.url
+            self.mime = "application/octet-stream"
+            self.title = parse_title(self.payload) or self.url
 
     def get_url(self):
         return "A/" + canonicalize(self.url)
@@ -248,17 +241,17 @@ class WARC2Zim:
 
         self.favicon_url = args.favicon
         self.language = args.lang
+        self.title = args.title
 
         self.metadata = {
             "name": args.name,
-            "title": args.title,
             "description": args.desc,
             "creator": args.creator,
             "publisher": args.publisher,
             "tags": ";".join(args.tags) or None,
             # optional
             "source": args.source,
-            "flavour": " ".join(sys.argv),
+            "flavour": os.path.basename(sys.argv[0]) + " " + " ".join(sys.argv[1:]),
             "scraper": "warc2zim " + get_version(),
         }
 
@@ -286,6 +279,7 @@ class WARC2Zim:
             self.output,
             main_page="index.html",
             language=self.language or "eng",
+            title=self.title,
             date=self.date or datetime.date.today(),
             **self.metadata
         ) as zimcreator:
@@ -331,10 +325,14 @@ class WARC2Zim:
                 )
 
             self.date = record.rec_headers["WARC-Date"]
+            content = record.content_stream().read()
+
+            if not self.title:
+                self.title = parse_title(content)
 
             # only attempt to parse if not explicitly set
             if not self.favicon_url or not self.language:
-                self.find_icon_and_language(record.content_stream().read())
+                self.find_icon_and_language(content)
 
             logger.debug("Date: {0}".format(self.date))
             logger.debug("Language: {0}".format(self.language))
@@ -446,6 +444,15 @@ def get_record_mime_type(record):
 
     mime = content_type or ""
     return content_type.split(";")[0]
+
+
+# ============================================================================
+def parse_title(content):
+    soup = BeautifulSoup(content, "html.parser")
+    try:
+        return soup.title.text or ""
+    except AttributeError:
+        return ""
 
 
 # ============================================================================
