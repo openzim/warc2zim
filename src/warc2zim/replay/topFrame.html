@@ -34,10 +34,31 @@ iframe {
   // update URL when iframe changes
   window.addEventListener("message", function() {
     if (event.data.wb_type === "load" || event.data.wb_type === "replace-url") {
+
+      if (event.data.title) {
+        document.title = event.data.title;
+      }
       
       // remove scheme to be consistent with current canonicalization
       const urlNoScheme = event.data.url.slice(event.data.url.indexOf("//") + 2);
       window.history.replaceState(null, "", PREFIX + urlNoScheme);
+
+      // if icons received, replace any existing icons with new ones
+      if (event.data.icons) {
+        const head = document.querySelector('head');
+        const oldLinks = document.querySelectorAll("link[rel*='icon']");
+
+        for (const link of oldLinks) {
+          head.removeChild(link);
+        }
+
+        for (const icon of event.data.icons) {
+          const link = document.createElement('link');
+          link.rel = icon.rel;
+          link.href = icon.href;
+          head.appendChild(link);
+        }
+      }
     }
   });
 
