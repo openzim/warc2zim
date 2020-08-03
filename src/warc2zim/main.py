@@ -22,7 +22,7 @@ import os
 import logging
 import mimetypes
 import sys
-from argparse import ArgumentParser, RawTextHelpFormatter
+from argparse import ArgumentParser
 from urllib.parse import urlsplit, urljoin
 
 import pkg_resources
@@ -334,6 +334,7 @@ class WARC2Zim:
                 self.find_icon_and_language(content)
 
             logger.debug("Date: {0}".format(self.date))
+            logger.debug("Title: {0}".format(self.title))
             logger.debug("Language: {0}".format(self.language))
             logger.debug("Favicon: {0}".format(self.favicon_url))
             return

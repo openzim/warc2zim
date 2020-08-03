@@ -186,7 +186,15 @@ class TestWarc2Zim(object):
 
     def test_include_domains_favicon_and_language(self):
         zim_output = os.path.join(self.root_dir, "spt.zim")
-        warc2zim([os.path.join(self.test_data_dir, "single-page-test.warc"), "-i", "reseau-canope.fr", "-o", zim_output])
+        warc2zim(
+            [
+                os.path.join(self.test_data_dir, "single-page-test.warc"),
+                "-i",
+                "reseau-canope.fr",
+                "-o",
+                zim_output,
+            ]
+        )
 
         for article in self.list_articles(zim_output):
             url = article.longurl
@@ -199,7 +207,10 @@ class TestWarc2Zim(object):
         # test detected favicon
         favicon = self.get_article_raw(zim_output, "-/favicon")
         assert favicon.is_redirect
-        assert favicon.get_redirect_article().longurl == "A/lesfondamentaux.reseau-canope.fr/fileadmin/template/img/favicon.ico"
+        assert (
+            favicon.get_redirect_article().longurl
+            == "A/lesfondamentaux.reseau-canope.fr/fileadmin/template/img/favicon.ico"
+        )
 
     def test_error_bad_replay_viewer_url(self):
         zim_output_not_created = os.path.join(self.root_dir, "zim-out-not-created.zim")
@@ -231,5 +242,3 @@ class TestWarc2Zim(object):
                     zim_output_not_created,
                 ]
             )
-
-
