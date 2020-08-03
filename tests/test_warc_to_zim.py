@@ -14,6 +14,7 @@ from warc2zim.main import warc2zim
 WARCS = [
     "example-response.warc",
     "example-resource.warc.gz",
+    "example-revisit.warc.gz",
     "example-utf8.warc",
     "netpreserve-twitter.warc",
 ]
@@ -79,16 +80,22 @@ class TestWarc2Zim(object):
                 assert record.http_headers == parsed_record.http_headers
 
                 # ensure payloads match
-                payload = zim_fh.get_article("A/" + url_no_scheme)
+                try:
+                    payload = zim_fh.get_article("A/" + url_no_scheme)
+                except KeyError:
+                    payload = None
 
-                if record.rec_type == "revisit":
+                if record.rec_type == "revisit" or (
+                    record.http_headers
+                    and record.http_headers.get("Content-Length") == "0"
+                ):
                     assert payload == None
                 else:
                     assert payload.content.tobytes() == record.content_stream().read()
 
                 warc_urls.add(url)
 
-    def test_warc_to_zim_specify_output(self):
+    def test_warc_to_zim_specify_output_and_viewer(self):
         zim_output = os.path.join(self.root_dir, "zim-out-filename.zim")
         warc2zim(
             [
@@ -96,6 +103,8 @@ class TestWarc2Zim(object):
                 os.path.join(self.test_data_dir, "example-response.warc"),
                 "-n",
                 zim_output,
+                "-r",
+                "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.1.0-dev.3/dist/",
             ]
         )
 

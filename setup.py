@@ -3,6 +3,7 @@
 # vim: ai ts=4 sts=4 et sw=4 nu
 
 import pathlib
+import urllib.request
 from setuptools import setup, find_packages
 
 root_dir = pathlib.Path(__file__).parent
@@ -12,6 +13,20 @@ def read(*names, **kwargs):
     with open(root_dir.joinpath(*names), "r") as fh:
         return fh.read()
 
+
+# DEFAULT_REPLAY_SOURCE_URL = "https://cdn.jsdelivr.net/npm/replaywebpage@1.1.0-alpha.2/"
+REPLAY_SOURCE_URL = "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.1.0-dev.3/dist/"
+
+
+def download_replay(name):
+    print("Downloading " + REPLAY_SOURCE_URL + name)
+    with urllib.request.urlopen(REPLAY_SOURCE_URL + name) as response:
+        with open(root_dir.joinpath("src", "warc2zim", "replay", name), "wb") as fh:
+            fh.write(response.read())
+
+
+# download_replay('ui.js')
+download_replay("sw.js")
 
 setup(
     name="warc2zim",
@@ -30,7 +45,7 @@ setup(
         if not line.strip().startswith("#")
     ],
     zip_safe=True,
-    include_package_data=True,
+    package_data={"warc2zim": ["replay/*"]},
     data_files={
         "requirements.txt": "requirements.txt",
         "src/warc2zim/VERSION": root_dir.joinpath("src", "warc2zim", "VERSION"),
