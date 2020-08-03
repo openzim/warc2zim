@@ -18,14 +18,15 @@ If the WARC contains multiple entries for the same URL, only the first entry is 
 
 """
 
-from argparse import ArgumentParser, RawTextHelpFormatter
-from urllib.parse import urlsplit, urljoin
 import os
 import logging
 import mimetypes
+import sys
+from argparse import ArgumentParser, RawTextHelpFormatter
+from urllib.parse import urlsplit, urljoin
+
 import pkg_resources
 import requests
-
 from warcio import ArchiveIterator
 from libzim.writer import Article, Blob
 from zimscraperlib.zim.creator import Creator
@@ -54,7 +55,13 @@ class BaseArticle(Article):
         return ""
 
     def should_compress(self):
-        return True
+        mime = self.get_mime_type()
+        return mime.startswith("text/") or mime in (
+            "application/warc-headers",
+            "application/javascript",
+            "application/json",
+            "image/svg+xml",
+        )
 
     def should_index(self):
         return False
@@ -231,9 +238,13 @@ class WARC2Zim:
         self.replay_viewer_source = args.replay_viewer_source
 
         self.main_url = args.url
-        self.main_url_domain = urlsplit(self.main_url).netloc if self.main_url else ""
-        self.date = None  # date is loaded from date of main page in WARC
         self.include_all = args.include_all
+        self.include_domains = args.include_domains
+        if self.main_url:
+            if not self.include_all and not self.include_domains:
+                self.include_domains = [urlsplit(self.main_url).netloc]
+
+        self.date = None  # date is loaded from date of main page in WARC
 
         self.favicon_url = args.favicon
         self.language = args.lang
@@ -247,7 +258,7 @@ class WARC2Zim:
             "tags": ";".join(args.tags) or None,
             # optional
             "source": args.source,
-            "flavour": "fromWARC",
+            "flavour": " ".join(sys.argv),
             "scraper": "warc2zim " + get_version(),
         }
 
@@ -306,7 +317,8 @@ class WARC2Zim:
 
             if not self.main_url and mime == "text/html":
                 self.main_url = url
-                self.main_url_domain = urlsplit(self.main_url).netloc
+                if not self.include_all and not self.include_domains:
+                    self.include_domains = [urlsplit(self.main_url).netloc]
 
             if self.main_url != url:
                 continue
@@ -401,7 +413,10 @@ class WARC2Zim:
         # if not include_all, only include urls from main_url domain or subdomain
         if not self.include_all:
             parts = urlsplit(url)
-            if not parts.netloc.endswith(self.main_url_domain):
+            if not any(
+                parts.netloc.endswith(domain) for domain in self.include_domains
+            ):
+                logger.debug("Skipping url {0}, outside included domains".format(url))
                 return
 
         if record.rec_type != "revisit":
@@ -470,7 +485,14 @@ def warc2zim(args=None):
         "-a",
         "--include-all",
         action="store_true",
-        help="If set, include all URLs in ZIM, not just though from the main page domain/subdomains",
+        help="If set, include all URLs in ZIM, not just those specified in --include-domains",
+    )
+
+    parser.add_argument(
+        "-i",
+        "--include-domains",
+        action="append",
+        help="List of domains that should be included. Not used if --include-all is set. Defaults to domain of the main url",
     )
 
     parser.add_argument("-f", "--favicon", help="Favicon for Main Page")
@@ -500,7 +522,7 @@ def canonicalize(url):
 
 # ============================================================================
 def get_version():
-    return "%(prog)s " + pkg_resources.get_distribution("warc2zim").version
+    return pkg_resources.get_distribution("warc2zim").version
 
 
 # ============================================================================
