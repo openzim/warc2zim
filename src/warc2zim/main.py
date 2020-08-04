@@ -74,7 +74,7 @@ class WARCHeadersArticle(BaseArticle):
     """
 
     def __init__(self, record):
-        super(WARCHeadersArticle, self).__init__()
+        super().__init__()
         self.record = record
         self.url = record.rec_headers.get("WARC-Target-URI")
 
@@ -104,18 +104,18 @@ class WARCPayloadArticle(BaseArticle):
     """
 
     def __init__(self, record):
-        super(WARCPayloadArticle, self).__init__()
+        super().__init__()
         self.record = record
         self.url = record.rec_headers.get("WARC-Target-URI")
         self.mime = get_record_mime_type(record)
         self.title = self.url
         self.payload = self.record.content_stream().read()
 
-        # TODO: converting text/html to application/octet-stream to avoid rewriting by kiwix
+        # converting text/html to application/octet-stream to avoid rewriting by kiwix
         # original mime type still preserved in the headers block
         if self.mime == "text/html":
             self.mime = "application/octet-stream"
-            self.title = parse_title(self.payload) or self.url
+            self.title = parse_title(self.payload)
 
     def get_url(self):
         return "A/" + canonicalize(self.url)
@@ -136,7 +136,7 @@ class WARCPayloadArticle(BaseArticle):
 # ============================================================================
 class RWPRemoteArticle(BaseArticle):
     def __init__(self, prefix, filename):
-        super(RWPRemoteArticle, self).__init__()
+        super().__init__()
         self.prefix = prefix
         self.filename = filename
 
@@ -164,7 +164,7 @@ class RWPRemoteArticle(BaseArticle):
 # ============================================================================
 class RWPStaticArticle(BaseArticle):
     def __init__(self, filename, main_url):
-        super(RWPStaticArticle, self).__init__()
+        super().__init__()
         self.filename = filename
         self.main_url = main_url
 
@@ -191,7 +191,7 @@ class RWPStaticArticle(BaseArticle):
 # ============================================================================
 class FaviconArticle(BaseArticle):
     def __init__(self, favicon_url):
-        super(FaviconArticle, self).__init__()
+        super().__init__()
         self.favicon_url = favicon_url
 
     def get_url(self):
@@ -243,7 +243,7 @@ class WARC2Zim:
             "tags": ";".join(args.tags) or None,
             # optional
             "source": args.source,
-            "flavour": os.path.basename(sys.argv[0]) + " " + " ".join(sys.argv[1:]),
+            "flavour": "",
             "scraper": "warc2zim " + get_version(),
         }
 
@@ -317,6 +317,9 @@ class WARC2Zim:
             if self.main_url != url:
                 continue
 
+            # if we get here, found record for the main page
+
+            # if main page is not html, still allow (eg. could be text, img), but print warning
             if mime not in HTML_TYPES:
                 logger.warning(
                     "Main page is not an HTML Page, mime type is: {0} - Skipping Favicon and Language detection".format(
@@ -444,7 +447,7 @@ def get_record_mime_type(record):
         content_type = record.rec_headers["Content-Type"]
 
     mime = content_type or ""
-    return content_type.split(";")[0]
+    return mime.split(";")[0]
 
 
 # ============================================================================
@@ -510,7 +513,11 @@ def warc2zim(args=None):
     parser.add_argument("--title", help="The Title", default="")
     parser.add_argument("--desc", help="The Description", default="")
     parser.add_argument("--tags", action="append", help="One or more tags", default=[])
-    parser.add_argument("--lang", help="Language", default="")
+    parser.add_argument(
+        "--lang",
+        help="Language (should be a ISO-639-3 language code). If unspecified, will attempt to detect from main page, or use 'eng'",
+        default="",
+    )
     parser.add_argument("--publisher", help="ZIM publisher", default="-")
     parser.add_argument("--creator", help="ZIM creator", default="-")
     parser.add_argument("--source", help="ZIM source", default="")
