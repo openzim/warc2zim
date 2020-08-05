@@ -1,5 +1,6 @@
 <html>
 <head>
+<meta charset="utf-8"/>
 <script>
   const URL = "$URL";
   const mainUrl = "$MAIN_URL";

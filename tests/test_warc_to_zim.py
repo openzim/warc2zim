@@ -11,17 +11,29 @@ from warcio import ArchiveIterator
 from warc2zim.main import warc2zim
 
 
-WARCS = [
-    "example-response.warc",
-    "example-resource.warc.gz",
-    "example-revisit.warc.gz",
-    "example-utf8.warc",
-    "netpreserve-twitter.warc",
+CMDLINES = [
+    ["example-response.warc"],
+    ["example-resource.warc.gz", "--favicon", "https://example.com/some/favicon.ico"],
+    ["example-revisit.warc.gz", "-a"],
+    [
+        "example-revisit.warc.gz",
+        "-a",
+        "-u",
+        "http://example.iana.org/",
+        "--lang",
+        "eng",
+    ],
+    [
+        "example-utf8.warc",
+        "-u",
+        "https://httpbin.org/anything/utf8=%E2%9C%93?query=test&a=b&1=%E2%9C%93",
+    ],
+    ["single-page-test.warc", "-a"],
 ]
 
 
-@pytest.fixture(params=WARCS)
-def filename(request):
+@pytest.fixture(params=CMDLINES, ids=[" ".join(cmds) for cmds in CMDLINES])
+def cmdline(request):
     return request.param
 
 
@@ -41,6 +53,19 @@ class TestWarc2Zim(object):
     def teardown_class(cls):
         os.chdir(cls.orig_cwd)
         shutil.rmtree(cls.root_dir)
+
+    def list_articles(self, zimfile):
+        zim_fh = libzim.reader.File(zimfile)
+        for x in range(zim_fh.article_count):
+            yield zim_fh.get_article_by_id(x)
+
+    def get_article(self, zimfile, path):
+        zim_fh = libzim.reader.File(zimfile)
+        return zim_fh.get_article(path).content.tobytes()
+
+    def get_article_raw(self, zimfile, path):
+        zim_fh = libzim.reader.File(zimfile)
+        return zim_fh.get_article(path)
 
     def verify_warc_and_zim(self, warcfile, zimfile):
         assert os.path.isfile(warcfile)
@@ -95,36 +120,134 @@ class TestWarc2Zim(object):
 
                 warc_urls.add(url)
 
-    def test_warc_to_zim_specify_output_and_viewer(self):
-        zim_output = os.path.join(self.root_dir, "zim-out-filename.zim")
+    def test_warc_to_zim_specify_params_and_metadata(self):
+        zim_output = "zim-out-filename.zim"
         warc2zim(
             [
                 "-v",
                 os.path.join(self.test_data_dir, "example-response.warc"),
-                "-n",
+                "-o",
                 zim_output,
                 "-r",
                 "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.1.0-dev.3/dist/",
+                "--tags",
+                "some",
+                "--tags",
+                "foo",
+                "--desc",
+                "test zim",
+                "--tags",
+                "bar",
+                "--title",
+                "Some Title",
             ]
         )
 
         assert os.path.isfile(zim_output)
 
-    def test_warc_to_zim(self, filename):
-        warcfile = os.path.join(self.root_dir, filename)
+        all_articles = {
+            article.longurl: article.title for article in self.list_articles(zim_output)
+        }
+
+        assert all_articles == {
+            # entries from WARC
+            "A/example.com/": "Example Domain",
+            "H/example.com/": "example.com/",
+            # replay system files
+            "A/index.html": "index.html",
+            "A/load.js": "load.js",
+            "A/notFoundPage.dat": "notFoundPage.dat",
+            "A/sw.js": "sw.js",
+            "A/topFrame.html": "topFrame.html",
+            # ZIM metadata
+            "M/Counter": "Counter",
+            "M/Creator": "Creator",
+            "M/Date": "Date",
+            "M/Description": "Description",
+            "M/Language": "Language",
+            "M/Name": "Name",
+            "M/Publisher": "Publisher",
+            "M/Scraper": "Scraper",
+            "M/Source": "Source",
+            "M/Tags": "Tags",
+            "M/Title": "Title",
+            # Xapian
+            "X/fulltext/xapian": "Xapian Fulltext Index",
+            "X/title/xapian": "Xapian Title Index",
+        }
+
+        assert self.get_article(zim_output, "M/Description") == b"test zim"
+        assert self.get_article(zim_output, "M/Tags") == b"some;foo;bar"
+        assert self.get_article(zim_output, "M/Title") == b"Some Title"
+
+    def test_warc_to_zim(self, cmdline):
+        filename = cmdline[0]
+
+        # cwd is set to root dir
+        warcfile = os.path.join(".", filename)
 
         # copy test WARCs to test dir to test different output scenarios
         shutil.copy(os.path.join(self.test_data_dir, filename), warcfile)
 
-        warc2zim([warcfile])
+        # warc2zim([warcfile] + cmdline[1:])
+        warc2zim(cmdline)
 
         zimfile, ext = os.path.splitext(warcfile)
         zimfile += ".zim"
 
         self.verify_warc_and_zim(warcfile, zimfile)
 
+    def test_same_domain_only(self):
+        zim_output = "same-domain.zim"
+        warc2zim(
+            [
+                os.path.join(self.test_data_dir, "example-revisit.warc.gz"),
+                "--favicon",
+                "http://example.com/favicon.ico",
+                "--lang",
+                "eng",
+                "-o",
+                zim_output,
+            ]
+        )
+
+        for article in self.list_articles(zim_output):
+            url = article.longurl
+            # ignore the replay files, which have only one path segment
+            if url.startswith("A/") and len(url.split("/")) > 2:
+                assert url.startswith("A/example.com/")
+
+    def test_include_domains_favicon_and_language(self):
+        zim_output = "spt.zim"
+        warc2zim(
+            [
+                os.path.join(self.test_data_dir, "single-page-test.warc"),
+                "-i",
+                "reseau-canope.fr",
+                "-o",
+                zim_output,
+            ]
+        )
+
+        for article in self.list_articles(zim_output):
+            url = article.longurl
+            # ignore the replay files, which have only one path segment
+            if url.startswith("A/") and len(url.split("/")) > 2:
+                assert "reseau-canope.fr/" in url
+
+        # test detected language
+        assert self.get_article(zim_output, "M/Language") == b"fr"
+
+        # test detected favicon
+        favicon = self.get_article_raw(zim_output, "-/favicon")
+        assert favicon.is_redirect
+        assert (
+            favicon.get_redirect_article().longurl
+            == "A/lesfondamentaux.reseau-canope.fr/fileadmin/template/img/favicon.ico"
+        )
+
     def test_error_bad_replay_viewer_url(self):
-        zim_output_not_created = os.path.join(self.root_dir, "zim-out-not-created.zim")
+        zim_output_not_created = "zim-out-not-created.zim"
         with pytest.raises(Exception) as e:
             warc2zim(
                 [
@@ -132,10 +255,24 @@ class TestWarc2Zim(object):
                     os.path.join(self.test_data_dir, "example-response.warc"),
                     "-r",
                     "x-invalid-x",
-                    "-n",
+                    "-o",
                     zim_output_not_created,
                 ]
             )
 
         # zim file should not have been created since replay viewer could not be loaded
         assert not os.path.isfile(zim_output_not_created)
+
+    def test_error_bad_main_page(self):
+        zim_output_not_created = "zim-out-not-created.zim"
+        with pytest.raises(Exception) as e:
+            warc2zim(
+                [
+                    "-v",
+                    os.path.join(self.test_data_dir, "example-response.warc"),
+                    "-u",
+                    "https://no-such-url.example.com",
+                    "-o",
+                    zim_output_not_created,
+                ]
+            )
