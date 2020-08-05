@@ -110,11 +110,7 @@ class WARCPayloadArticle(BaseArticle):
         self.mime = get_record_mime_type(record)
         self.title = ""
         self.payload = self.record.content_stream().read()
-
-        # converting text/html to application/octet-stream to avoid rewriting by kiwix
-        # original mime type still preserved in the headers block
         if self.mime == "text/html":
-            self.mime = "application/octet-stream"
             self.title = parse_title(self.payload)
 
     def get_url(self):
@@ -124,7 +120,9 @@ class WARCPayloadArticle(BaseArticle):
         return self.title
 
     def get_mime_type(self):
-        return self.mime
+        # converting text/html to application/octet-stream to avoid rewriting by kiwix
+        # original mime type still preserved in the headers block
+        return "application/octet-stream" if self.mime == "text/html" else self.mime
 
     def get_data(self):
         return Blob(self.payload)
