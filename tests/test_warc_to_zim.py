@@ -152,7 +152,7 @@ class TestWarc2Zim(object):
         assert all_articles == {
             # entries from WARC
             "A/example.com/": "Example Domain",
-            "H/example.com/": "http://example.com/",
+            "H/example.com/": "example.com/",
             # replay system files
             "A/index.html": "index.html",
             "A/load.js": "load.js",
@@ -164,7 +164,6 @@ class TestWarc2Zim(object):
             "M/Creator": "Creator",
             "M/Date": "Date",
             "M/Description": "Description",
-            "M/Flavour": "Flavour",
             "M/Language": "Language",
             "M/Name": "Name",
             "M/Publisher": "Publisher",

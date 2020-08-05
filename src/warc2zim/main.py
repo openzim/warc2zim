@@ -21,7 +21,7 @@ If the WARC contains multiple entries for the same URL, only the first entry is 
 import os
 import logging
 import mimetypes
-import sys
+import datetime
 from argparse import ArgumentParser
 from urllib.parse import urlsplit, urljoin
 
@@ -82,7 +82,7 @@ class WARCHeadersArticle(BaseArticle):
         return "H/" + canonicalize(self.url)
 
     def get_title(self):
-        return self.url
+        return ""
 
     def get_mime_type(self):
         return "application/warc-headers"
@@ -108,7 +108,7 @@ class WARCPayloadArticle(BaseArticle):
         self.record = record
         self.url = record.rec_headers.get("WARC-Target-URI")
         self.mime = get_record_mime_type(record)
-        self.title = self.url
+        self.title = ""
         self.payload = self.record.content_stream().read()
 
         # converting text/html to application/octet-stream to avoid rewriting by kiwix
@@ -130,25 +130,24 @@ class WARCPayloadArticle(BaseArticle):
         return Blob(self.payload)
 
     def should_index(self):
-        return True
+        return self.mime in HTML_TYPES
 
 
 # ============================================================================
-class RWPRemoteArticle(BaseArticle):
-    def __init__(self, prefix, filename):
+class RemoteArticle(BaseArticle):
+    def __init__(self, filename, url):
         super().__init__()
-        self.prefix = prefix
         self.filename = filename
+        self.url = url
 
         try:
-            resp = requests.get(self.prefix + filename)
+            resp = requests.get(url)
+            resp.raise_for_status()
             self.content = resp.content
             self.mime = resp.headers.get("Content-Type").split(";")[0]
         except Exception as e:
             logger.error(e)
-            logger.error(
-                "Unable to load replay system file: {0}".format(self.prefix + filename)
-            )
+            logger.error("Unable to load URL: {0}".format(url))
             raise
 
     def get_url(self):
@@ -162,7 +161,7 @@ class RWPRemoteArticle(BaseArticle):
 
 
 # ============================================================================
-class RWPStaticArticle(BaseArticle):
+class StaticArticle(BaseArticle):
     def __init__(self, filename, main_url):
         super().__init__()
         self.filename = filename
@@ -189,7 +188,7 @@ class RWPStaticArticle(BaseArticle):
 
 
 # ============================================================================
-class FaviconArticle(BaseArticle):
+class FaviconRedirectArticle(BaseArticle):
     def __init__(self, favicon_url):
         super().__init__()
         self.favicon_url = favicon_url
@@ -229,21 +228,18 @@ class WARC2Zim:
             if not self.include_all and not self.include_domains:
                 self.include_domains = [urlsplit(self.main_url).netloc]
 
-        self.date = None  # date is loaded from date of main page in WARC
-
         self.favicon_url = args.favicon
         self.language = args.lang
         self.title = args.title
 
         self.metadata = {
             "name": args.name,
-            "description": args.desc,
+            "description": args.description,
             "creator": args.creator,
             "publisher": args.publisher,
             "tags": ";".join(args.tags) or None,
             # optional
             "source": args.source,
-            "flavour": "",
             "scraper": "warc2zim " + get_version(),
         }
 
@@ -252,9 +248,9 @@ class WARC2Zim:
 
     def add_remote_or_local(self, filename):
         if self.replay_viewer_source:
-            article = RWPRemoteArticle(self.replay_viewer_source, filename)
+            article = RemoteArticle(filename, self.replay_viewer_source + filename)
         else:
-            article = RWPStaticArticle(filename, self.main_url)
+            article = StaticArticle(filename, self.main_url)
 
         self.replay_articles.append(article)
 
@@ -265,14 +261,14 @@ class WARC2Zim:
 
         for filename in pkg_resources.resource_listdir("warc2zim", "replay"):
             if filename != "sw.js":
-                self.replay_articles.append(RWPStaticArticle(filename, self.main_url))
+                self.replay_articles.append(StaticArticle(filename, self.main_url))
 
         with Creator(
             self.output,
             main_page="index.html",
             language=self.language or "eng",
             title=self.title,
-            date=self.date or datetime.date.today(),
+            date=datetime.date.today(),
             **self.metadata
         ) as zimcreator:
             # zimcreator.update_metadata(**self.metadata)
@@ -327,17 +323,13 @@ class WARC2Zim:
                     )
                 )
 
-            self.date = record.rec_headers["WARC-Date"]
             content = record.content_stream().read()
 
             if not self.title:
                 self.title = parse_title(content)
 
-            # only attempt to parse if not explicitly set
-            if not self.favicon_url or not self.language:
-                self.find_icon_and_language(content)
+            self.find_icon_and_language(content)
 
-            logger.debug("Date: {0}".format(self.date))
             logger.debug("Title: {0}".format(self.title))
             logger.debug("Language: {0}".format(self.language))
             logger.debug("Favicon: {0}".format(self.favicon_url))
@@ -385,9 +377,6 @@ class WARC2Zim:
                 return
 
     def generate_all_articles(self):
-        if self.favicon_url:
-            yield FaviconArticle(self.favicon_url)
-
         # add replay system
         for article in self.replay_articles:
             yield article
@@ -405,6 +394,14 @@ class WARC2Zim:
                 )
                 yield WARCHeadersArticle(record)
                 self.indexed_urls.add(url)
+
+        if self.favicon_url not in self.indexed_urls:
+            try:
+                yield RemoteArticle(canonicalize(self.favicon_url), self.favicon_url)
+            except Exception as e:
+                return
+
+        yield FaviconRedirectArticle(self.favicon_url)
 
     def articles_for_warc_record(self, record):
         url = record.rec_headers["WARC-Target-URI"]
@@ -506,19 +503,24 @@ def warc2zim(args=None):
         help="List of domains that should be included. Not used if --include-all is set. Defaults to domain of the main url",
     )
 
-    parser.add_argument("-f", "--favicon", help="Favicon for Main Page")
+    parser.add_argument(
+        "-f",
+        "--favicon",
+        help="""URL for Favicon for Main Page. If unspecified, will attempt to use from main page.
+If not found in the ZIM, will attempt to load directly""",
+    )
 
     # optional metadata
     parser.add_argument("--name", help="The name of the ZIM", default="")
     parser.add_argument("--title", help="The Title", default="")
-    parser.add_argument("--desc", help="The Description", default="")
+    parser.add_argument("--description", help="The Description", default="")
     parser.add_argument("--tags", action="append", help="One or more tags", default=[])
     parser.add_argument(
         "--lang",
         help="Language (should be a ISO-639-3 language code). If unspecified, will attempt to detect from main page, or use 'eng'",
         default="",
     )
-    parser.add_argument("--publisher", help="ZIM publisher", default="-")
+    parser.add_argument("--publisher", help="ZIM publisher", default="Kiwix")
     parser.add_argument("--creator", help="ZIM creator", default="-")
     parser.add_argument("--source", help="ZIM source", default="")
 
