@@ -236,7 +236,7 @@ class TestWarc2Zim(object):
                 assert "reseau-canope.fr/" in url
 
         # test detected language
-        assert self.get_article(zim_output, "M/Language") == b"fr"
+        assert self.get_article(zim_output, "M/Language") == b"eng"
 
         # test detected favicon
         favicon = self.get_article_raw(zim_output, "-/favicon")

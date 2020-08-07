@@ -19,6 +19,7 @@ If the WARC contains multiple entries for the same URL, only the first entry is 
 """
 
 import os
+import pathlib
 import logging
 import mimetypes
 import datetime
@@ -30,10 +31,10 @@ import requests
 from warcio import ArchiveIterator
 from libzim.writer import Article, Blob
 from zimscraperlib.zim.creator import Creator
+from zimscraperlib.i18n import setlocale, get_language_details, Locale
 from bs4 import BeautifulSoup
 
 from jinja2 import Environment, PackageLoader, select_autoescape
-from babel.support import Translations
 
 
 # Shared logger
@@ -191,10 +192,6 @@ class StaticArticle(BaseArticle):
         return self.mime
 
     def get_data(self):
-        # if self.mime == "text/html":
-        #    content = self.content.replace("$MAIN_URL", self.main_url)
-        # else:
-        #    content = self.content
         return Blob(self.content.encode("utf-8"))
 
 
@@ -273,11 +270,7 @@ class WARC2Zim:
         )
 
         try:
-            fp = pkg_resources.resource_stream(
-                "warc2zim", "locale/{0}/LC_MESSAGES/messages.mo".format(self.language)
-            )
-            translations = Translations(fp, "messages")
-            env.install_gettext_translations(translations)
+            env.install_gettext_translations(Locale.translation)
         except OSError:
             logger.warning(
                 "No translations table found for language: {0}".format(self.language)
@@ -287,6 +280,15 @@ class WARC2Zim:
         return env
 
     def run(self):
+        # make sure Language metadata is ISO-639-3 and setup translations
+        try:
+            lang_data = get_language_details(self.language)
+            self.language = lang_data["iso-639-3"]
+            setlocale(pathlib.Path(__file__).parent, lang_data.get("iso-639-1"))
+        except Exception:
+            logger.error(f"Invalid language setting `{self.language}`")
+            raise
+
         self.find_main_page_metadata()
 
         env = self.init_env()
@@ -303,7 +305,7 @@ class WARC2Zim:
             language=self.language or "eng",
             title=self.title,
             date=datetime.date.today(),
-            **self.metadata
+            **self.metadata,
         ) as zimcreator:
             # zimcreator.update_metadata(**self.metadata)
 
@@ -552,7 +554,7 @@ If not found in the ZIM, will attempt to load directly""",
     parser.add_argument(
         "--lang",
         help="Language (should be a ISO-639-3 language code). If unspecified, will attempt to detect from main page, or use 'eng'",
-        default="",
+        default="eng",
     )
     parser.add_argument("--publisher", help="ZIM publisher", default="Kiwix")
     parser.add_argument("--creator", help="ZIM creator", default="-")
