@@ -4,6 +4,7 @@
 
 import pathlib
 import urllib.request
+import os
 from setuptools import setup, find_packages
 
 root_dir = pathlib.Path(__file__).parent
@@ -20,12 +21,22 @@ REPLAY_SOURCE_URL = "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.1.0-dev.5
 def download_replay(name):
     print("Downloading " + REPLAY_SOURCE_URL + name)
     with urllib.request.urlopen(REPLAY_SOURCE_URL + name) as response:
-        with open(root_dir.joinpath("src", "warc2zim", "replay", name), "wb") as fh:
+        with open(root_dir.joinpath("src", "warc2zim", "templates", name), "wb") as fh:
             fh.write(response.read())
 
 
-# download_replay('ui.js')
 download_replay("sw.js")
+
+
+def get_package_data():
+    pkgs = ["templates/*"]
+
+    package_path = root_dir / "src" / "warc2zim"
+    for path in package_path.glob("locale/*/LC_MESSAGES/*.mo"):
+        pkgs.append(str(path.relative_to(package_path)))
+
+    return pkgs
+
 
 setup(
     name="warc2zim",
@@ -44,10 +55,19 @@ setup(
         if not line.strip().startswith("#")
     ],
     zip_safe=True,
-    package_data={"warc2zim": ["replay/*"]},
+    package_data={"warc2zim": get_package_data()},
     data_files={
         "requirements.txt": "requirements.txt",
         "src/warc2zim/VERSION": root_dir.joinpath("src", "warc2zim", "VERSION"),
+    },
+    message_extractors={
+        ".": [
+            (
+                "src/warc2zim/templates/**",
+                "jinja2",
+                {"extensions": "jinja2.ext.autoescape,jinja2.ext.with_"},
+            )
+        ],
     },
     entry_points="""
         [console_scripts]

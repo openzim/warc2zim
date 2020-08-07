@@ -32,12 +32,18 @@ from libzim.writer import Article, Blob
 from zimscraperlib.zim.creator import Creator
 from bs4 import BeautifulSoup
 
+from jinja2 import Environment, PackageLoader, select_autoescape
+from babel.support import Translations
+
 
 # Shared logger
 logger = logging.getLogger("warc2zim")
 
 # HTML mime types
 HTML_TYPES = ("text/html", "application/xhtml", "application/xhtml+xml")
+
+# external sw.js filename
+SW_JS = "sw.js"
 
 
 # ============================================================================
@@ -122,7 +128,7 @@ class WARCPayloadArticle(BaseArticle):
     def get_mime_type(self):
         # converting text/html to application/octet-stream to avoid rewriting by kiwix
         # original mime type still preserved in the headers block
-        return "application/octet-stream" if self.mime == "text/html" else self.mime
+        return "text/html;raw=true" if self.mime == "text/html" else self.mime
 
     def get_data(self):
         return Blob(self.payload)
@@ -160,16 +166,23 @@ class RemoteArticle(BaseArticle):
 
 # ============================================================================
 class StaticArticle(BaseArticle):
-    def __init__(self, filename, main_url):
+    def __init__(self, env, filename, main_url):
         super().__init__()
         self.filename = filename
         self.main_url = main_url
 
         self.mime, _ = mimetypes.guess_type(filename)
         self.mime = self.mime or "application/octet-stream"
-        self.content = pkg_resources.resource_string(
-            "warc2zim", "replay/" + filename
-        ).decode("utf-8")
+        if self.mime == "text/html":
+            self.mime = "text/html;raw=true"
+
+        if filename != SW_JS:
+            template = env.get_template(filename)
+            self.content = template.render(MAIN_URL=self.main_url)
+        else:
+            self.content = pkg_resources.resource_string(
+                "warc2zim", "templates/" + filename
+            ).decode("utf-8")
 
     def get_url(self):
         return "A/" + self.filename
@@ -178,11 +191,11 @@ class StaticArticle(BaseArticle):
         return self.mime
 
     def get_data(self):
-        if self.mime == "text/html":
-            content = self.content.replace("$MAIN_URL", self.main_url)
-        else:
-            content = self.content
-        return Blob(content.encode("utf-8"))
+        # if self.mime == "text/html":
+        #    content = self.content.replace("$MAIN_URL", self.main_url)
+        # else:
+        #    content = self.content
+        return Blob(self.content.encode("utf-8"))
 
 
 # ============================================================================
@@ -244,22 +257,45 @@ class WARC2Zim:
         self.replay_articles = []
         self.revisits = {}
 
-    def add_remote_or_local(self, filename):
+    def add_remote_or_local(self, filename, env):
         if self.replay_viewer_source:
             article = RemoteArticle(filename, self.replay_viewer_source + filename)
         else:
-            article = StaticArticle(filename, self.main_url)
+            article = StaticArticle(env, filename, self.main_url)
 
         self.replay_articles.append(article)
+
+    def init_env(self):
+        env = Environment(
+            loader=PackageLoader("warc2zim", "templates"),
+            extensions=["jinja2.ext.i18n", "jinja2.ext.autoescape"],
+            autoescape=select_autoescape(["html", "xml"]),
+        )
+
+        try:
+            fp = pkg_resources.resource_stream(
+                "warc2zim", "locale/{0}/LC_MESSAGES/messages.mo".format(self.language)
+            )
+            translations = Translations(fp, "messages")
+            env.install_gettext_translations(translations)
+        except OSError:
+            logger.warning(
+                "No translations table found for language: {0}".format(self.language)
+            )
+            env.install_null_translations()
+
+        return env
 
     def run(self):
         self.find_main_page_metadata()
 
-        self.add_remote_or_local("sw.js")
+        env = self.init_env()
 
-        for filename in pkg_resources.resource_listdir("warc2zim", "replay"):
-            if filename != "sw.js":
-                self.replay_articles.append(StaticArticle(filename, self.main_url))
+        self.add_remote_or_local(SW_JS, env)
+
+        for filename in pkg_resources.resource_listdir("warc2zim", "templates"):
+            if filename != SW_JS:
+                self.replay_articles.append(StaticArticle(env, filename, self.main_url))
 
         with Creator(
             self.output,

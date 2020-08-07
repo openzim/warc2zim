@@ -1,6 +1,6 @@
 async function main() {
   if (!navigator.serviceWorker) {
-    document.querySelector("h2").innerText = "Sorry, service workers are not supported in your browser. (If using Firefox in Private Mode, try regular mode instead.)";
+    document.querySelector("h2").innerText = "{{ _("Sorry, service workers are not supported in your browser. (If using Firefox in Private Mode, try regular mode instead.)") }}";
     return;
   }
 
@@ -24,7 +24,7 @@ async function main() {
     file: {"sourceUrl": "proxy:../"},
     root: true,
     skipExisting: false,
-    extraConfig: {"sourceType": "kiwix", notFoundPageUrl: "./notFoundPage.dat"},
+    extraConfig: {"sourceType": "kiwix", notFoundPageUrl: "./404.html"},
     topTemplateUrl: "./topFrame.html"
   });
 }
