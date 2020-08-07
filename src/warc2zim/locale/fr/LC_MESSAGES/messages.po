@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: warc2zim 0.1.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2020-08-06 22:45-0700\n"
+"POT-Creation-Date: 2020-08-07 15:13+0200\n"
 "PO-Revision-Date: 2020-08-06 19:00-0700\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: fr\n"
@@ -20,18 +20,17 @@ msgstr ""
 
 #: src/warc2zim/templates/404.html:25
 msgid "Sorry, the url ${currUrl} is not found on this server"
-msgstr "Désolé, l'url ${currUrl} est introuvable sur ce serveur"
+msgstr "Désolé, l'adresse ${currUrl} est introuvable sur ce serveur"
 
 #: src/warc2zim/templates/index.html:4
 msgid "Loading, Please Wait..."
-msgstr "Chargement, veuillez patienter..."
+msgstr "Chargement, veuillez patienter…"
 
 #: src/warc2zim/templates/load.js:3
 msgid ""
 "Sorry, service workers are not supported in your browser. (If using "
 "Firefox in Private Mode, try regular mode instead.)"
 msgstr ""
-"Désolé, les service workers ne sont pas pris en charge dans votre "
-"navigateur. (Si vous utilisezFirefox en mode privé, essayez plutôt le "
-"mode normal.)"
+"Désolé, votre navigateur ne supporte pas les «Service Worker». "
+"Si vous utilisez Firefox en navigation privée, utilisez une fenêtre classique."
 
