@@ -4,7 +4,6 @@
 
 import pathlib
 import urllib.request
-import os
 from setuptools import setup, find_packages
 
 root_dir = pathlib.Path(__file__).parent
@@ -54,7 +53,7 @@ setup(
         for line in read("requirements.txt").splitlines()
         if not line.strip().startswith("#")
     ],
-    zip_safe=True,
+    zip_safe=False,
     package_data={"warc2zim": get_package_data()},
     data_files={
         "requirements.txt": "requirements.txt",

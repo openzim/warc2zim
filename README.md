@@ -36,4 +36,14 @@ will always be ignored.
 
 All other WARC records are skipped.
 
+## i18n
 
+`warc2zim` has very minimal non-content text but still uses gettext through [babel](http://babel.pocoo.org/en/latest/setup.html) to internationalize.
+
+To add a new locale (`fr` in this example, use only ISO-639-1):
+
+1. init for your locale: `python setup.py init_catalog -l fr`
+2. make sure the POT is up to date `python setup.py extract_messages`
+3. update your locale's catalog `python setup.py update_catalog`
+3. translate the PO file ([poedit](https://poedit.net/) is your friend)
+4. compile updated translation `python setup.py compile_catalog`
