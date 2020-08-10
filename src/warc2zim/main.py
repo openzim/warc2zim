@@ -280,16 +280,15 @@ class WARC2Zim:
         return env
 
     def run(self):
+        self.find_main_page_metadata()
+
         # make sure Language metadata is ISO-639-3 and setup translations
         try:
             lang_data = get_language_details(self.language)
             self.language = lang_data["iso-639-3"]
             setlocale(pathlib.Path(__file__).parent, lang_data.get("iso-639-1"))
         except Exception:
-            logger.error(f"Invalid language setting `{self.language}`")
-            raise
-
-        self.find_main_page_metadata()
+            logger.error(f"Invalid language setting `{self.language}`. Using `eng`.")
 
         env = self.init_env()
 
@@ -554,7 +553,7 @@ If not found in the ZIM, will attempt to load directly""",
     parser.add_argument(
         "--lang",
         help="Language (should be a ISO-639-3 language code). If unspecified, will attempt to detect from main page, or use 'eng'",
-        default="eng",
+        default="",
     )
     parser.add_argument("--publisher", help="ZIM publisher", default="Kiwix")
     parser.add_argument("--creator", help="ZIM creator", default="-")
