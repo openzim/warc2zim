@@ -26,8 +26,8 @@ iframe {
 <body style="margin: 0; padding: 0;">
 <iframe id="replay_iframe" frameborder="0" seamless="seamless" scrolling="yes" class="wb_iframe" allow="autoplay; fullscreen"></iframe>
 <script>
-  const PREFIX = "$PREFIX";
-  const START_URL = "$URL";
+  const prefix = "$PREFIX";
+  const startUrl = "$URL";
 
   const iframe = document.querySelector("iframe");
 
@@ -41,7 +41,7 @@ iframe {
       
       // remove scheme to be consistent with current canonicalization
       const urlNoScheme = event.data.url.slice(event.data.url.indexOf("//") + 2);
-      window.history.replaceState(null, "", PREFIX + urlNoScheme);
+      window.history.replaceState(null, "", prefix + urlNoScheme);
 
       // if icons received, replace any existing icons with new ones
       if (event.data.icons) {
@@ -55,7 +55,7 @@ iframe {
         // attempt to load the default "<origin>/favicon.ico" if no other favicon is specified
         if (!event.data.icons.length) {
           event.data.icons = [{
-            "href": PREFIX + "id_/" + new URL("/favicon.ico", event.data.url),
+            "href": prefix + "id_/" + new URL("/favicon.ico", event.data.url),
             "rel": "icon"
           }];
         }
@@ -70,7 +70,7 @@ iframe {
     }
   });
 
-  iframe.src = PREFIX + "mp_/" + START_URL;
+  iframe.src = prefix + "mp_/" + startUrl;
 </script>
 </body>
 </html>

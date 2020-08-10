@@ -156,7 +156,7 @@ class TestWarc2Zim(object):
             # replay system files
             "A/index.html": "index.html",
             "A/load.js": "load.js",
-            "A/notFoundPage.dat": "notFoundPage.dat",
+            "A/404.html": "404.html",
             "A/sw.js": "sw.js",
             "A/topFrame.html": "topFrame.html",
             # ZIM metadata
@@ -236,7 +236,7 @@ class TestWarc2Zim(object):
                 assert "reseau-canope.fr/" in url
 
         # test detected language
-        assert self.get_article(zim_output, "M/Language") == b"fr"
+        assert self.get_article(zim_output, "M/Language") == b"fra"
 
         # test detected favicon
         favicon = self.get_article_raw(zim_output, "-/favicon")
