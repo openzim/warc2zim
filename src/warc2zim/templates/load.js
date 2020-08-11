@@ -1,17 +1,27 @@
 async function main() {
   if (!navigator.serviceWorker) {
-    document.querySelector("h2").innerText = "{{ _("Sorry, service workers are not supported in your browser. (If using Firefox in Private Mode, try regular mode instead.)") }}";
+
+    let msg;
+    // check if service worker doesn't work due to http loading
+    if (window.location.protocol === "http:" && window.location.hostname !== "localhost") {
+      const httpsUrl = window.location.href.replace("http:", "https:");
+      document.querySelector("#error").innerHTML = "<p>{{ _("This page must be loaded via an HTTPS URL to support service workers.") }}</p>" +
+          `<a href="${httpsUrl}">{{ _("Try Loading HTTPS URL?") }}</a>`;
+    // otherwise, assume service worker not available at all
+    } else {
+      document.querySelector("#error").innerText = "{{ _("Sorry, service workers are not supported in your browser. (If using Firefox in Private Mode, try regular mode instead.)") }}";
+    }
+
+    document.querySelector("#loading").style.display = "none";
     return;
   }
 
   var worker = new Worker("./sw.js");
 
-  var prefix = window.location.href.slice(0, window.location.href.indexOf("/A/"));
+  // finds  '/A/' followed by a domain name with a .
+  var prefix = window.location.href.slice(0, window.location.href.search(/[/]A[/][^/]+[.]/));
 
   const name = prefix.slice(prefix.lastIndexOf("/") + 1).replace(/[\W]+/, "");
-
-  console.log("prefix: " + prefix);
-  console.log("name: " + name);
 
   prefix += "/A/";
 
@@ -41,5 +51,5 @@ async function main() {
   });
 }
 
-main();
+window.addEventListener("load", main);
 

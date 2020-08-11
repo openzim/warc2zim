@@ -1,17 +1,18 @@
 <script>
+// No SW Fallback check: hit if no SW installed or not supported
 if (window.top === window && !window._WBWombat) {
   if (!navigator.serviceWorker || !navigator.serviceWorker.controller) {
-    var inx =  window.location.href.indexOf("/A/");
+    // finds  '/A/' followed by a domain name with a .
+    var inx =  window.location.href.search(/[/]A[/][^/]+[.]/);
     var prefix = window.location.href.slice(0, inx);
 
     prefix += "/A/index.html#redirect=" + encodeURIComponent(window.location.href.slice(inx + 3));
-
-    console.log("go to: " + prefix);
 
     setTimeout(() => {
       window.location.href = prefix;
     }, 100);
 
+  // SW installed but not available (probably hard-refresh): just refresh again
   } else if (navigator.serviceWorker && navigator.serviceWorker.controller) {
 
     setTimeout(() => {
