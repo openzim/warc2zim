@@ -47,8 +47,6 @@ HTML_TYPES = ("text/html", "application/xhtml", "application/xhtml+xml")
 
 # HTML raw mime type
 HTML_RAW = "text/html;raw=true"
-# TODO: change to above once kiwix-lib supports raw=true
-# HTML_RAW = "application/octet-stream"
 
 
 # external sw.js filename
@@ -279,9 +277,11 @@ class WARC2Zim:
         self.replay_articles.append(article)
 
     def init_env(self):
+        #autoescape=False to allow injecting html entities from translated text
         env = Environment(
             loader=PackageLoader("warc2zim", "templates"),
             extensions=["jinja2.ext.i18n"],
+            autoescape=False
         )
 
         try:
@@ -585,9 +585,8 @@ If not found in the ZIM, will attempt to load directly""",
     parser.add_argument("--source", help="ZIM source", default="")
 
     r = parser.parse_args(args=args)
-    global warc2zim_res
-    warc2zim_res = WARC2Zim(r)
-    return warc2zim_res.run()
+    warc2zim = WARC2Zim(r)
+    return warc2zim.run()
 
 
 # ============================================================================

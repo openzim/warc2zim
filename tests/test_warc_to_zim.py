@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# vim: ai ts=4 sts=4 et sw=4 nu
+
 import tempfile
 import shutil
 import os
@@ -72,9 +76,11 @@ class TestWarc2Zim(object):
         assert os.path.isfile(warcfile)
         assert os.path.isfile(zimfile)
 
+        #autoescape=False to allow injecting html entities from translated text
         env = Environment(
             loader=PackageLoader("warc2zim", "templates"),
             extensions=["jinja2.ext.i18n"],
+            autoescape=False
         )
 
         head_insert = env.get_template("sw_check.html").render().encode("utf-8")
