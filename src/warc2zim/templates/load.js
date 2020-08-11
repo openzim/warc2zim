@@ -6,15 +6,27 @@ async function main() {
 
   var worker = new Worker("./sw.js");
 
-  const parts = window.location.href.split("/");
-  const inx = parts.indexOf("A");
-  const name = parts[inx - 1];
+  var prefix = window.location.href.slice(0, window.location.href.indexOf("/A/"));
 
-  await navigator.serviceWorker.register("./sw.js?replayPrefix=&root=" + name, {scope: "./"});
+  const name = prefix.slice(prefix.lastIndexOf("/") + 1).replace(/[\W]+/, "");
+
+  console.log("prefix: " + prefix);
+  console.log("name: " + name);
+
+  prefix += "/A/";
+
+  await navigator.serviceWorker.register("./sw.js?replayPrefix=&root=" + name, {scope: prefix});
 
   worker.addEventListener("message", (event) => {
     if (event.data.msg_type === "collAdded" && event.data.name === name) {
-      window.location.href = "./" + window.mainUrl;
+      if (window.location.hash && window.location.hash.startsWith("#redirect=")) {
+        prefix += decodeURIComponent(window.location.hash.slice("#redirect=".length));
+      } else {
+        prefix += window.mainUrl;
+      }
+
+      console.log("final: " + prefix);
+      window.location.href = prefix;
     }
   });
 

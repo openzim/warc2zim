@@ -1,0 +1,22 @@
+<script>
+if (window.top === window && !window._WBWombat) {
+  if (!navigator.serviceWorker || !navigator.serviceWorker.controller) {
+    var inx =  window.location.href.indexOf("/A/");
+    var prefix = window.location.href.slice(0, inx);
+
+    prefix += "/A/index.html#redirect=" + encodeURIComponent(window.location.href.slice(inx + 3));
+
+    console.log("go to: " + prefix);
+
+    setTimeout(() => {
+      window.location.href = prefix;
+    }, 100);
+
+  } else if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+
+    setTimeout(() => {
+      window.location.reload();
+    }, 100);
+  }
+}
+</script>

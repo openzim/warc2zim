@@ -2,13 +2,20 @@
 <head>
 <meta charset="utf-8"/>
 <script>
-  const currUrl = "$URL";
-  const mainUrl = "{{ MAIN_URL }}";
+  var currUrl = "$URL";
+  var mainUrl = "{{ MAIN_URL }}";
 
   if (window.parent === window.top) {
-
     // check if URL is from same domain as the main url
-    if (!currUrl.startsWith(mainUrl)) {
+    var mainOrigin;
+
+    try {
+      mainOrigin = new URL(mainUrl).origin;
+    } catch (e) {
+      mainOrigin = mainUrl;
+    }
+
+    if (!currUrl.startsWith(mainOrigin)) {
       // check if kiwix-serve 'blocking' is enabled, show interstitional if it is
       if (window.block_path) {
         window.parent.location.href = encodeURI(block_path + "?source=" + currUrl);
@@ -17,6 +24,15 @@
         window.parent.location.href = currUrl;
       }
     }
+
+    // check if toolbar exists, and hide it
+    // note: kiwix insert is left here to be able to check 'window.block_path'
+    window.addEventListener("load", function() {
+      var toolbar = document.querySelector(".kiwix");
+      if (toolbar) {
+        toolbar.style.display = "none";
+      }
+    });
   }
 </script>
 </head>
