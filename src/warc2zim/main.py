@@ -52,6 +52,9 @@ HTML_RAW = "text/html;raw=true"
 # external sw.js filename
 SW_JS = "sw.js"
 
+# head insert template
+HEAD_INSERT_FILE = "sw_check.html"
+
 
 HEAD_INS = re.compile(b"(<head>)", re.I)
 
@@ -188,8 +191,6 @@ class StaticArticle(BaseArticle):
 
         self.mime, _ = mimetypes.guess_type(filename)
         self.mime = self.mime or "application/octet-stream"
-        # if self.mime == "text/html":
-        #    self.mime = HTML_RAW
 
         if filename != SW_JS:
             template = env.get_template(filename)
@@ -299,23 +300,22 @@ class WARC2Zim:
 
         # make sure Language metadata is ISO-639-3 and setup translations
         try:
-            print(pathlib.Path(__file__).parent)
             lang_data = get_language_details(self.language)
             self.language = lang_data["iso-639-3"]
             setlocale(pathlib.Path(__file__).parent, lang_data.get("iso-639-1"))
-        except Exception as e:
+        except Exception:
             logger.error(f"Invalid language setting `{self.language}`. Using `eng`.")
 
         self.env = self.init_env()
 
-        template = self.env.get_template("sw_check.html")
-
+        # init head insert
+        template = self.env.get_template(HEAD_INSERT_FILE)
         self.head_insert = ("<head>" + template.render()).encode("utf-8")
 
         self.add_remote_or_local(SW_JS)
 
         for filename in pkg_resources.resource_listdir("warc2zim", "templates"):
-            if filename == "sw_check.html":
+            if filename == HEAD_INSERT_FILE:
                 continue
 
             if filename != SW_JS:
