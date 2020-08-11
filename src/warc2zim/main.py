@@ -277,11 +277,11 @@ class WARC2Zim:
         self.replay_articles.append(article)
 
     def init_env(self):
-        #autoescape=False to allow injecting html entities from translated text
+        # autoescape=False to allow injecting html entities from translated text
         env = Environment(
             loader=PackageLoader("warc2zim", "templates"),
             extensions=["jinja2.ext.i18n"],
-            autoescape=False
+            autoescape=False,
         )
 
         try:

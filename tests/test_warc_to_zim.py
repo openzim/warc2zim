@@ -76,11 +76,11 @@ class TestWarc2Zim(object):
         assert os.path.isfile(warcfile)
         assert os.path.isfile(zimfile)
 
-        #autoescape=False to allow injecting html entities from translated text
+        # autoescape=False to allow injecting html entities from translated text
         env = Environment(
             loader=PackageLoader("warc2zim", "templates"),
             extensions=["jinja2.ext.i18n"],
-            autoescape=False
+            autoescape=False,
         )
 
         head_insert = env.get_template("sw_check.html").render().encode("utf-8")
