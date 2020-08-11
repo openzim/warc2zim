@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: warc2zim 0.1.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2020-08-11 16:10+0000\n"
+"POT-Creation-Date: 2020-08-11 18:31+0200\n"
 "PO-Revision-Date: 2020-08-06 19:00-0700\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: fr\n"
@@ -24,11 +24,13 @@ msgstr "Désolé, l'adresse ${currUrl} est introuvable sur ce serveur"
 
 #: src/warc2zim/templates/load.js:8
 msgid "This page must be loaded via an HTTPS URL to support service workers."
-msgstr "Cette page doit être chargée via une URL HTTPS pour prendre en charge les techniciens de service."
+msgstr ""
+"Cette page doit être chargée via une URL HTTPS pour prendre en charge les"
+" «Service Worker»."
 
 #: src/warc2zim/templates/load.js:9
 msgid "Try Loading HTTPS URL?"
-msgstr "Essayez de charger l'URL HTTPS?"
+msgstr "Essayer de charger l'adresse via HTTPS"
 
 #: src/warc2zim/templates/load.js:12
 msgid ""
@@ -37,13 +39,4 @@ msgid ""
 msgstr ""
 "Désolé, votre navigateur ne supporte pas les «Service Worker». Si vous "
 "utilisez Firefox en navigation privée, utilisez une fenêtre classique."
-
-#~ msgid "Loading, Please Wait..."
-#~ msgstr "Chargement, veuillez patienter…"
-
-#~ msgid "This page must be loaded via an HTTPS URL to support service workers."
-#~ msgstr ""
-
-#~ msgid "This page must be loaded via an HTTPs URL to support service workers."
-#~ msgstr ""
 
