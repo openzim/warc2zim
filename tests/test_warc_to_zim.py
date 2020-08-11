@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# vim: ai ts=4 sts=4 et sw=4 nu
+
 import tempfile
 import shutil
 import os
@@ -7,8 +11,9 @@ import pytest
 
 import libzim.reader
 from warcio import ArchiveIterator
+from jinja2 import Environment, PackageLoader
 
-from warc2zim.main import warc2zim
+from warc2zim.main import warc2zim, HTML_RAW
 
 
 CMDLINES = [
@@ -71,6 +76,15 @@ class TestWarc2Zim(object):
         assert os.path.isfile(warcfile)
         assert os.path.isfile(zimfile)
 
+        # autoescape=False to allow injecting html entities from translated text
+        env = Environment(
+            loader=PackageLoader("warc2zim", "templates"),
+            extensions=["jinja2.ext.i18n"],
+            autoescape=False,
+        )
+
+        head_insert = env.get_template("sw_check.html").render().encode("utf-8")
+
         # track to avoid checking duplicates, which are not written to ZIM
         warc_urls = set()
 
@@ -116,7 +130,17 @@ class TestWarc2Zim(object):
                 ):
                     assert payload == None
                 else:
-                    assert payload.content.tobytes() == record.content_stream().read()
+                    payload_content = payload.content.tobytes()
+
+                    # if HTML_RAW, still need to account for the head insert, otherwise should have exact match
+                    if payload.mimetype == HTML_RAW:
+                        assert head_insert in payload_content
+                        assert (
+                            payload_content.replace(head_insert, b"")
+                            == record.content_stream().read()
+                        )
+                    else:
+                        assert payload_content == record.content_stream().read()
 
                 warc_urls.add(url)
 

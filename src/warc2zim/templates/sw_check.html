@@ -1,0 +1,23 @@
+<script>
+// No SW Fallback check: hit if loaded via direct link (no SW installed or not supported)
+if (window.top === window && !window._WBWombat) {
+  if (!navigator.serviceWorker || !navigator.serviceWorker.controller) {
+    // finds  '/A/' followed by a domain name with a .
+    var inx =  window.location.href.search(/[/]A[/][^/]+[.]/);
+    var prefix = window.location.href.slice(0, inx);
+
+    prefix += "/A/index.html#redirect=" + encodeURIComponent(window.location.href.slice(inx + 3));
+
+    setTimeout(() => {
+      window.location.href = prefix;
+    }, 100);
+
+  // SW installed but not available (probably hard-refresh): just refresh again
+  } else if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+
+    setTimeout(() => {
+      window.location.reload();
+    }, 100);
+  }
+}
+</script>

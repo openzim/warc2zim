@@ -23,6 +23,7 @@ import pathlib
 import logging
 import mimetypes
 import datetime
+import re
 from argparse import ArgumentParser
 from urllib.parse import urlsplit, urljoin
 
@@ -34,7 +35,7 @@ from zimscraperlib.zim.creator import Creator
 from zimscraperlib.i18n import setlocale, get_language_details, Locale
 from bs4 import BeautifulSoup
 
-from jinja2 import Environment, PackageLoader, select_autoescape
+from jinja2 import Environment, PackageLoader
 
 
 # Shared logger
@@ -43,8 +44,22 @@ logger = logging.getLogger("warc2zim")
 # HTML mime types
 HTML_TYPES = ("text/html", "application/xhtml", "application/xhtml+xml")
 
+
+# HTML raw mime type
+HTML_RAW = "text/html;raw=true"
+
+
 # external sw.js filename
 SW_JS = "sw.js"
+
+# head insert template
+HEAD_INSERT_FILE = "sw_check.html"
+
+
+HEAD_INS = re.compile(b"(<head>)", re.I)
+
+
+warc2zim_res = None
 
 
 # ============================================================================
@@ -110,7 +125,7 @@ class WARCPayloadArticle(BaseArticle):
     Usually stored under A namespace
     """
 
-    def __init__(self, record):
+    def __init__(self, record, head_insert=None):
         super().__init__()
         self.record = record
         self.url = record.rec_headers.get("WARC-Target-URI")
@@ -119,6 +134,8 @@ class WARCPayloadArticle(BaseArticle):
         self.payload = self.record.content_stream().read()
         if self.mime == "text/html":
             self.title = parse_title(self.payload)
+            if head_insert:
+                self.payload = HEAD_INS.sub(head_insert, self.payload)
 
     def get_url(self):
         return "A/" + canonicalize(self.url)
@@ -129,7 +146,7 @@ class WARCPayloadArticle(BaseArticle):
     def get_mime_type(self):
         # converting text/html to application/octet-stream to avoid rewriting by kiwix
         # original mime type still preserved in the headers block
-        return "text/html;raw=true" if self.mime == "text/html" else self.mime
+        return HTML_RAW if self.mime == "text/html" else self.mime
 
     def get_data(self):
         return Blob(self.payload)
@@ -174,8 +191,6 @@ class StaticArticle(BaseArticle):
 
         self.mime, _ = mimetypes.guess_type(filename)
         self.mime = self.mime or "application/octet-stream"
-        if self.mime == "text/html":
-            self.mime = "text/html;raw=true"
 
         if filename != SW_JS:
             template = env.get_template(filename)
@@ -254,19 +269,20 @@ class WARC2Zim:
         self.replay_articles = []
         self.revisits = {}
 
-    def add_remote_or_local(self, filename, env):
+    def add_remote_or_local(self, filename):
         if self.replay_viewer_source:
             article = RemoteArticle(filename, self.replay_viewer_source + filename)
         else:
-            article = StaticArticle(env, filename, self.main_url)
+            article = StaticArticle(self.env, filename, self.main_url)
 
         self.replay_articles.append(article)
 
     def init_env(self):
+        # autoescape=False to allow injecting html entities from translated text
         env = Environment(
             loader=PackageLoader("warc2zim", "templates"),
-            extensions=["jinja2.ext.i18n", "jinja2.ext.autoescape"],
-            autoescape=select_autoescape(["html", "xml"]),
+            extensions=["jinja2.ext.i18n"],
+            autoescape=False,
         )
 
         try:
@@ -290,13 +306,22 @@ class WARC2Zim:
         except Exception:
             logger.error(f"Invalid language setting `{self.language}`. Using `eng`.")
 
-        env = self.init_env()
+        self.env = self.init_env()
 
-        self.add_remote_or_local(SW_JS, env)
+        # init head insert
+        template = self.env.get_template(HEAD_INSERT_FILE)
+        self.head_insert = ("<head>" + template.render()).encode("utf-8")
+
+        self.add_remote_or_local(SW_JS)
 
         for filename in pkg_resources.resource_listdir("warc2zim", "templates"):
+            if filename == HEAD_INSERT_FILE:
+                continue
+
             if filename != SW_JS:
-                self.replay_articles.append(StaticArticle(env, filename, self.main_url))
+                self.replay_articles.append(
+                    StaticArticle(self.env, filename, self.main_url)
+                )
 
         with Creator(
             self.output,
@@ -455,7 +480,7 @@ class WARC2Zim:
 
         if record.rec_type != "revisit":
             yield WARCHeadersArticle(record)
-            payload_article = WARCPayloadArticle(record)
+            payload_article = WARCPayloadArticle(record, self.head_insert)
 
             if len(payload_article.payload) != 0:
                 yield payload_article
