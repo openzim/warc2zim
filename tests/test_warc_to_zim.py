@@ -129,7 +129,10 @@ class TestWarc2Zim(object):
                     # if HTML_RAW, still need to account for the head insert, otherwise should have exact match
                     if payload.mimetype == HTML_RAW:
                         assert head_insert in payload_content
-                        assert payload_content.replace(head_insert, b'') == record.content_stream().read()
+                        assert (
+                            payload_content.replace(head_insert, b"")
+                            == record.content_stream().read()
+                        )
                     else:
                         assert payload_content == record.content_stream().read()
 

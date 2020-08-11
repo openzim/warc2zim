@@ -48,7 +48,7 @@ HTML_TYPES = ("text/html", "application/xhtml", "application/xhtml+xml")
 # HTML raw mime type
 HTML_RAW = "text/html;raw=true"
 # TODO: change to above once kiwix-lib supports raw=true
-#HTML_RAW = "application/octet-stream"
+# HTML_RAW = "application/octet-stream"
 
 
 # external sw.js filename
@@ -281,7 +281,7 @@ class WARC2Zim:
     def init_env(self):
         env = Environment(
             loader=PackageLoader("warc2zim", "templates"),
-            extensions=["jinja2.ext.i18n"]
+            extensions=["jinja2.ext.i18n"],
         )
 
         try:
@@ -299,19 +299,18 @@ class WARC2Zim:
 
         # make sure Language metadata is ISO-639-3 and setup translations
         try:
+            print(pathlib.Path(__file__).parent)
             lang_data = get_language_details(self.language)
             self.language = lang_data["iso-639-3"]
             setlocale(pathlib.Path(__file__).parent, lang_data.get("iso-639-1"))
-        except Exception:
+        except Exception as e:
             logger.error(f"Invalid language setting `{self.language}`. Using `eng`.")
 
         self.env = self.init_env()
 
         template = self.env.get_template("sw_check.html")
 
-        self.head_insert = ("<head>" + template.render()).encode(
-            "utf-8"
-        )
+        self.head_insert = ("<head>" + template.render()).encode("utf-8")
 
         self.add_remote_or_local(SW_JS)
 
