@@ -32,7 +32,8 @@ async function main() {
       if (window.location.hash && window.location.hash.startsWith("#redirect=")) {
         prefix += decodeURIComponent(window.location.hash.slice("#redirect=".length));
       } else {
-        prefix += window.mainUrl;
+        const inx = window.mainUrl.indexOf("//");
+        prefix += inx >= 0 ? window.mainUrl.slice(inx + 2) : window.mainUrl;
       }
 
       console.log("final: " + prefix);

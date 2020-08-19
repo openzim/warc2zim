@@ -5,6 +5,15 @@
   var currUrl = "$URL";
   var mainUrl = "{{ MAIN_URL }}";
 
+  // check if toolbar exists, and hide it
+  // note: kiwix insert is left here to be able to check 'window.block_path'
+  window.addEventListener("load", function() {
+    var toolbar = document.querySelector(".kiwix");
+    if (toolbar) {
+      toolbar.style.display = "none";
+    }
+  });
+
   if (window.parent === window.top) {
     // check if URL is from same domain as the main url
     var mainOrigin;
@@ -24,15 +33,6 @@
         window.parent.location.href = currUrl;
       }
     }
-
-    // check if toolbar exists, and hide it
-    // note: kiwix insert is left here to be able to check 'window.block_path'
-    window.addEventListener("load", function() {
-      var toolbar = document.querySelector(".kiwix");
-      if (toolbar) {
-        toolbar.style.display = "none";
-      }
-    });
   }
 </script>
 </head>
