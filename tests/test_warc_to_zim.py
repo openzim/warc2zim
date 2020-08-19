@@ -195,7 +195,10 @@ class TestWarc2Zim(object):
         }
 
         assert self.get_article(zim_output, "M/Description") == b"test zim"
-        assert self.get_article(zim_output, "M/Tags") == b"some;foo;bar"
+        assert (
+            self.get_article(zim_output, "M/Tags")
+            == b"_ftindex:yes;_category:other;_sw:yes;some;foo;bar"
+        )
         assert self.get_article(zim_output, "M/Title") == b"Some Title"
 
     def test_warc_to_zim(self, cmdline, tmp_path):
@@ -273,6 +276,12 @@ class TestWarc2Zim(object):
         assert (
             favicon.get_redirect_article().longurl
             == "A/lesfondamentaux.reseau-canope.fr/fileadmin/template/img/favicon.ico"
+        )
+
+        # test default tags added
+        assert (
+            self.get_article(zim_output, "M/Tags")
+            == b"_ftindex:yes;_category:other;_sw:yes"
         )
 
     def test_error_bad_replay_viewer_url(self, tmp_path):

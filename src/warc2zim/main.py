@@ -60,7 +60,8 @@ HEAD_INSERT_FILE = "sw_check.html"
 HEAD_INS = re.compile(b"(<head>)", re.I)
 
 
-warc2zim_res = None
+# Default ZIM metadata tags
+DEFAULT_TAGS = ["_ftindex:yes", "_category:other", "_sw:yes"]
 
 
 # ============================================================================
@@ -262,12 +263,14 @@ class WARC2Zim:
         self.language = args.lang
         self.title = args.title
 
+        tags = DEFAULT_TAGS + (args.tags or [])
+
         self.metadata = {
             "name": args.name,
             "description": args.description,
             "creator": args.creator,
             "publisher": args.publisher,
-            "tags": ";".join(args.tags) or None,
+            "tags": ";".join(tags),
             # optional
             "source": args.source,
             "scraper": "warc2zim " + get_version(),
