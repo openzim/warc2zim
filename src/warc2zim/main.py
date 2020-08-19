@@ -24,6 +24,7 @@ import logging
 import mimetypes
 import datetime
 import re
+import time
 from argparse import ArgumentParser
 from urllib.parse import urlsplit, urljoin
 
@@ -236,10 +237,16 @@ class WARC2Zim:
             logger.setLevel(logging.INFO)
 
         self.indexed_urls = set({})
+
         self.output = args.output
-        if not self.output:
-            self.output, ext = os.path.splitext(args.inputs[0])
-            self.output += ".zim"
+        self.zim_file = args.zim_file
+
+        if not self.zim_file:
+            self.zim_file = "{name}_{period}.zim".format(
+                name=args.name, period=time.strftime("%Y-%m")
+            )
+
+        self.full_filename = os.path.join(self.output, self.zim_file)
 
         self.inputs = args.inputs
         self.replay_viewer_source = args.replay_viewer_source
@@ -324,11 +331,12 @@ class WARC2Zim:
                 )
 
         with Creator(
-            self.output,
+            self.full_filename,
             main_page="index.html",
             language=self.language or "eng",
             title=self.title,
             date=datetime.date.today(),
+            compression="zstd",
             **self.metadata,
         ) as zimcreator:
             # zimcreator.update_metadata(**self.metadata)
@@ -531,13 +539,6 @@ def warc2zim(args=None):
     )
 
     parser.add_argument(
-        "-o",
-        "--output",
-        help="""Output filename for ZIM file (.zim extension will be added)""",
-        metavar="output",
-    )
-
-    parser.add_argument(
         "-r",
         "--replay-viewer-source",
         help="""URL from which to load the ReplayWeb.page replay viewer from""",
@@ -570,8 +571,12 @@ def warc2zim(args=None):
 If not found in the ZIM, will attempt to load directly""",
     )
 
+    # output
+    parser.add_argument("--name", help="The name of the ZIM", default="", required=True)
+    parser.add_argument("--output", help="Output directory", default="/output")
+    parser.add_argument("--zim-file", help="ZIM Filename", default="")
+
     # optional metadata
-    parser.add_argument("--name", help="The name of the ZIM", default="")
     parser.add_argument("--title", help="The Title", default="")
     parser.add_argument("--description", help="The Description", default="")
     parser.add_argument("--tags", action="append", help="One or more tags", default=[])
