@@ -129,4 +129,4 @@ dmypy.json
 .pyre/
 
 # automatically downloaded from npm, so avoid saving duplicate
-src/warc2zim/replay/sw.js
+src/warc2zim/templates/sw.js
