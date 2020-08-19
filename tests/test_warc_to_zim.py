@@ -199,17 +199,18 @@ class TestWarc2Zim(object):
         assert self.get_article(zim_output, "M/Title") == b"Some Title"
 
     def test_warc_to_zim(self, cmdline, tmp_path):
+        # intput filename
         filename = cmdline[0]
 
-        # cwd is set to root dir
+        # set intput filename (first arg) to absolute path from test dir
         warcfile = os.path.join(TEST_DATA_DIR, filename)
+        cmdline[0] = warcfile
 
-        # warc2zim([warcfile] + cmdline[1:])
-        cmdline.extend(["--output", str(tmp_path), "--name", cmdline[0]])
+        cmdline.extend(["--output", str(tmp_path), "--name", filename])
 
         warc2zim(cmdline)
 
-        zimfile = cmdline[0] + "_" + time.strftime("%Y-%m") + ".zim"
+        zimfile = filename + "_" + time.strftime("%Y-%m") + ".zim"
 
         self.verify_warc_and_zim(warcfile, tmp_path / zimfile)
 
