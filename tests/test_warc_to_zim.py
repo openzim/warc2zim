@@ -2,9 +2,8 @@
 # -*- coding: utf-8 -*-
 # vim: ai ts=4 sts=4 et sw=4 nu
 
-import tempfile
-import shutil
 import os
+import time
 from io import BytesIO
 
 import pytest
@@ -37,6 +36,9 @@ CMDLINES = [
 ]
 
 
+TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
+
+
 @pytest.fixture(params=CMDLINES, ids=[" ".join(cmds) for cmds in CMDLINES])
 def cmdline(request):
     return request.param
@@ -44,21 +46,6 @@ def cmdline(request):
 
 # ============================================================================
 class TestWarc2Zim(object):
-    @classmethod
-    def setup_class(cls):
-        cls.root_dir = os.path.realpath(tempfile.mkdtemp())
-        cls.orig_cwd = os.getcwd()
-        os.chdir(cls.root_dir)
-
-        cls.test_data_dir = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)), "data"
-        )
-
-    @classmethod
-    def teardown_class(cls):
-        os.chdir(cls.orig_cwd)
-        shutil.rmtree(cls.root_dir)
-
     def list_articles(self, zimfile):
         zim_fh = libzim.reader.File(zimfile)
         for x in range(zim_fh.article_count):
@@ -144,13 +131,17 @@ class TestWarc2Zim(object):
 
                 warc_urls.add(url)
 
-    def test_warc_to_zim_specify_params_and_metadata(self):
+    def test_warc_to_zim_specify_params_and_metadata(self, tmp_path):
         zim_output = "zim-out-filename.zim"
         warc2zim(
             [
                 "-v",
-                os.path.join(self.test_data_dir, "example-response.warc"),
-                "-o",
+                os.path.join(TEST_DATA_DIR, "example-response.warc"),
+                "--name",
+                "example-response",
+                "--output",
+                str(tmp_path),
+                "--zim-file",
                 zim_output,
                 "-r",
                 "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.1.0-dev.3/dist/",
@@ -166,6 +157,8 @@ class TestWarc2Zim(object):
                 "Some Title",
             ]
         )
+
+        zim_output = tmp_path / zim_output
 
         assert os.path.isfile(zim_output)
 
@@ -184,6 +177,7 @@ class TestWarc2Zim(object):
             "A/sw.js": "sw.js",
             "A/topFrame.html": "topFrame.html",
             # ZIM metadata
+            "M/Compression": "Compression",
             "M/Counter": "Counter",
             "M/Creator": "Creator",
             "M/Date": "Date",
@@ -204,36 +198,41 @@ class TestWarc2Zim(object):
         assert self.get_article(zim_output, "M/Tags") == b"some;foo;bar"
         assert self.get_article(zim_output, "M/Title") == b"Some Title"
 
-    def test_warc_to_zim(self, cmdline):
+    def test_warc_to_zim(self, cmdline, tmp_path):
+        # intput filename
         filename = cmdline[0]
 
-        # cwd is set to root dir
-        warcfile = os.path.join(".", filename)
+        # set intput filename (first arg) to absolute path from test dir
+        warcfile = os.path.join(TEST_DATA_DIR, filename)
+        cmdline[0] = warcfile
 
-        # copy test WARCs to test dir to test different output scenarios
-        shutil.copy(os.path.join(self.test_data_dir, filename), warcfile)
+        cmdline.extend(["--output", str(tmp_path), "--name", filename])
 
-        # warc2zim([warcfile] + cmdline[1:])
         warc2zim(cmdline)
 
-        zimfile, ext = os.path.splitext(warcfile)
-        zimfile += ".zim"
+        zimfile = filename + "_" + time.strftime("%Y-%m") + ".zim"
 
-        self.verify_warc_and_zim(warcfile, zimfile)
+        self.verify_warc_and_zim(warcfile, tmp_path / zimfile)
 
-    def test_same_domain_only(self):
+    def test_same_domain_only(self, tmp_path):
         zim_output = "same-domain.zim"
         warc2zim(
             [
-                os.path.join(self.test_data_dir, "example-revisit.warc.gz"),
+                os.path.join(TEST_DATA_DIR, "example-revisit.warc.gz"),
                 "--favicon",
                 "http://example.com/favicon.ico",
                 "--lang",
                 "eng",
-                "-o",
+                "--zim-file",
                 zim_output,
+                "--name",
+                "same-domain",
+                "--output",
+                str(tmp_path),
             ]
         )
+
+        zim_output = tmp_path / zim_output
 
         for article in self.list_articles(zim_output):
             url = article.longurl
@@ -241,17 +240,23 @@ class TestWarc2Zim(object):
             if url.startswith("A/") and len(url.split("/")) > 2:
                 assert url.startswith("A/example.com/")
 
-    def test_include_domains_favicon_and_language(self):
+    def test_include_domains_favicon_and_language(self, tmp_path):
         zim_output = "spt.zim"
         warc2zim(
             [
-                os.path.join(self.test_data_dir, "single-page-test.warc"),
+                os.path.join(TEST_DATA_DIR, "single-page-test.warc"),
                 "-i",
                 "reseau-canope.fr",
-                "-o",
+                "--output",
+                str(tmp_path),
+                "--zim-file",
                 zim_output,
+                "--name",
+                "spt",
             ]
         )
+
+        zim_output = tmp_path / zim_output
 
         for article in self.list_articles(zim_output):
             url = article.longurl
@@ -270,16 +275,20 @@ class TestWarc2Zim(object):
             == "A/lesfondamentaux.reseau-canope.fr/fileadmin/template/img/favicon.ico"
         )
 
-    def test_error_bad_replay_viewer_url(self):
+    def test_error_bad_replay_viewer_url(self, tmp_path):
         zim_output_not_created = "zim-out-not-created.zim"
         with pytest.raises(Exception) as e:
             warc2zim(
                 [
                     "-v",
-                    os.path.join(self.test_data_dir, "example-response.warc"),
+                    os.path.join(TEST_DATA_DIR, "example-response.warc"),
                     "-r",
                     "x-invalid-x",
-                    "-o",
+                    "--output",
+                    str(tmp_path),
+                    "--name",
+                    "bad",
+                    "--zim-file",
                     zim_output_not_created,
                 ]
             )
@@ -287,16 +296,20 @@ class TestWarc2Zim(object):
         # zim file should not have been created since replay viewer could not be loaded
         assert not os.path.isfile(zim_output_not_created)
 
-    def test_error_bad_main_page(self):
+    def test_error_bad_main_page(self, tmp_path):
         zim_output_not_created = "zim-out-not-created.zim"
         with pytest.raises(Exception) as e:
             warc2zim(
                 [
                     "-v",
-                    os.path.join(self.test_data_dir, "example-response.warc"),
+                    os.path.join(TEST_DATA_DIR, "example-response.warc"),
                     "-u",
                     "https://no-such-url.example.com",
-                    "-o",
+                    "--output",
+                    str(tmp_path),
+                    "--name",
+                    "bad",
+                    "--zim-file",
                     zim_output_not_created,
                 ]
             )

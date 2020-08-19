@@ -2,6 +2,7 @@
 ![CI](https://github.com/openzim/warc2zim/workflows/CI/badge.svg)
 [![Docker Build Status](https://img.shields.io/docker/build/openzim/warc2zim)](https://hub.docker.com/r/openzim/warc2zim)
 [![codecov](https://codecov.io/gh/openzim/warc2zim/branch/master/graph/badge.svg)](https://codecov.io/gh/openzim/warc2zim)
+[![CodeFactor](https://www.codefactor.io/repository/github/openzim/warc2zim/badge)](https://www.codefactor.io/repository/github/openzim/warc2zim)
 
 warc2zim provides a way to convert WARC files to ZIM, storing the WARC payload and WARC+HTTP headers separately.
 
@@ -10,9 +11,34 @@ that can render its content in a modern browser.
 
 ## Usage
 
-Ex: `warc2zim ./path/to/myarchive.warc -u https://example.com/`
+Example:
 
-The above will create a ZIM file `./path/to/myarchive.zim` with `https://example.com/` set as the main page.
+```
+warc2zim ./path/to/myarchive.warc --output /output --name myarchive.zim -u https://example.com/
+```
+
+The above will create a ZIM file `/output/myarchive.zim` with `https://example.com/` set as the main page.
+
+## URL Filtering
+
+By default, only URLs from domain of the main page and subdomains are included, eg. only `*.example.com` urls in the above example.
+
+This allows for filtering out URLs that may be out of scope (eg. ads, social media trackers).
+
+To specify a different top-level domain, use the `--include-domains`/ `-i` flag for each domain, eg. if main page is on a subdomain, `https://subdomain.example.com/` but all URLs from `*.example.com` should be included, use:
+
+
+```
+warc2zim myarchive.warc --name myarchive -i example.com -u https://subdomain.example.com/starting/page.html
+```
+
+
+To simply include all urls, use the `--include-all` / `-a` flag:
+
+```
+warc2zim myarchive.warc --name myarchive -a -u https://someother.example.com/page.html
+```
+
 
 See `warc2zim -h` for other options.
 
@@ -26,6 +52,10 @@ For `response` records, the WARC + HTTP headers are stored under `H/<url>` while
 For `resource` records, the WARC headers are stored under `H/<url>` while the payload is stored under `A/<url>`. (Three are no HTTP headers for resource records).
 
 For `revisit` records, the WARC + optional HTTP headers are stored under `H/<url>`, while no payload record is created.
+
+
+If the payload `A/<url>` is zero-length, the record is omitted to conform to ZIM specifications of not storing empty records.
+
 
 ### Duplicate URIs
 
