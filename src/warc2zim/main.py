@@ -474,6 +474,16 @@ class WARC2Zim:
 
         yield FaviconRedirectArticle(self.favicon_url)
 
+    def is_self_redirect(self, record, url):
+        if record.rec_type != 'response':
+            return False
+
+        if not record.http_headers.get_statuscode().startswith("3"):
+            return False
+
+        location = record.http_headers['Location']
+        return canonicalize(url) == canonicalize(location)
+
     def articles_for_warc_record(self, record):
         url = record.rec_headers["WARC-Target-URI"]
         if url in self.indexed_urls:
@@ -490,6 +500,10 @@ class WARC2Zim:
                 return
 
         if record.rec_type != "revisit":
+            if self.is_self_redirect(record, url):
+                logger.debug("Skipping self-redirect: " + url)
+                return
+
             yield WARCHeadersArticle(record)
             payload_article = WARCPayloadArticle(record, self.head_insert)
 
