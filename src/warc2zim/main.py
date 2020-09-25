@@ -473,10 +473,20 @@ class WARC2Zim:
 
         yield FaviconRedirectArticle(self.favicon_url)
 
+    def is_self_redirect(self, record, url):
+        if record.rec_type != "response":
+            return False
+
+        if not record.http_headers.get_statuscode().startswith("3"):
+            return False
+
+        location = record.http_headers["Location"]
+        return canonicalize(url) == canonicalize(location)
+
     def articles_for_warc_record(self, record):
         url = record.rec_headers["WARC-Target-URI"]
         if url in self.indexed_urls:
-            logger.warning("Skipping duplicate {0}, already added to ZIM".format(url))
+            logger.debug("Skipping duplicate {0}, already added to ZIM".format(url))
             return
 
         # if not include_all, only include urls from main_url domain or subdomain
@@ -489,6 +499,10 @@ class WARC2Zim:
                 return
 
         if record.rec_type != "revisit":
+            if self.is_self_redirect(record, url):
+                logger.debug("Skipping self-redirect: " + url)
+                return
+
             yield WARCHeadersArticle(record)
             payload_article = WARCPayloadArticle(record, self.head_insert)
 
@@ -601,7 +615,11 @@ def canonicalize(url):
     """Return a 'canonical' version of the url under which it is stored in the ZIM
     For now, just removing the scheme
     """
-    return url.split("//", 2)[1]
+    try:
+        return url.split("//", 2)[1]
+    except IndexError:
+        # likely a relative url, return as is
+        return url
 
 
 # ============================================================================
