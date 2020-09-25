@@ -486,7 +486,7 @@ class WARC2Zim:
     def articles_for_warc_record(self, record):
         url = record.rec_headers["WARC-Target-URI"]
         if url in self.indexed_urls:
-            logger.warning("Skipping duplicate {0}, already added to ZIM".format(url))
+            logger.debug("Skipping duplicate {0}, already added to ZIM".format(url))
             return
 
         # if not include_all, only include urls from main_url domain or subdomain
@@ -615,7 +615,11 @@ def canonicalize(url):
     """Return a 'canonical' version of the url under which it is stored in the ZIM
     For now, just removing the scheme
     """
-    return url.split("//", 2)[1]
+    try:
+        return url.split("//", 2)[1]
+    except IndexError:
+        # likely a relative url, return as is
+        return url
 
 
 # ============================================================================
