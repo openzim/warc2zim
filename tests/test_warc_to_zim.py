@@ -115,7 +115,7 @@ class TestWarc2Zim(object):
                     record.http_headers
                     and record.http_headers.get("Content-Length") == "0"
                 ):
-                    assert payload == None
+                    assert not payload
                 else:
                     payload_content = payload.content.tobytes()
 
