@@ -475,13 +475,13 @@ class WARC2Zim:
         yield FaviconRedirectArticle(self.favicon_url)
 
     def is_self_redirect(self, record, url):
-        if record.rec_type != 'response':
+        if record.rec_type != "response":
             return False
 
         if not record.http_headers.get_statuscode().startswith("3"):
             return False
 
-        location = record.http_headers['Location']
+        location = record.http_headers["Location"]
         return canonicalize(url) == canonicalize(location)
 
     def articles_for_warc_record(self, record):

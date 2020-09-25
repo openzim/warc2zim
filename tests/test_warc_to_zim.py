@@ -243,6 +243,31 @@ class TestWarc2Zim(object):
             if url.startswith("A/") and len(url.split("/")) > 2:
                 assert url.startswith("A/example.com/")
 
+    def test_skip_self_redirect(self, tmp_path):
+        zim_output = "self-redir.zim"
+        warc2zim(
+            [
+                os.path.join(TEST_DATA_DIR, "self-redirect.warc"),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "self-redir",
+            ]
+        )
+
+        zim_output = tmp_path / zim_output
+
+        for article in self.list_articles(zim_output):
+            url = article.longurl
+            if url.startswith("H/"):
+                # ensure there is only one H/ record, and its a 200 (not 301)
+                assert url == "H/kiwix.org/"
+                assert b"HTTP/1.1 200 OK" in self.get_article(
+                    zim_output, "H/kiwix.org/"
+                )
+
     def test_include_domains_favicon_and_language(self, tmp_path):
         zim_output = "spt.zim"
         warc2zim(
