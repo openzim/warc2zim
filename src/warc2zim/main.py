@@ -66,8 +66,7 @@ DEFAULT_TAGS = ["_ftindex:yes", "_category:other", "_sw:yes"]
 
 # ============================================================================
 class BaseArticle(Article):
-    """ BaseArticle for all ZIM Articles in warc2zim with default settings
-    """
+    """BaseArticle for all ZIM Articles in warc2zim with default settings"""
 
     def is_redirect(self):
         return False
@@ -93,7 +92,7 @@ class BaseArticle(Article):
 
 # ============================================================================
 class WARCHeadersArticle(BaseArticle):
-    """ WARCHeadersArticle used to store the WARC + HTTP headers as text
+    """WARCHeadersArticle used to store the WARC + HTTP headers as text
     Usually stored under H namespace
     """
 
@@ -123,7 +122,7 @@ class WARCHeadersArticle(BaseArticle):
 
 # ============================================================================
 class WARCPayloadArticle(BaseArticle):
-    """ WARCPayloadArticle used to store the WARC payload
+    """WARCPayloadArticle used to store the WARC payload
     Usually stored under A namespace
     """
 
@@ -613,7 +612,7 @@ If not found in the ZIM, will attempt to load directly""",
 
 # ============================================================================
 def canonicalize(url):
-    """ Return a 'canonical' version of the url under which it is stored in the ZIM
+    """Return a 'canonical' version of the url under which it is stored in the ZIM
     For now, just removing the scheme
     """
     return url.split("//", 2)[1]
