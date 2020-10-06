@@ -347,3 +347,16 @@ class TestWarc2Zim(object):
                     zim_output_not_created,
                 ]
             )
+
+    def test_args_only(self):
+        # error, name required
+        with pytest.raises(SystemExit) as e:
+            warc2zim([])
+            assert e.code == 2
+
+        # error, no such output directory
+        with pytest.raises(Exception) as e:
+            warc2zim(["--name", "test", "--output", "/no-such-dir"])
+
+        # success, special error code for no output files
+        assert warc2zim(["--name", "test", "--output", "./"]) == 100

@@ -248,6 +248,9 @@ class WARC2Zim:
 
         self.full_filename = os.path.join(self.output, self.zim_file)
 
+        # ensure output file is writable
+        pathlib.Path(self.full_filename).touch()
+
         self.inputs = args.inputs
         self.replay_viewer_source = args.replay_viewer_source
 
@@ -305,6 +308,12 @@ class WARC2Zim:
         return env
 
     def run(self):
+        if not self.inputs:
+            logger.error(
+                "Arguments valid, no inputs to process. Exiting with error code 100"
+            )
+            return 100
+
         self.find_main_page_metadata()
 
         # make sure Language metadata is ISO-639-3 and setup translations
@@ -549,7 +558,7 @@ def warc2zim(args=None):
 
     parser.add_argument(
         "inputs",
-        nargs="+",
+        nargs="*",
         help="""Paths of directories and/or files to be included in
                                 the WARC file.""",
     )
