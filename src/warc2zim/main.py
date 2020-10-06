@@ -19,8 +19,10 @@ If the WARC contains multiple entries for the same URL, only the first entry is 
 """
 
 import os
+import sys
 import pathlib
 import logging
+import tempfile
 import mimetypes
 import datetime
 import re
@@ -249,7 +251,8 @@ class WARC2Zim:
         self.full_filename = os.path.join(self.output, self.zim_file)
 
         # ensure output file is writable
-        pathlib.Path(self.full_filename).touch()
+        with tempfile.NamedTemporaryFile(dir=self.output, delete=True) as fh:
+            logger.debug(f"Confirming output is writable using {fh.name}")
 
         self.inputs = args.inputs
         self.replay_viewer_source = args.replay_viewer_source
@@ -625,4 +628,4 @@ def get_version():
 
 # ============================================================================
 if __name__ == "__main__":  # pragma: no cover
-    warc2zim()
+    sys.exit(warc2zim())
