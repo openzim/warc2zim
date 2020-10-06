@@ -255,11 +255,7 @@ class WARC2Zim:
         self.replay_viewer_source = args.replay_viewer_source
 
         self.main_url = args.url
-        self.include_all = args.include_all
         self.include_domains = args.include_domains
-        if self.main_url:
-            if not self.include_all and not self.include_domains:
-                self.include_domains = [urlsplit(self.main_url).netloc]
 
         self.favicon_url = args.favicon
         self.language = args.lang
@@ -386,8 +382,6 @@ class WARC2Zim:
                 )
             ):
                 self.main_url = url
-                if not self.include_all and not self.include_domains:
-                    self.include_domains = [urlsplit(self.main_url).netloc]
 
             if self.main_url != url:
                 continue
@@ -498,8 +492,8 @@ class WARC2Zim:
             logger.debug("Skipping duplicate {0}, already added to ZIM".format(url))
             return
 
-        # if not include_all, only include urls from main_url domain or subdomain
-        if not self.include_all:
+        # if include_domains is set, only include urls from those domains
+        if self.include_domains:
             parts = urlsplit(url)
             if not any(
                 parts.netloc.endswith(domain) for domain in self.include_domains
@@ -576,17 +570,10 @@ def warc2zim(args=None):
     )
 
     parser.add_argument(
-        "-a",
-        "--include-all",
-        action="store_true",
-        help="If set, include all URLs in ZIM, not just those specified in --include-domains",
-    )
-
-    parser.add_argument(
         "-i",
         "--include-domains",
         action="append",
-        help="List of domains that should be included. Not used if --include-all is set. Defaults to domain of the main url",
+        help="Limit ZIM file to URLs from only certain domains. If not set, all URLs in the input WARCs are included.",
     )
 
     parser.add_argument(

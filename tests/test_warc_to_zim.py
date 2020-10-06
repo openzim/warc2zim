@@ -18,10 +18,9 @@ from warc2zim.main import warc2zim, HTML_RAW
 CMDLINES = [
     ["example-response.warc"],
     ["example-resource.warc.gz", "--favicon", "https://example.com/some/favicon.ico"],
-    ["example-revisit.warc.gz", "-a"],
+    ["example-revisit.warc.gz"],
     [
         "example-revisit.warc.gz",
-        "-a",
         "-u",
         "http://example.iana.org/",
         "--lang",
@@ -32,7 +31,7 @@ CMDLINES = [
         "-u",
         "https://httpbin.org/anything/utf8=%E2%9C%93?query=test&a=b&1=%E2%9C%93",
     ],
-    ["single-page-test.warc", "-a"],
+    ["single-page-test.warc"],
 ]
 
 
@@ -224,6 +223,8 @@ class TestWarc2Zim(object):
                 os.path.join(TEST_DATA_DIR, "example-revisit.warc.gz"),
                 "--favicon",
                 "http://example.com/favicon.ico",
+                "--include-domains",
+                "example.com/",
                 "--lang",
                 "eng",
                 "--zim-file",
