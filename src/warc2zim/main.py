@@ -305,7 +305,7 @@ class WARC2Zim:
 
     def run(self):
         if not self.inputs:
-            logger.error(
+            logger.info(
                 "Arguments valid, no inputs to process. Exiting with error code 100"
             )
             return 100
