@@ -310,6 +310,35 @@ class TestWarc2Zim(object):
             == b"_ftindex:yes;_category:other;_sw:yes"
         )
 
+    def test_all_warcs_root_dir(self, tmp_path):
+        zim_output = "test-all.zim"
+        warc2zim(
+            [
+                os.path.join(TEST_DATA_DIR),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "test-all",
+                "--url",
+                "http://example.com",
+            ]
+        )
+        zim_output = tmp_path / zim_output
+        # ensure trailing slash added
+        assert b'window.mainUrl = "http://example.com/"' in self.get_article(
+            zim_output, "A/index.html"
+        )
+
+        assert self.get_article(zim_output, "A/example.com/") != b""
+        assert (
+            self.get_article(
+                zim_output, "A/lesfondamentaux.reseau-canope.fr/accueil.html"
+            )
+            != b""
+        )
+
     def test_error_bad_replay_viewer_url(self, tmp_path):
         zim_output_not_created = "zim-out-not-created.zim"
         with pytest.raises(Exception) as e:

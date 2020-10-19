@@ -28,7 +28,7 @@ import datetime
 import re
 import time
 from argparse import ArgumentParser
-from urllib.parse import urlsplit, urljoin
+from urllib.parse import urlsplit, urljoin, urlunsplit
 
 import pkg_resources
 import requests
@@ -254,10 +254,18 @@ class WARC2Zim:
         with tempfile.NamedTemporaryFile(dir=self.output, delete=True) as fh:
             logger.debug(f"Confirming output is writable using {fh.name}")
 
-        self.inputs = args.inputs
+        self.inputs = [pathlib.Path(path) for path in args.inputs]
         self.replay_viewer_source = args.replay_viewer_source
 
         self.main_url = args.url
+        # ensure trailing slash is added if missing
+        parts = urlsplit(self.main_url)
+        if parts.path == "":
+            parts = list(parts)
+            # set path
+            parts[2] = "/"
+            self.main_url = urlunsplit(parts)
+
         self.include_domains = args.include_domains
 
         self.favicon_url = args.favicon
@@ -355,9 +363,20 @@ class WARC2Zim:
                 if article:
                     zimcreator.add_zim_article(article)
 
-    def iter_warc_records(self):
-        for warcfile in self.inputs:
-            with open(warcfile, "rb") as warc_fh:
+    def iter_warc_records(self, dir_iter=None):
+        curr_iter = dir_iter or iter(self.inputs)
+
+        for filename in curr_iter:
+            if filename.is_dir():
+                yield from self.iter_warc_records(filename.iterdir())
+                continue
+
+            # for directory iterator, only accept .warc, .warc.gz files
+            # (accept all files directly specified in self.inputs)
+            if dir_iter and not filename.name.endswith((".warc", ".warc.gz")):
+                continue
+
+            with open(filename, "rb") as warc_fh:
                 for record in ArchiveIterator(warc_fh):
                     if record.rec_type not in ("resource", "response", "revisit"):
                         continue
