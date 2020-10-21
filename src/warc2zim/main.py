@@ -682,7 +682,8 @@ def canonicalize(url):
     """
     if url.startswith("https://"):
         return url[8:]
-    elif url.startswith("http://"):
+
+    if url.startswith("http://"):
         return url[7:]
 
     return url
