@@ -12,7 +12,7 @@ import libzim.reader
 from warcio import ArchiveIterator
 from jinja2 import Environment, PackageLoader
 
-from warc2zim.main import warc2zim, HTML_RAW
+from warc2zim.main import warc2zim, HTML_RAW, canonicalize
 
 
 CMDLINES = [
@@ -129,6 +129,21 @@ class TestWarc2Zim(object):
                         assert payload_content == record.content_stream().read()
 
                 warc_urls.add(url)
+
+    def test_canonicalize(self):
+        assert canonicalize("http://example.com/?foo=bar") == "example.com/?foo=bar"
+
+        assert canonicalize("https://example.com/?foo=bar") == "example.com/?foo=bar"
+
+        assert (
+            canonicalize("https://example.com/some/path/http://example.com/?foo=bar")
+            == "example.com/some/path/http://example.com/?foo=bar"
+        )
+
+        assert (
+            canonicalize("example.com/some/path/http://example.com/?foo=bar")
+            == "example.com/some/path/http://example.com/?foo=bar"
+        )
 
     def test_warc_to_zim_specify_params_and_metadata(self, tmp_path):
         zim_output = "zim-out-filename.zim"

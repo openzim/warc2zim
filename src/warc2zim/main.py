@@ -678,13 +678,14 @@ If not found in the ZIM, will attempt to load directly""",
 # ============================================================================
 def canonicalize(url):
     """Return a 'canonical' version of the url under which it is stored in the ZIM
-    For now, just removing the scheme
+    For now, just removing the scheme http:// or https:// scheme
     """
-    try:
-        return url.split("//", 2)[1]
-    except IndexError:
-        # likely a relative url, return as is
-        return url
+    if url.startswith("https://"):
+        return url[8:]
+    elif url.startswith("http://"):
+        return url[7:]
+
+    return url
 
 
 # ============================================================================
