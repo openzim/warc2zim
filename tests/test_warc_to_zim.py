@@ -339,6 +339,32 @@ class TestWarc2Zim(object):
             != b""
         )
 
+    def test_fuzzy_urls(self, tmp_path):
+        zim_output = "test-fuzzy.zim"
+        warc2zim(
+            [
+                os.path.join(TEST_DATA_DIR, "video-fuzzy.warc.gz"),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "test-fuzzy",
+            ]
+        )
+        zim_output = tmp_path / zim_output
+        res = self.get_article(
+            zim_output,
+            "H/youtube.fuzzy.replayweb.page/get_video_info?video_id=aT-Up5Y4uRI",
+        )
+        assert b"Location: " in res
+
+        res = self.get_article(
+            zim_output,
+            "H/youtube.fuzzy.replayweb.page/videoplayback?id=o-AE3bg3qVNY-gAWwYgL52vgpHKJe9ijdbu2eciNi5Uo_w&itag=18",
+        )
+        assert b"Location: " in res
+
     def test_error_bad_replay_viewer_url(self, tmp_path):
         zim_output_not_created = "zim-out-not-created.zim"
         with pytest.raises(Exception) as e:

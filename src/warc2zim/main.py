@@ -32,7 +32,8 @@ from urllib.parse import urlsplit, urljoin, urlunsplit
 
 import pkg_resources
 import requests
-from warcio import ArchiveIterator
+from warcio import ArchiveIterator, StatusAndHeaders
+from warcio.recordbuilder import RecordBuilder
 from libzim.writer import Article, Blob
 from zimscraperlib.zim.creator import Creator
 from zimscraperlib.i18n import setlocale, get_language_details, Locale
@@ -64,6 +65,22 @@ HEAD_INS = re.compile(b"(<head>)", re.I)
 
 # Default ZIM metadata tags
 DEFAULT_TAGS = ["_ftindex:yes", "_category:other", "_sw:yes"]
+
+
+FUZZY_RULES = [
+    {
+        "match": re.compile(
+            r"//.*googlevideo.com/(videoplayback\?).*(id=[^&]+).*([&]itag=[^&]+).*"
+        ),
+        "replace": r"//youtube.fuzzy.replayweb.page/\1\2\3",
+    },
+    {
+        "match": re.compile(
+            r"//(?:www\.)?youtube(?:-nocookie)?\.com/(get_video_info\?).*(video_id=[^&]+).*"
+        ),
+        "replace": r"//youtube.fuzzy.replayweb.page/\1\2",
+    },
+]
 
 
 # ============================================================================
@@ -214,19 +231,26 @@ class StaticArticle(BaseArticle):
 
 
 # ============================================================================
-class FaviconRedirectArticle(BaseArticle):
-    def __init__(self, favicon_url):
+class RedirectArticle(BaseArticle):
+    def __init__(self, from_url, to_url):
         super().__init__()
-        self.favicon_url = favicon_url
+        self.from_url = from_url
+        self.to_url = to_url
 
     def get_url(self):
-        return "-/favicon"
+        return self.from_url
 
     def is_redirect(self):
         return True
 
     def get_redirect_url(self):
-        return "A/" + canonicalize(self.favicon_url)
+        return self.to_url
+
+
+# ============================================================================
+class FaviconRedirectArticle(RedirectArticle):
+    def __init__(self, favicon_url):
+        super().__init__("-/favicon", "A/" + canonicalize(favicon_url))
 
 
 # ============================================================================
@@ -541,6 +565,29 @@ class WARC2Zim:
             and url not in self.revisits
         ):
             self.revisits[url] = record
+
+        self.add_fuzzy_match_record(url)
+
+    def add_fuzzy_match_record(self, url):
+        fuzzy_url = url
+        for rule in FUZZY_RULES:
+            fuzzy_url = rule["match"].sub(rule["replace"], url)
+            if fuzzy_url != url:
+                break
+
+        if fuzzy_url == url:
+            return
+
+        http_headers = StatusAndHeaders("302 Redirect", {"Location": url})
+
+        date = datetime.datetime.utcnow().isoformat()
+        builder = RecordBuilder()
+        record = builder.create_revisit_record(
+            fuzzy_url, "3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ", url, date, http_headers
+        )
+
+        self.revisits[fuzzy_url] = record
+        logger.debug("Adding fuzzy redirect {0} -> {1}".format(fuzzy_url, url))
 
 
 # ============================================================================
