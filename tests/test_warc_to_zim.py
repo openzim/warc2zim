@@ -341,12 +341,18 @@ class TestWarc2Zim(object):
             ]
         )
         zim_output = tmp_path / zim_output
+
+        # check articles from different warc records in tests/data dir
+
         # ensure trailing slash added
         assert b'window.mainUrl = "http://example.com/"' in self.get_article(
             zim_output, "A/index.html"
         )
 
+        # from example.warc.gz
         assert self.get_article(zim_output, "A/example.com/") != b""
+
+        # from single-page-test.warc
         assert (
             self.get_article(
                 zim_output, "A/lesfondamentaux.reseau-canope.fr/accueil.html"
@@ -354,7 +360,10 @@ class TestWarc2Zim(object):
             != b""
         )
 
-    def test_fuzzy_urls(self, tmp_path):
+        # timestamp fuzzy match from example-with-timestamp.warc
+        assert self.get_article(zim_output, "H/example.com/path.txt?") != b""
+
+    def test_video_fuzzy_urls(self, tmp_path):
         zim_output = "test-fuzzy.zim"
         warc2zim(
             [

@@ -80,6 +80,7 @@ FUZZY_RULES = [
         ),
         "replace": r"//youtube.fuzzy.replayweb.page/\1\2",
     },
+    {"match": re.compile(r"(\.[^?]+\?)[\d]+$"), "replace": r"\1"},
 ]
 
 
