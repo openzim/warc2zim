@@ -12,7 +12,7 @@ import libzim.reader
 from warcio import ArchiveIterator
 from jinja2 import Environment, PackageLoader
 
-from warc2zim.main import warc2zim, HTML_RAW
+from warc2zim.main import warc2zim, HTML_RAW, canonicalize
 
 
 CMDLINES = [
@@ -129,6 +129,21 @@ class TestWarc2Zim(object):
                         assert payload_content == record.content_stream().read()
 
                 warc_urls.add(url)
+
+    def test_canonicalize(self):
+        assert canonicalize("http://example.com/?foo=bar") == "example.com/?foo=bar"
+
+        assert canonicalize("https://example.com/?foo=bar") == "example.com/?foo=bar"
+
+        assert (
+            canonicalize("https://example.com/some/path/http://example.com/?foo=bar")
+            == "example.com/some/path/http://example.com/?foo=bar"
+        )
+
+        assert (
+            canonicalize("example.com/some/path/http://example.com/?foo=bar")
+            == "example.com/some/path/http://example.com/?foo=bar"
+        )
 
     def test_warc_to_zim_specify_params_and_metadata(self, tmp_path):
         zim_output = "zim-out-filename.zim"
@@ -326,18 +341,53 @@ class TestWarc2Zim(object):
             ]
         )
         zim_output = tmp_path / zim_output
+
+        # check articles from different warc records in tests/data dir
+
         # ensure trailing slash added
         assert b'window.mainUrl = "http://example.com/"' in self.get_article(
             zim_output, "A/index.html"
         )
 
+        # from example.warc.gz
         assert self.get_article(zim_output, "A/example.com/") != b""
+
+        # from single-page-test.warc
         assert (
             self.get_article(
                 zim_output, "A/lesfondamentaux.reseau-canope.fr/accueil.html"
             )
             != b""
         )
+
+        # timestamp fuzzy match from example-with-timestamp.warc
+        assert self.get_article(zim_output, "H/example.com/path.txt?") != b""
+
+    def test_video_fuzzy_urls(self, tmp_path):
+        zim_output = "test-fuzzy.zim"
+        warc2zim(
+            [
+                os.path.join(TEST_DATA_DIR, "video-fuzzy.warc.gz"),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "test-fuzzy",
+            ]
+        )
+        zim_output = tmp_path / zim_output
+        res = self.get_article(
+            zim_output,
+            "H/youtube.fuzzy.replayweb.page/get_video_info?video_id=aT-Up5Y4uRI",
+        )
+        assert b"Location: " in res
+
+        res = self.get_article(
+            zim_output,
+            "H/youtube.fuzzy.replayweb.page/videoplayback?id=o-AE3bg3qVNY-gAWwYgL52vgpHKJe9ijdbu2eciNi5Uo_w&itag=18",
+        )
+        assert b"Location: " in res
 
     def test_error_bad_replay_viewer_url(self, tmp_path):
         zim_output_not_created = "zim-out-not-created.zim"
