@@ -31,8 +31,6 @@ iframe {
 
   const iframe = document.querySelector("iframe");
 
-  const CANON_URL = /mp_\/(?:https?:)?\/\//;
-
   // update URL when iframe changes
   window.addEventListener("message", function() {
     if (event.data.wb_type === "load" || event.data.wb_type === "replace-url") {
@@ -65,7 +63,24 @@ iframe {
         for (const icon of event.data.icons) {
           const link = document.createElement('link');
           link.rel = icon.rel;
-          link.href = icon.href.replace(CANON_URL, "");
+
+          const parts = icon.href.split("/mp_/", 2);
+
+          // probably an invalid URL
+          if (parts.length < 2) {
+            continue;
+          }
+
+          const url = parts[1];
+
+          const urlNoScheme = url.slice(url.indexOf("//") + 2);
+
+          // need to escape utf-8, then % encode the entire string
+          let encodedUrl = encodeURI(urlNoScheme);
+          encodedUrl = encodeURIComponent(urlNoScheme)
+
+          link.href = parts[0] + "/" + encodedUrl;
+          
           head.appendChild(link);
         }
       }
