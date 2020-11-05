@@ -520,7 +520,7 @@ class WARC2Zim:
             return
 
         if self.favicon_url not in self.indexed_urls:
-            logger.debug("Favicon not in WARC yet, fetching directly")
+            logger.debug("Favicon not found in WARCs, fetching directly")
             try:
                 yield RemoteArticle(canonicalize(self.favicon_url), self.favicon_url)
             except Exception as e:

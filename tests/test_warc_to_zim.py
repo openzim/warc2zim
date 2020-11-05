@@ -278,8 +278,8 @@ class TestWarc2Zim(object):
         for article in self.list_articles(zim_output):
             url = article.longurl
             if url.startswith("H/"):
-                # ensure there is only one H/ record, and its a 200 (not 301) or its the icon
-                assert url == "H/kiwix.org/" or url == "H/kiwix.org/favicon.ico"
+                # ensure there is only one H/ record, and its a 200 (not 301)
+                assert url == "H/kiwix.org/"
                 assert b"HTTP/1.1 200 OK" in self.get_article(
                     zim_output, "H/kiwix.org/"
                 )
