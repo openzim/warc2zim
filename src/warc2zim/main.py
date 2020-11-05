@@ -31,9 +31,10 @@ from argparse import ArgumentParser
 from urllib.parse import urlsplit, urljoin, urlunsplit
 
 import pkg_resources
-import requests
 from warcio import ArchiveIterator, StatusAndHeaders
 from warcio.recordbuilder import RecordBuilder
+from warcio.capture_http import capture_http
+import requests
 from libzim.writer import Article, Blob
 from zimscraperlib.zim.creator import Creator
 from zimscraperlib.i18n import setlocale, get_language_details, Locale
@@ -442,6 +443,7 @@ class WARC2Zim:
                         mime
                     )
                 )
+                return
 
             content = record.content_stream().read()
 
@@ -515,11 +517,22 @@ class WARC2Zim:
                 yield WARCHeadersArticle(record)
                 self.indexed_urls.add(url)
 
+        if not self.favicon_url:
+            return
+
         if self.favicon_url not in self.indexed_urls:
-            try:
-                yield RemoteArticle(canonicalize(self.favicon_url), self.favicon_url)
-            except Exception as e:
-                return
+            logger.debug("Favicon not in WARC yet, fetching directly")
+            with capture_http() as record_buffer:
+                status = 0
+                try:
+                    r = requests.get(self.favicon_url)
+                    status = r.status_code
+                    r.raise_for_status()
+                    for record in ArchiveIterator(record_buffer.get_stream()):
+                        yield from self.articles_for_warc_record(record)
+                except Exception as e:
+                    logger.error(e)
+                    logger.error("Unable to load URL: {0}, status: {1}".format(self.favicon_url, status))
 
         yield FaviconRedirectArticle(self.favicon_url)
 
