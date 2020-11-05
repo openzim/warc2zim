@@ -532,7 +532,11 @@ class WARC2Zim:
                         yield from self.articles_for_warc_record(record)
                 except Exception as e:
                     logger.error(e)
-                    logger.error("Unable to load URL: {0}, status: {1}".format(self.favicon_url, status))
+                    logger.error(
+                        "Unable to load URL: {0}, status: {1}".format(
+                            self.favicon_url, status
+                        )
+                    )
 
         yield FaviconRedirectArticle(self.favicon_url)
 

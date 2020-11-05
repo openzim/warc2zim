@@ -31,6 +31,8 @@ iframe {
 
   const iframe = document.querySelector("iframe");
 
+  const CANON_URL = /mp_\/(?:https?:)?\/\//;
+
   // update URL when iframe changes
   window.addEventListener("message", function() {
     if (event.data.wb_type === "load" || event.data.wb_type === "replace-url") {
@@ -55,7 +57,7 @@ iframe {
         // attempt to load the default "<origin>/favicon.ico" if no other favicon is specified
         if (!event.data.icons.length) {
           event.data.icons = [{
-            "href": prefix + "id_/" + new URL("/favicon.ico", event.data.url),
+            "href": prefix + "mp_/" + new URL("/favicon.ico", event.data.url),
             "rel": "icon"
           }];
         }
@@ -63,7 +65,7 @@ iframe {
         for (const icon of event.data.icons) {
           const link = document.createElement('link');
           link.rel = icon.rel;
-          link.href = icon.href;
+          link.href = icon.href.replace(CANON_URL, "");
           head.appendChild(link);
         }
       }
