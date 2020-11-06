@@ -442,6 +442,7 @@ class WARC2Zim:
                         mime
                     )
                 )
+                return
 
             content = record.content_stream().read()
 
@@ -515,7 +516,11 @@ class WARC2Zim:
                 yield WARCHeadersArticle(record)
                 self.indexed_urls.add(url)
 
+        if not self.favicon_url:
+            return
+
         if self.favicon_url not in self.indexed_urls:
+            logger.debug("Favicon not found in WARCs, fetching directly")
             try:
                 yield RemoteArticle(canonicalize(self.favicon_url), self.favicon_url)
             except Exception as e:
