@@ -4,6 +4,7 @@
 
 import os
 import time
+import json
 from io import BytesIO
 
 import pytest
@@ -17,6 +18,7 @@ from warc2zim.main import warc2zim, HTML_RAW, canonicalize
 
 CMDLINES = [
     ["example-response.warc"],
+    ["example-response.warc", "--progress-file", "progress.json"],
     ["example-resource.warc.gz", "--favicon", "https://example.com/some/favicon.ico"],
     ["example-revisit.warc.gz"],
     [
@@ -228,6 +230,15 @@ class TestWarc2Zim(object):
         warc2zim(cmdline)
 
         zimfile = filename + "_" + time.strftime("%Y-%m") + ".zim"
+
+        if "--progress-file" in cmdline:
+            with open(tmp_path / "progress.json", "r") as fh:
+                progress = json.load(fh)
+                assert (
+                    progress["written"] > 0
+                    and progress["total"] > 0
+                    and progress["written"] <= progress["total"]
+                )
 
         self.verify_warc_and_zim(warcfile, tmp_path / zimfile)
 
