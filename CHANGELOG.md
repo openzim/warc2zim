@@ -1,6 +1,10 @@
 warc2zim
 ===
 
+# 1.3.3
+
+* Added `--progress-file` option
+
 # 1.3.2
 
 * Update to wabac.js 2.1.6
