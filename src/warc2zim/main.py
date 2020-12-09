@@ -20,6 +20,7 @@ If the WARC contains multiple entries for the same URL, only the first entry is 
 
 import os
 import sys
+import json
 import pathlib
 import logging
 import tempfile
@@ -313,6 +314,14 @@ class WARC2Zim:
         self.replay_articles = []
         self.revisits = {}
 
+        # progress file handling
+        self.stats_filename = (
+            pathlib.Path(args.progress_file) if args.progress_file else None
+        )
+        if self.stats_filename and not self.stats_filename.is_absolute():
+            self.stats_filename = self.output / self.stats_filename
+        self.written_records = self.total_records = 0
+
     def add_remote_or_local(self, filename):
         if self.replay_viewer_source:
             article = RemoteArticle(filename, self.replay_viewer_source + filename)
@@ -338,6 +347,16 @@ class WARC2Zim:
             env.install_null_translations()
 
         return env
+
+    def update_stats(self):
+        """ write progress as JSON to self.stats_filename if requested """
+        if not self.stats_filename:
+            return
+        self.written_records += 1
+        with open(self.stats_filename, "w") as fh:
+            json.dump(
+                {"written": self.written_records, "total": self.total_records}, fh
+            )
 
     def run(self):
         if not self.inputs:
@@ -373,6 +392,9 @@ class WARC2Zim:
                     StaticArticle(self.env, filename, self.main_url)
                 )
 
+        self.total_records = sum(1 for _ in self.iter_warc_records())
+        logger.debug(f"Found {self.total_records} records in WARCs")
+
         with Creator(
             self.full_filename,
             main_page="index.html",
@@ -387,6 +409,8 @@ class WARC2Zim:
             for article in self.generate_all_articles():
                 if article:
                     zimcreator.add_zim_article(article)
+                    if isinstance(article, WARCPayloadArticle):
+                        self.update_stats()
 
     def iter_warc_records(self, dir_iter=None):
         curr_iter = dir_iter or iter(self.inputs)
@@ -675,6 +699,12 @@ If not found in the ZIM, will attempt to load directly""",
     parser.add_argument("--publisher", help="ZIM publisher", default="Kiwix")
     parser.add_argument("--creator", help="ZIM creator", default="-")
     parser.add_argument("--source", help="ZIM source", default="")
+
+    parser.add_argument(
+        "--progress-file",
+        help="Output path to write progress to. Relative to output if not absolute",
+        default="",
+    )
 
     r = parser.parse_args(args=args)
     warc2zim = WARC2Zim(r)

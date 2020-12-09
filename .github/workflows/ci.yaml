@@ -13,14 +13,17 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v1
-        
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v1
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Set image name
-        run: echo ::set-env name=toxpyv::py$(echo "${matrix.python-version//\./}")
+      - name: pyvar
+        run: echo "pyversion=${{ matrix.python-version }}" >> $GITHUB_ENV
+
+      - name: set image name
+        run: echo "toxpyv=py${pyversion//\./}" >> $GITHUB_ENV
 
       - name: Verify envname
         run : echo $toxpyv
