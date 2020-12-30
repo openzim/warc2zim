@@ -34,9 +34,24 @@ msgstr "Essayer de charger l'adresse via HTTPS"
 
 #: src/warc2zim/templates/load.js:12
 msgid ""
-"Sorry, service workers are not supported in your browser. (If using "
-"Firefox in Private Mode, try regular mode instead.)"
+"Error"
 msgstr ""
-"Désolé, votre navigateur ne supporte pas les «Service Worker». Si vous "
-"utilisez Firefox en navigation privée, utilisez une fenêtre classique."
+"Erreur"
 
+#: src/warc2zim/templates/load.js:13
+msgid ""
+"The requested URL can not be loaded because service workers are not supported here."
+msgstr ""
+"L'URL demandée ne peut pas être chargée car les service workers ne sont pas disponible ici."
+
+#: src/warc2zim/templates/load.js:14
+msgid ""
+"If you use Firefox in Private Mode, try regular mode instead."
+msgstr ""
+"Si vous utilisez Firefox en navigation privée, utilisez une fenêtre classique."
+
+#: src/warc2zim/templates/load.js:15
+msgid ""
+"If you use Kiwix-Serve locally, replace the IP in your browser address bar with"
+msgstr ""
+"Si vous utilisez Kiwix-Serve localement, remplacez l'IP dans la barre d'adresse du navigateur par"

@@ -9,7 +9,10 @@ async function main() {
           `<a href="${httpsUrl}">{{ _("Try Loading HTTPS URL?") }}</a>`;
     // otherwise, assume service worker not available at all
     } else {
-      document.querySelector("#error").innerText = "{{ _("Sorry, service workers are not supported in your browser. (If using Firefox in Private Mode, try regular mode instead.)") }}";
+      document.querySelector("#error").innerText =  "<h2>{{ _("Error") }}</h2>\n";
+      document.querySelector("#error").innerText += "<p>{{ _("The requested URL can not be loaded because service workers are not supported here.") }}</p>\n";
+      document.querySelector("#error").innerText += "<p>{{ _("If you use Firefox in Private Mode, try regular mode instead.") }}</p>\n";
+      document.querySelector("#error").innerText += "<p>{{ _("If you use Kiwix-Serve locally, replace the IP in your browser address bar with") }} <pre>127.0.0.1</pre>.</p>\n";
     }
 
     document.querySelector("#loading").style.display = "none";
