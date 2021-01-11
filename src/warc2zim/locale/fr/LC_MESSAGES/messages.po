@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: warc2zim 0.1.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2020-08-11 18:31+0200\n"
+"POT-Creation-Date: 2021-01-11 17:15+0000\n"
 "PO-Revision-Date: 2020-08-06 19:00-0700\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: fr\n"
@@ -33,10 +33,28 @@ msgid "Try Loading HTTPS URL?"
 msgstr "Essayer de charger l'adresse via HTTPS"
 
 #: src/warc2zim/templates/load.js:12
+msgid "Error"
+msgstr "Erreur"
+
+#: src/warc2zim/templates/load.js:13
 msgid ""
-"Sorry, service workers are not supported in your browser. (If using "
-"Firefox in Private Mode, try regular mode instead.)"
+"The requested URL can not be loaded because service workers are not "
+"supported here."
 msgstr ""
-"Désolé, votre navigateur ne supporte pas les «Service Worker». Si vous "
-"utilisez Firefox en navigation privée, utilisez une fenêtre classique."
+"L'URL demandée ne peut pas être chargée car les service workers ne sont "
+"pas disponible ici."
+
+#: src/warc2zim/templates/load.js:14
+msgid "If you use Firefox in Private Mode, try regular mode instead."
+msgstr ""
+"Si vous utilisez Firefox en navigation privée, utilisez une fenêtre "
+"classique."
+
+#: src/warc2zim/templates/load.js:15
+msgid ""
+"If you use Kiwix-Serve locally, replace the IP in your browser address "
+"bar with <code>localhost</code>."
+msgstr ""
+"Si vous utilisez Kiwix-Serve localement, remplacez l'IP dans la barre "
+"d'adresse du navigateur par <code>localhost</code>."
 
