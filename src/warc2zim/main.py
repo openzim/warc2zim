@@ -10,11 +10,13 @@ Each WARC record results in two ZIM articles:
 - The WARC payload is stored under /A/<url>
 - The WARC headers + HTTP headers are stored under the /H/<url>
 
-Given a WARC response record for 'https://example.com/', two ZIM articles are created /A/example.com/ and /H/example.com/ are created.
+Given a WARC response record for 'https://example.com/',
+two ZIM articles are created /A/example.com/ and /H/example.com/ are created.
 
 Only WARC response and resource records are stored.
 
-If the WARC contains multiple entries for the same URL, only the first entry is added, and later entries are ignored. A warning is printed as well.
+If the WARC contains multiple entries for the same URL, only the first entry is added,
+and later entries are ignored. A warning is printed as well.
 
 """
 
@@ -77,7 +79,8 @@ FUZZY_RULES = [
     },
     {
         "match": re.compile(
-            r"//(?:www\.)?youtube(?:-nocookie)?\.com/(get_video_info\?).*(video_id=[^&]+).*"
+            r"//(?:www\.)?youtube(?:-nocookie)?\.com/(get_video_info\?)"
+            r".*(video_id=[^&]+).*"
         ),
         "replace": r"//youtube.fuzzy.replayweb.page/\1\2",
     },
@@ -459,12 +462,12 @@ class WARC2Zim:
 
             # if we get here, found record for the main page
 
-            # if main page is not html, still allow (eg. could be text, img), but print warning
+            # if main page is not html, still allow (eg. could be text, img),
+            # but print warning
             if mime not in HTML_TYPES:
                 logger.warning(
-                    "Main page is not an HTML Page, mime type is: {0} - Skipping Favicon and Language detection".format(
-                        mime
-                    )
+                    "Main page is not an HTML Page, mime type is: {0} "
+                    "- Skipping Favicon and Language detection".format(mime)
                 )
                 return
 
@@ -547,7 +550,7 @@ class WARC2Zim:
             logger.debug("Favicon not found in WARCs, fetching directly")
             try:
                 yield RemoteArticle(canonicalize(self.favicon_url), self.favicon_url)
-            except Exception as e:
+            except Exception:
                 return
 
         yield FaviconRedirectArticle(self.favicon_url)
@@ -623,7 +626,8 @@ class WARC2Zim:
 # ============================================================================
 def get_record_mime_type(record):
     if record.http_headers:
-        # if the record has HTTP headers, use the Content-Type from those (eg. 'response' record)
+        # if the record has HTTP headers, use the Content-Type from those
+        # (eg. 'response' record)
         content_type = record.http_headers["Content-Type"]
     else:
         # otherwise, use the Content-Type from WARC headers
@@ -672,14 +676,16 @@ def warc2zim(args=None):
         "-i",
         "--include-domains",
         action="append",
-        help="Limit ZIM file to URLs from only certain domains. If not set, all URLs in the input WARCs are included.",
+        help="Limit ZIM file to URLs from only certain domains. "
+        "If not set, all URLs in the input WARCs are included.",
     )
 
     parser.add_argument(
         "-f",
         "--favicon",
-        help="""URL for Favicon for Main Page. If unspecified, will attempt to use from main page.
-If not found in the ZIM, will attempt to load directly""",
+        help="URL for Favicon for Main Page. "
+        "If unspecified, will attempt to use from main page. "
+        "If not found in the ZIM, will attempt to load directly",
     )
 
     # output
@@ -693,7 +699,8 @@ If not found in the ZIM, will attempt to load directly""",
     parser.add_argument("--tags", action="append", help="One or more tags", default=[])
     parser.add_argument(
         "--lang",
-        help="Language (should be a ISO-639-3 language code). If unspecified, will attempt to detect from main page, or use 'eng'",
+        help="Language (should be a ISO-639-3 language code). "
+        "If unspecified, will attempt to detect from main page, or use 'eng'",
         default="",
     )
     parser.add_argument("--publisher", help="ZIM publisher", default="Kiwix")
