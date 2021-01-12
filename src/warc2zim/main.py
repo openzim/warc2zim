@@ -29,6 +29,7 @@ import tempfile
 import mimetypes
 import datetime
 import re
+import io
 import time
 from argparse import ArgumentParser
 from urllib.parse import urlsplit, urljoin, urlunsplit
@@ -64,6 +65,7 @@ HEAD_INSERT_FILE = "sw_check.html"
 
 
 HEAD_INS = re.compile(b"(<head>)", re.I)
+CSS_INS = re.compile(b"(</head>)", re.I)
 
 
 # Default ZIM metadata tags
@@ -86,6 +88,8 @@ FUZZY_RULES = [
     },
     {"match": re.compile(r"(\.[^?]+\?)[\d]+$"), "replace": r"\1"},
 ]
+
+CUSTOM_CSS_URL = "https://warc2zim.kiwix.app/custom.css"
 
 
 # ============================================================================
@@ -150,7 +154,7 @@ class WARCPayloadArticle(BaseArticle):
     Usually stored under A namespace
     """
 
-    def __init__(self, record, head_insert=None):
+    def __init__(self, record, head_insert=None, css_insert=None):
         super().__init__()
         self.record = record
         self.url = record.rec_headers.get("WARC-Target-URI")
@@ -161,6 +165,8 @@ class WARCPayloadArticle(BaseArticle):
             self.title = parse_title(self.payload)
             if head_insert:
                 self.payload = HEAD_INS.sub(head_insert, self.payload)
+            if css_insert:
+                self.payload = CSS_INS.sub(css_insert, self.payload)
 
     def get_url(self):
         return "A/" + canonicalize(self.url)
@@ -285,6 +291,7 @@ class WARC2Zim:
 
         self.inputs = [pathlib.Path(path) for path in args.inputs]
         self.replay_viewer_source = args.replay_viewer_source
+        self.custom_css = args.custom_css
 
         self.main_url = args.url
         # ensure trailing slash is added if missing
@@ -361,6 +368,30 @@ class WARC2Zim:
                 {"written": self.written_records, "total": self.total_records}, fh
             )
 
+    def get_custom_css_record(self):
+        if re.match(r"^https?\://", self.custom_css):
+            resp = requests.get(self.custom_css, timeout=10)
+            resp.raise_for_status()
+            payload = resp.content
+        else:
+            css_path = pathlib.Path(self.custom_css).expanduser().resolve()
+            with open(css_path, "rb") as fh:
+                payload = fh.read()
+
+        http_headers = StatusAndHeaders(
+            "200 OK",
+            [("Content-Type", 'text/css; charset="UTF-8"')],
+            protocol="HTTP/1.0",
+        )
+
+        return RecordBuilder().create_warc_record(
+            CUSTOM_CSS_URL,
+            "response",
+            payload=io.BytesIO(payload),
+            length=len(payload),
+            http_headers=http_headers,
+        )
+
     def run(self):
         if not self.inputs:
             logger.info(
@@ -383,6 +414,13 @@ class WARC2Zim:
         # init head insert
         template = self.env.get_template(HEAD_INSERT_FILE)
         self.head_insert = ("<head>" + template.render()).encode("utf-8")
+        if self.custom_css:
+            self.css_insert = (
+                f'\n<link type="text/css" href="{CUSTOM_CSS_URL}" '
+                'rel="Stylesheet" />\n</head>'
+            ).encode("utf-8")
+        else:
+            self.css_insert = None
 
         self.add_remote_or_local(SW_JS)
 
@@ -416,6 +454,10 @@ class WARC2Zim:
                         self.update_stats()
 
     def iter_warc_records(self, dir_iter=None):
+
+        if self.custom_css:
+            yield self.get_custom_css_record()
+
         curr_iter = dir_iter or iter(self.inputs)
 
         for filename in curr_iter:
@@ -586,7 +628,9 @@ class WARC2Zim:
                 return
 
             yield WARCHeadersArticle(record)
-            payload_article = WARCPayloadArticle(record, self.head_insert)
+            payload_article = WARCPayloadArticle(
+                record, self.head_insert, self.css_insert
+            )
 
             if len(payload_article.payload) != 0:
                 yield payload_article
@@ -686,6 +730,12 @@ def warc2zim(args=None):
         help="URL for Favicon for Main Page. "
         "If unspecified, will attempt to use from main page. "
         "If not found in the ZIM, will attempt to load directly",
+    )
+
+    parser.add_argument(
+        "--custom-css",
+        help="URL or path to a CSS file to be added to ZIM "
+        "and injected on every HTML page",
     )
 
     # output
