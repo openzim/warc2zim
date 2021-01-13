@@ -40,6 +40,10 @@ To simply include all urls, use the `--include-all` / `-a` flag:
 warc2zim myarchive.warc --name myarchive -a -u https://someother.example.com/page.html
 ```
 
+### Custom CSS
+
+`--custom-css` allows passing an URL or a path to a CSS file that gets added to the ZIM and gets included on **every HTML article** at the very end of `</head>` (if it exists).
+
 
 See `warc2zim -h` for other options.
 

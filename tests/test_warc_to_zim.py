@@ -8,6 +8,7 @@ import json
 from io import BytesIO
 
 import pytest
+import requests
 
 import libzim.reader
 from warcio import ArchiveIterator
@@ -451,3 +452,59 @@ class TestWarc2Zim(object):
 
         # success, special error code for no output files
         assert warc2zim(["--name", "test", "--output", "./"]) == 100
+
+    def test_custom_css(self, tmp_path):
+        custom_css = b"* { background-color: red; }"
+        custom_css_path = tmp_path / "custom.css"
+        with open(custom_css_path, "wb") as fh:
+            fh.write(custom_css)
+
+        zim_output = "test-css.zim"
+
+        warc2zim(
+            [
+                os.path.join(TEST_DATA_DIR, "example-response.warc"),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "test-css",
+                "--custom-css",
+                str(custom_css_path),
+            ]
+        )
+        zim_output = tmp_path / zim_output
+
+        res = self.get_article(zim_output, "A/example.com/")
+        assert "https://warc2zim.kiwix.app/custom.css".encode("utf-8") in res
+
+        res = self.get_article(zim_output, "A/warc2zim.kiwix.app/custom.css")
+        assert custom_css == res
+
+    def test_custom_css_remote(self, tmp_path):
+        zim_output = "test-css.zim"
+        url = (
+            "https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap-reboot.css"
+        )
+
+        warc2zim(
+            [
+                os.path.join(TEST_DATA_DIR, "example-response.warc"),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "test-css",
+                "--custom-css",
+                url,
+            ]
+        )
+        zim_output = tmp_path / zim_output
+
+        res = self.get_article(zim_output, "A/example.com/")
+        assert "https://warc2zim.kiwix.app/custom.css".encode("utf-8") in res
+
+        res = self.get_article(zim_output, "A/warc2zim.kiwix.app/custom.css")
+        assert res == requests.get(url).content

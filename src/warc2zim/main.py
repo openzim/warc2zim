@@ -10,11 +10,13 @@ Each WARC record results in two ZIM articles:
 - The WARC payload is stored under /A/<url>
 - The WARC headers + HTTP headers are stored under the /H/<url>
 
-Given a WARC response record for 'https://example.com/', two ZIM articles are created /A/example.com/ and /H/example.com/ are created.
+Given a WARC response record for 'https://example.com/',
+two ZIM articles are created /A/example.com/ and /H/example.com/ are created.
 
 Only WARC response and resource records are stored.
 
-If the WARC contains multiple entries for the same URL, only the first entry is added, and later entries are ignored. A warning is printed as well.
+If the WARC contains multiple entries for the same URL, only the first entry is added,
+and later entries are ignored. A warning is printed as well.
 
 """
 
@@ -27,6 +29,7 @@ import tempfile
 import mimetypes
 import datetime
 import re
+import io
 import time
 from argparse import ArgumentParser
 from urllib.parse import urlsplit, urljoin, urlunsplit
@@ -62,6 +65,7 @@ HEAD_INSERT_FILE = "sw_check.html"
 
 
 HEAD_INS = re.compile(b"(<head>)", re.I)
+CSS_INS = re.compile(b"(</head>)", re.I)
 
 
 # Default ZIM metadata tags
@@ -77,12 +81,15 @@ FUZZY_RULES = [
     },
     {
         "match": re.compile(
-            r"//(?:www\.)?youtube(?:-nocookie)?\.com/(get_video_info\?).*(video_id=[^&]+).*"
+            r"//(?:www\.)?youtube(?:-nocookie)?\.com/(get_video_info\?)"
+            r".*(video_id=[^&]+).*"
         ),
         "replace": r"//youtube.fuzzy.replayweb.page/\1\2",
     },
     {"match": re.compile(r"(\.[^?]+\?)[\d]+$"), "replace": r"\1"},
 ]
+
+CUSTOM_CSS_URL = "https://warc2zim.kiwix.app/custom.css"
 
 
 # ============================================================================
@@ -147,7 +154,7 @@ class WARCPayloadArticle(BaseArticle):
     Usually stored under A namespace
     """
 
-    def __init__(self, record, head_insert=None):
+    def __init__(self, record, head_insert=None, css_insert=None):
         super().__init__()
         self.record = record
         self.url = record.rec_headers.get("WARC-Target-URI")
@@ -158,6 +165,8 @@ class WARCPayloadArticle(BaseArticle):
             self.title = parse_title(self.payload)
             if head_insert:
                 self.payload = HEAD_INS.sub(head_insert, self.payload)
+            if css_insert:
+                self.payload = CSS_INS.sub(css_insert, self.payload)
 
     def get_url(self):
         return "A/" + canonicalize(self.url)
@@ -282,6 +291,7 @@ class WARC2Zim:
 
         self.inputs = [pathlib.Path(path) for path in args.inputs]
         self.replay_viewer_source = args.replay_viewer_source
+        self.custom_css = args.custom_css
 
         self.main_url = args.url
         # ensure trailing slash is added if missing
@@ -358,6 +368,30 @@ class WARC2Zim:
                 {"written": self.written_records, "total": self.total_records}, fh
             )
 
+    def get_custom_css_record(self):
+        if re.match(r"^https?\://", self.custom_css):
+            resp = requests.get(self.custom_css, timeout=10)
+            resp.raise_for_status()
+            payload = resp.content
+        else:
+            css_path = pathlib.Path(self.custom_css).expanduser().resolve()
+            with open(css_path, "rb") as fh:
+                payload = fh.read()
+
+        http_headers = StatusAndHeaders(
+            "200 OK",
+            [("Content-Type", 'text/css; charset="UTF-8"')],
+            protocol="HTTP/1.0",
+        )
+
+        return RecordBuilder().create_warc_record(
+            CUSTOM_CSS_URL,
+            "response",
+            payload=io.BytesIO(payload),
+            length=len(payload),
+            http_headers=http_headers,
+        )
+
     def run(self):
         if not self.inputs:
             logger.info(
@@ -380,6 +414,13 @@ class WARC2Zim:
         # init head insert
         template = self.env.get_template(HEAD_INSERT_FILE)
         self.head_insert = ("<head>" + template.render()).encode("utf-8")
+        if self.custom_css:
+            self.css_insert = (
+                f'\n<link type="text/css" href="{CUSTOM_CSS_URL}" '
+                'rel="Stylesheet" />\n</head>'
+            ).encode("utf-8")
+        else:
+            self.css_insert = None
 
         self.add_remote_or_local(SW_JS)
 
@@ -413,6 +454,10 @@ class WARC2Zim:
                         self.update_stats()
 
     def iter_warc_records(self, dir_iter=None):
+
+        if self.custom_css:
+            yield self.get_custom_css_record()
+
         curr_iter = dir_iter or iter(self.inputs)
 
         for filename in curr_iter:
@@ -459,12 +504,12 @@ class WARC2Zim:
 
             # if we get here, found record for the main page
 
-            # if main page is not html, still allow (eg. could be text, img), but print warning
+            # if main page is not html, still allow (eg. could be text, img),
+            # but print warning
             if mime not in HTML_TYPES:
                 logger.warning(
-                    "Main page is not an HTML Page, mime type is: {0} - Skipping Favicon and Language detection".format(
-                        mime
-                    )
+                    "Main page is not an HTML Page, mime type is: {0} "
+                    "- Skipping Favicon and Language detection".format(mime)
                 )
                 return
 
@@ -547,7 +592,7 @@ class WARC2Zim:
             logger.debug("Favicon not found in WARCs, fetching directly")
             try:
                 yield RemoteArticle(canonicalize(self.favicon_url), self.favicon_url)
-            except Exception as e:
+            except Exception:
                 return
 
         yield FaviconRedirectArticle(self.favicon_url)
@@ -583,7 +628,9 @@ class WARC2Zim:
                 return
 
             yield WARCHeadersArticle(record)
-            payload_article = WARCPayloadArticle(record, self.head_insert)
+            payload_article = WARCPayloadArticle(
+                record, self.head_insert, self.css_insert
+            )
 
             if len(payload_article.payload) != 0:
                 yield payload_article
@@ -623,7 +670,8 @@ class WARC2Zim:
 # ============================================================================
 def get_record_mime_type(record):
     if record.http_headers:
-        # if the record has HTTP headers, use the Content-Type from those (eg. 'response' record)
+        # if the record has HTTP headers, use the Content-Type from those
+        # (eg. 'response' record)
         content_type = record.http_headers["Content-Type"]
     else:
         # otherwise, use the Content-Type from WARC headers
@@ -672,14 +720,22 @@ def warc2zim(args=None):
         "-i",
         "--include-domains",
         action="append",
-        help="Limit ZIM file to URLs from only certain domains. If not set, all URLs in the input WARCs are included.",
+        help="Limit ZIM file to URLs from only certain domains. "
+        "If not set, all URLs in the input WARCs are included.",
     )
 
     parser.add_argument(
         "-f",
         "--favicon",
-        help="""URL for Favicon for Main Page. If unspecified, will attempt to use from main page.
-If not found in the ZIM, will attempt to load directly""",
+        help="URL for Favicon for Main Page. "
+        "If unspecified, will attempt to use from main page. "
+        "If not found in the ZIM, will attempt to load directly",
+    )
+
+    parser.add_argument(
+        "--custom-css",
+        help="URL or path to a CSS file to be added to ZIM "
+        "and injected on every HTML page",
     )
 
     # output
@@ -693,7 +749,8 @@ If not found in the ZIM, will attempt to load directly""",
     parser.add_argument("--tags", action="append", help="One or more tags", default=[])
     parser.add_argument(
         "--lang",
-        help="Language (should be a ISO-639-3 language code). If unspecified, will attempt to detect from main page, or use 'eng'",
+        help="Language (should be a ISO-639-3 language code). "
+        "If unspecified, will attempt to detect from main page, or use 'eng'",
         default="",
     )
     parser.add_argument("--publisher", help="ZIM publisher", default="Kiwix")
