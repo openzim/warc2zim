@@ -1,6 +1,10 @@
 warc2zim
 ===
 
+# 1.3.4
+
+* Added `--custom-css` option
+
 # 1.3.3
 
 * Added `--progress-file` option
