@@ -609,6 +609,10 @@ class WARC2Zim:
 
     def articles_for_warc_record(self, record):
         url = record.rec_headers["WARC-Target-URI"]
+        if not url:
+            logger.debug(f"Skipping record with empty WARC-Target-URI {record}")
+            return
+
         if url in self.indexed_urls:
             logger.debug("Skipping duplicate {0}, already added to ZIM".format(url))
             return
