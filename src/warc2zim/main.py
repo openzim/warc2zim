@@ -32,7 +32,7 @@ import re
 import io
 import time
 from argparse import ArgumentParser
-from urllib.parse import urlsplit, urljoin, urlunsplit
+from urllib.parse import urlsplit, urljoin, urlunsplit, urldefrag
 
 import pkg_resources
 import requests
@@ -499,7 +499,7 @@ class WARC2Zim:
             ):
                 self.main_url = url
 
-            if self.main_url != url:
+            if urldefrag(self.main_url).url != url:
                 continue
 
             # if we get here, found record for the main page

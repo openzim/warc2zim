@@ -1,6 +1,11 @@
 warc2zim
 ===
 
+# 1.3.5
+
+* don't crash on records without WARC-Target-URI
+* fixed failure if url contains a fragment
+
 # 1.3.4
 
 * Added `--custom-css` option
