@@ -87,6 +87,12 @@ FUZZY_RULES = [
         "replace": r"//youtube.fuzzy.replayweb.page/\1\2",
     },
     {"match": re.compile(r"(\.[^?]+\?)[\d]+$"), "replace": r"\1"},
+    {
+        "match": re.compile(
+            r"//(?:(www\.)?youtube(?:-nocookie)?\.com/(youtubei/.*\?key=[^&]+)"
+        ),
+        "replace": r"//youtube.fuzzy.replayweb.page/\1",
+    },
 ]
 
 CUSTOM_CSS_URL = "https://warc2zim.kiwix.app/custom.css"
