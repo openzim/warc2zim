@@ -89,7 +89,7 @@ FUZZY_RULES = [
     {"match": re.compile(r"(\.[^?]+\?)[\d]+$"), "replace": r"\1"},
     {
         "match": re.compile(
-            r"//(?:(www\.)?youtube(?:-nocookie)?\.com/(youtubei/.*\?key=[^&]+)"
+            r"//(?:www\.)?youtube(?:-nocookie)?\.com/(youtubei/.*\?key=[^&]+)"
         ),
         "replace": r"//youtube.fuzzy.replayweb.page/\1",
     },
