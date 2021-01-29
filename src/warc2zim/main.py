@@ -89,9 +89,19 @@ FUZZY_RULES = [
     {"match": re.compile(r"(\.[^?]+\?)[\d]+$"), "replace": r"\1"},
     {
         "match": re.compile(
-            r"//(?:www\.)?youtube(?:-nocookie)?\.com/(youtubei/.*\?key=[^&]+)"
+            r"//(?:www\.)?youtube(?:-nocookie)?\.com\/(youtubei\/[^?]+).*(videoId[^,]+).*"
         ),
-        "replace": r"//youtube.fuzzy.replayweb.page/\1",
+        "replace": r"//youtube.fuzzy.replayweb.page/\1?\2",
+    },
+    {
+        "match": re.compile(
+            r".*(?:gcs-vimeo|vod|vod-progressive)\.akamaized\.net.*?/([\d/]+.mp4)$"
+        ),
+        "replace": r"vimeo-cdn.fuzzy.replayweb.page/\1",
+    },
+    {
+        "match": re.compile(r".*player.vimeo.com/(video/[\d]+)\?.*"),
+        "replace": r"vimeo.fuzzy.replayweb.page/\1",
     },
 ]
 

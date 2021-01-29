@@ -14,10 +14,7 @@ def read(*names, **kwargs):
         return fh.read()
 
 
-# REPLAY_SOURCE_URL = "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.5.3/dist/"
-REPLAY_SOURCE_URL = (
-    "https://raw.githubusercontent.com/webrecorder/wabac.js/rw-work/dist/"
-)
+REPLAY_SOURCE_URL = "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.5.6/dist/"
 
 
 def download_replay(name):
