@@ -5,6 +5,7 @@ warc2zim
 
 * don't crash on records without WARC-Target-URI
 * fixed failure if url contains a fragment
+* updated wabac.js to 2.7.3
 
 # 1.3.4
 
