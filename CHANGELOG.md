@@ -1,6 +1,10 @@
 warc2zim
 ===
 
+# 1.3.6
+
+* updated zimscraperlib (for libzim fix)
+
 # 1.3.5
 
 * don't crash on records without WARC-Target-URI
