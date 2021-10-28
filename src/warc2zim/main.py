@@ -45,6 +45,8 @@ from bs4 import BeautifulSoup
 
 from jinja2 import Environment, PackageLoader
 
+from cdxj_indexer.main import CDXJIndexer
+
 
 # Shared logger
 logger = logging.getLogger("warc2zim")
@@ -176,7 +178,12 @@ class WARCPayloadArticle(BaseArticle):
         self.url = record.rec_headers.get("WARC-Target-URI")
         self.mime = get_record_mime_type(record)
         self.title = ""
-        self.payload = self.record.content_stream().read()
+        if hasattr(record, "buffered_stream"):
+            self.record.buffered_stream.seek(0)
+            self.payload = self.record.buffered_stream.read()
+        else:
+            self.payload = self.record.content_stream().read()
+
         if self.mime == "text/html":
             self.title = parse_title(self.payload)
             if head_insert:
@@ -281,8 +288,16 @@ class FaviconRedirectArticle(RedirectArticle):
 
 
 # ============================================================================
-class WARC2Zim:
+class WARC2Zim(CDXJIndexer):
     def __init__(self, args):
+        inputs = [pathlib.Path(path) for path in args.inputs]
+        super().__init__(
+            output=args.output, inputs=inputs, post_append=True, filename=args.zim_file
+        )
+
+        self.inputs = list(self.inputs)
+        self.main_page_found = False
+
         logging.basicConfig(format="[%(levelname)s] %(message)s")
         if args.verbose:
             logger.setLevel(logging.DEBUG)
@@ -291,7 +306,7 @@ class WARC2Zim:
 
         self.indexed_urls = set({})
 
-        self.output = args.output
+        # self.output = args.output
         self.zim_file = args.zim_file
 
         if not self.zim_file:
@@ -305,7 +320,6 @@ class WARC2Zim:
         with tempfile.NamedTemporaryFile(dir=self.output, delete=True) as fh:
             logger.debug(f"Confirming output is writable using {fh.name}")
 
-        self.inputs = [pathlib.Path(path) for path in args.inputs]
         self.replay_viewer_source = args.replay_viewer_source
         self.custom_css = args.custom_css
 
@@ -415,7 +429,7 @@ class WARC2Zim:
             )
             return 100
 
-        self.find_main_page_metadata()
+        # self.find_main_page_metadata()
 
         # make sure Language metadata is ISO-639-3 and setup translations
         try:
@@ -449,9 +463,6 @@ class WARC2Zim:
                     StaticArticle(self.env, filename, self.main_url)
                 )
 
-        self.total_records = sum(1 for _ in self.iter_warc_records())
-        logger.debug(f"Found {self.total_records} records in WARCs")
-
         with Creator(
             self.full_filename,
             main_page="index.html",
@@ -461,93 +472,92 @@ class WARC2Zim:
             compression="zstd",
             **self.metadata,
         ) as zimcreator:
-            # zimcreator.update_metadata(**self.metadata)
 
-            for article in self.generate_all_articles():
-                if article:
-                    zimcreator.add_zim_article(article)
-                    if isinstance(article, WARCPayloadArticle):
-                        self.update_stats()
+            self.process_all(zimcreator)
 
-    def iter_warc_records(self, dir_iter=None):
+    def process_all(self, zimcreator):
+        for filename in self.inputs:
+            with open(filename, "rb") as fh:
+                self.process_one(fh, zimcreator, filename)
 
-        if self.custom_css:
-            yield self.get_custom_css_record()
+        logger.debug(f"Found {self.total_records} records in WARCs")
 
-        curr_iter = dir_iter or iter(self.inputs)
-
-        for filename in curr_iter:
-            if filename.is_dir():
-                yield from self.iter_warc_records(filename.iterdir())
-                continue
-
-            # for directory iterator, only accept .warc, .warc.gz files
-            # (accept all files directly specified in self.inputs)
-            if dir_iter and not filename.name.endswith((".warc", ".warc.gz")):
-                continue
-
-            with open(filename, "rb") as warc_fh:
-                for record in ArchiveIterator(warc_fh):
-                    if record.rec_type not in ("resource", "response", "revisit"):
-                        continue
-
-                    yield record
-
-    def find_main_page_metadata(self):
-        for record in self.iter_warc_records():
-            if record.rec_type == "revisit":
-                continue
-
-            # if no main_url, use first 'text/html' record as the main page by default
-            # not guaranteed to always work
-            mime = get_record_mime_type(record)
-
-            url = record.rec_headers["WARC-Target-URI"]
-
-            if (
-                not self.main_url
-                and mime == "text/html"
-                and record.payload_length != 0
-                and (
-                    not record.http_headers
-                    or record.http_headers.get_statuscode() == "200"
+        # if main page not found after going through all records, error out
+        if not self.main_page_found:
+            msg = (
+                "Unable to find WARC record for main page: {0}, ZIM not created".format(
+                    self.main_url
                 )
-            ):
-                self.main_url = url
+            )
+            logger.error(msg)
+            raise KeyError(msg)
 
-            if urldefrag(self.main_url).url != url:
-                continue
+        # generate additional articles
+        for article in self.generate_extra_articles():
+            zimcreator.add_zim_article(article)
 
-            # if we get here, found record for the main page
+    def process_index_entry(self, it, record, filename, zimcreator):
+        self.find_main_page_metadata(record)
 
-            # if main page is not html, still allow (eg. could be text, img),
-            # but print warning
-            if mime not in HTML_TYPES:
-                logger.warning(
-                    "Main page is not an HTML Page, mime type is: {0} "
-                    "- Skipping Favicon and Language detection".format(mime)
-                )
-                return
+        self.total_records += 1
+        for article in self.articles_for_warc_record(record):
+            zimcreator.add_zim_article(article)
+            if isinstance(article, WARCPayloadArticle):
+                self.update_stats()
 
-            content = record.content_stream().read()
-
-            if not self.title:
-                self.title = parse_title(content)
-
-            self.find_icon_and_language(content)
-
-            logger.debug("Title: {0}".format(self.title))
-            logger.debug("Language: {0}".format(self.language))
-            logger.debug("Favicon: {0}".format(self.favicon_url))
+    def find_main_page_metadata(self, record):
+        if self.main_page_found:
             return
 
-        msg = "Unable to find WARC record for main page: {0}, ZIM not created".format(
-            self.main_url
-        )
-        logger.error(msg)
-        raise KeyError(msg)
+        if record.rec_type == "revisit":
+            return
+
+        # if no main_url, use first 'text/html' record as the main page by default
+        # not guaranteed to always work
+        mime = get_record_mime_type(record)
+
+        url = record.rec_headers["WARC-Target-URI"]
+
+        if (
+            not self.main_url
+            and mime == "text/html"
+            and record.payload_length != 0
+            and (
+                not record.http_headers or record.http_headers.get_statuscode() == "200"
+            )
+        ):
+            self.main_url = url
+
+        if urldefrag(self.main_url).url != url:
+            return
+
+        # if we get here, found record for the main page
+        self.main_page_found = True
+
+        # if main page is not html, still allow (eg. could be text, img),
+        # but print warning
+        if mime not in HTML_TYPES:
+            logger.warning(
+                "Main page is not an HTML Page, mime type is: {0} "
+                "- Skipping Favicon and Language detection".format(mime)
+            )
+            return
+
+        #content = record.content_stream().read()
+        record.buffered_stream.seek(0)
+        content = record.buffered_stream.read()
+
+        if not self.title:
+            self.title = parse_title(content)
+
+        self.find_icon_and_language(content)
+
+        logger.debug("Title: {0}".format(self.title))
+        logger.debug("Language: {0}".format(self.language))
+        logger.debug("Favicon: {0}".format(self.favicon_url))
 
     def find_icon_and_language(self, content):
+        print(content)
         soup = BeautifulSoup(content, "html.parser")
 
         if not self.favicon_url:
@@ -582,13 +592,15 @@ class WARC2Zim:
                 self.language = lang_elem.attrs["content"]
                 return
 
-    def generate_all_articles(self):
+    def generate_extra_articles(self):
         # add replay system
         for article in self.replay_articles:
             yield article
 
-        for record in self.iter_warc_records():
-            yield from self.articles_for_warc_record(record)
+        # add custom css records
+        if self.custom_css:
+            for article in self.articles_for_warc_record(self.get_custom_css_record()):
+                yield article
 
         # process revisits, headers only
         for url, record in self.revisits.items():
