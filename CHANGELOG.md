@@ -1,11 +1,16 @@
 warc2zim
 ===
 
+# 1.3.6
+
+* updated zimscraperlib (for libzim fix)
+
 # 1.3.5
 
 * Update to wabac.js 2.5.3, fixes for youtube/vimeo replay
 * don't crash on records without WARC-Target-URI
 * fixed failure if url contains a fragment
+* updated wabac.js to 2.7.3
 
 # 1.3.4
 

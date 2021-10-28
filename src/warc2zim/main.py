@@ -389,7 +389,7 @@ class WARC2Zim(CDXJIndexer):
         return env
 
     def update_stats(self):
-        """ write progress as JSON to self.stats_filename if requested """
+        """write progress as JSON to self.stats_filename if requested"""
         if not self.stats_filename:
             return
         self.written_records += 1
