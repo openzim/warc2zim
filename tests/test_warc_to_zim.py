@@ -61,22 +61,22 @@ FUZZYCHECKS = [
         "entries": [
             "H/youtube.fuzzy.replayweb.page/get_video_info?video_id=aT-Up5Y4uRI",
             "H/youtube.fuzzy.replayweb.page/videoplayback?id=o-AE3bg3qVNY-gAWwYgL52vgpHKJe9ijdbu2eciNi5Uo_w",
-        ]
+        ],
     },
     {
         "filename": "video-yt-2.warc.gz",
         "entries": [
             "H/youtube.fuzzy.replayweb.page/youtubei/v1/player?videoId=aT-Up5Y4uRI",
             "H/youtube.fuzzy.replayweb.page/videoplayback?id=o-AGDtIqpFRmvgVVZk96wgGyFxL_SFSdpBxs0iBHatQpRD",
-        ]
+        ],
     },
     {
         "filename": "video-vimeo.warc.gz",
         "entries": [
             "H/vimeo.fuzzy.replayweb.page/video/347119375",
-            "H/vimeo-cdn.fuzzy.replayweb.page/01/4423/13/347119375/1398505169.mp4"
-        ]
-    }
+            "H/vimeo-cdn.fuzzy.replayweb.page/01/4423/13/347119375/1398505169.mp4",
+        ],
+    },
 ]
 
 
