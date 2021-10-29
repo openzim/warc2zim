@@ -77,9 +77,10 @@ DEFAULT_TAGS = ["_ftindex:yes", "_category:other", "_sw:yes"]
 FUZZY_RULES = [
     {
         "match": re.compile(
-            r"//.*googlevideo.com/(videoplayback\?).*(id=[^&]+).*([&]itag=[^&]+).*"
+            # r"//.*googlevideo.com/(videoplayback\?).*(id=[^&]+).*([&]itag=[^&]+).*"
+            r"//.*googlevideo.com/(videoplayback\?).*((?<=[?&])id=[^&]+).*"
         ),
-        "replace": r"//youtube.fuzzy.replayweb.page/\1\2\3",
+        "replace": r"//youtube.fuzzy.replayweb.page/\1\2",
     },
     {
         "match": re.compile(
@@ -91,9 +92,13 @@ FUZZY_RULES = [
     {"match": re.compile(r"(\.[^?]+\?)[\d]+$"), "replace": r"\1"},
     {
         "match": re.compile(
-            r"//(?:www\.)?youtube(?:-nocookie)?\.com\/(youtubei\/[^?]+).*(videoId[^,]+).*"
+            r"//(?:www\.)?youtube(?:-nocookie)?\.com\/(youtubei\/[^?]+).*(videoId[^&]+).*"
         ),
         "replace": r"//youtube.fuzzy.replayweb.page/\1?\2",
+    },
+    {
+        "match": re.compile(r"//(?:www\.)?youtube(?:-nocookie)?\.com/embed/([^?]+).*"),
+        "replace": r"//youtube.fuzzy.replayweb.page/embed/\1",
     },
     {
         "match": re.compile(
@@ -145,7 +150,7 @@ class WARCHeadersArticle(BaseArticle):
     def __init__(self, record):
         super().__init__()
         self.record = record
-        self.url = record.rec_headers.get("WARC-Target-URI")
+        self.url = get_record_url(record)
 
     def get_url(self):
         return "H/" + canonicalize(self.url)
@@ -175,7 +180,7 @@ class WARCPayloadArticle(BaseArticle):
     def __init__(self, record, head_insert=None, css_insert=None):
         super().__init__()
         self.record = record
-        self.url = record.rec_headers.get("WARC-Target-URI")
+        self.url = get_record_url(record)
         self.mime = get_record_mime_type(record)
         self.title = ""
         if hasattr(record, "buffered_stream"):
@@ -211,16 +216,24 @@ class WARCPayloadArticle(BaseArticle):
 
 # ============================================================================
 class RemoteArticle(BaseArticle):
-    def __init__(self, filename, url):
+    def __init__(self, filename, url, mime=""):
         super().__init__()
         self.filename = filename
         self.url = url
 
         try:
-            resp = requests.get(url)
-            resp.raise_for_status()
-            self.content = resp.content
-            self.mime = resp.headers.get("Content-Type").split(";")[0]
+            if url.startswith("http://") or url.startswith("https://"):
+                resp = requests.get(url)
+                resp.raise_for_status()
+                self.content = resp.content
+                self.mime = mime or resp.headers.get("Content-Type").split(";")[0]
+            else:
+                with open(url, "rt") as fh:
+                    self.content = fh.read()
+                self.mime = mime
+                if not self.mime:
+                    self.mime, _ = mimetypes.guess_type(filename)
+
         except Exception as e:
             logger.error(e)
             logger.error("Unable to load URL: {0}".format(url))
@@ -290,13 +303,15 @@ class FaviconRedirectArticle(RedirectArticle):
 # ============================================================================
 class WARC2Zim(CDXJIndexer):
     def __init__(self, args):
-        inputs = [pathlib.Path(path) for path in args.inputs]
         super().__init__(
-            output=args.output, inputs=inputs, post_append=True, filename=args.zim_file
+            output=args.output,
+            inputs=args.inputs,
+            post_append=True,
+            filename=args.zim_file,
         )
 
+        # set to list so can reuse
         self.inputs = list(self.inputs)
-        self.main_page_found = False
 
         logging.basicConfig(format="[%(levelname)s] %(message)s")
         if args.verbose:
@@ -362,9 +377,11 @@ class WARC2Zim(CDXJIndexer):
             self.stats_filename = self.output / self.stats_filename
         self.written_records = self.total_records = 0
 
-    def add_remote_or_local(self, filename):
+    def add_remote_or_local(self, filename, mime=""):
         if self.replay_viewer_source:
-            article = RemoteArticle(filename, self.replay_viewer_source + filename)
+            article = RemoteArticle(
+                filename, self.replay_viewer_source + filename, mime
+            )
         else:
             article = StaticArticle(self.env, filename, self.main_url)
 
@@ -429,7 +446,7 @@ class WARC2Zim(CDXJIndexer):
             )
             return 100
 
-        # self.find_main_page_metadata()
+        self.find_main_page_metadata()
 
         # make sure Language metadata is ISO-639-3 and setup translations
         try:
@@ -452,7 +469,7 @@ class WARC2Zim(CDXJIndexer):
         else:
             self.css_insert = None
 
-        self.add_remote_or_local(SW_JS)
+        self.add_remote_or_local(SW_JS, "application/javascript")
 
         for filename in pkg_resources.resource_listdir("warc2zim", "templates"):
             if filename == HEAD_INSERT_FILE:
@@ -473,91 +490,84 @@ class WARC2Zim(CDXJIndexer):
             **self.metadata,
         ) as zimcreator:
 
-            self.process_all(zimcreator)
+            for article in self.generate_all_articles():
+                if article:
+                    zimcreator.add_zim_article(article)
+                    if isinstance(article, WARCPayloadArticle):
+                        self.total_records += 1
+                        self.update_stats()
 
-    def process_all(self, zimcreator):
+            logger.debug(f"Found {self.total_records} records in WARCs")
+
+    def iter_warc_records(self):
+        # add custom css records
+        if self.custom_css:
+            yield self.get_custom_css_record()
+
+        # iter warc records, including appending request data to matching response
         for filename in self.inputs:
             with open(filename, "rb") as fh:
-                self.process_one(fh, zimcreator, filename)
+                for record in self.req_resolving_iter(self._create_record_iter(fh), fh):
+                    if self.filter_record(record):
+                        yield record
 
-        logger.debug(f"Found {self.total_records} records in WARCs")
+    def find_main_page_metadata(self):
+        for record in self.iter_warc_records():
+            if record.rec_type == "revisit":
+                continue
 
-        # if main page not found after going through all records, error out
-        if not self.main_page_found:
-            msg = (
-                "Unable to find WARC record for main page: {0}, ZIM not created".format(
-                    self.main_url
+            # if no main_url, use first 'text/html' record as the main page by default
+            # not guaranteed to always work
+            mime = get_record_mime_type(record)
+
+            url = record.rec_headers["WARC-Target-URI"]
+
+            if (
+                not self.main_url
+                and mime == "text/html"
+                and record.payload_length != 0
+                and (
+                    not record.http_headers
+                    or record.http_headers.get_statuscode() == "200"
                 )
-            )
-            logger.error(msg)
-            raise KeyError(msg)
+            ):
+                self.main_url = url
 
-        # generate additional articles
-        for article in self.generate_extra_articles():
-            zimcreator.add_zim_article(article)
+            if urldefrag(self.main_url).url != url:
+                continue
 
-    def process_index_entry(self, it, record, filename, zimcreator):
-        self.find_main_page_metadata(record)
+            # if we get here, found record for the main page
 
-        self.total_records += 1
-        for article in self.articles_for_warc_record(record):
-            zimcreator.add_zim_article(article)
-            if isinstance(article, WARCPayloadArticle):
-                self.update_stats()
+            # if main page is not html, still allow (eg. could be text, img),
+            # but print warning
+            if mime not in HTML_TYPES:
+                logger.warning(
+                    "Main page is not an HTML Page, mime type is: {0} "
+                    "- Skipping Favicon and Language detection".format(mime)
+                )
+                return
 
-    def find_main_page_metadata(self, record):
-        if self.main_page_found:
+            # content = record.content_stream().read()
+            record.buffered_stream.seek(0)
+            content = record.buffered_stream.read()
+
+            if not self.title:
+                self.title = parse_title(content)
+
+            self.find_icon_and_language(content)
+
+            logger.debug("Title: {0}".format(self.title))
+            logger.debug("Language: {0}".format(self.language))
+            logger.debug("Favicon: {0}".format(self.favicon_url))
             return
 
-        if record.rec_type == "revisit":
-            return
-
-        # if no main_url, use first 'text/html' record as the main page by default
-        # not guaranteed to always work
-        mime = get_record_mime_type(record)
-
-        url = record.rec_headers["WARC-Target-URI"]
-
-        if (
-            not self.main_url
-            and mime == "text/html"
-            and record.payload_length != 0
-            and (
-                not record.http_headers or record.http_headers.get_statuscode() == "200"
-            )
-        ):
-            self.main_url = url
-
-        if urldefrag(self.main_url).url != url:
-            return
-
-        # if we get here, found record for the main page
-        self.main_page_found = True
-
-        # if main page is not html, still allow (eg. could be text, img),
-        # but print warning
-        if mime not in HTML_TYPES:
-            logger.warning(
-                "Main page is not an HTML Page, mime type is: {0} "
-                "- Skipping Favicon and Language detection".format(mime)
-            )
-            return
-
-        #content = record.content_stream().read()
-        record.buffered_stream.seek(0)
-        content = record.buffered_stream.read()
-
-        if not self.title:
-            self.title = parse_title(content)
-
-        self.find_icon_and_language(content)
-
-        logger.debug("Title: {0}".format(self.title))
-        logger.debug("Language: {0}".format(self.language))
-        logger.debug("Favicon: {0}".format(self.favicon_url))
+        msg = "Unable to find WARC record for main page: {0}, ZIM not created".format(
+            self.main_url
+        )
+        logger.error(msg)
+        raise KeyError(msg)
 
     def find_icon_and_language(self, content):
-        print(content)
         soup = BeautifulSoup(content, "html.parser")
 
         if not self.favicon_url:
@@ -592,15 +602,13 @@ class WARC2Zim(CDXJIndexer):
                 self.language = lang_elem.attrs["content"]
                 return
 
-    def generate_extra_articles(self):
+    def generate_all_articles(self):
         # add replay system
         for article in self.replay_articles:
             yield article
 
-        # add custom css records
-        if self.custom_css:
-            for article in self.articles_for_warc_record(self.get_custom_css_record()):
-                yield article
+        for record in self.iter_warc_records():
+            yield from self.articles_for_warc_record(record)
 
         # process revisits, headers only
         for url, record in self.revisits.items():
@@ -636,7 +644,7 @@ class WARC2Zim(CDXJIndexer):
         return canonicalize(url) == canonicalize(location)
 
     def articles_for_warc_record(self, record):
-        url = record.rec_headers["WARC-Target-URI"]
+        url = get_record_url(record)
         if not url:
             logger.debug(f"Skipping record with empty WARC-Target-URI {record}")
             return
@@ -697,6 +705,16 @@ class WARC2Zim(CDXJIndexer):
 
         self.revisits[fuzzy_url] = record
         logger.debug("Adding fuzzy redirect {0} -> {1}".format(fuzzy_url, url))
+
+
+# ============================================================================
+def get_record_url(record):
+    """Check if record has url converted from POST/PUT, and if so, use that
+    otherwise return the target url"""
+    if hasattr(record, "urlconv"):
+        return record.urlconv
+    else:
+        return record.rec_headers["WARC-Target-URI"]
 
 
 # ============================================================================

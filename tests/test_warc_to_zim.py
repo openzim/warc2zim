@@ -99,6 +99,7 @@ class TestWarc2Zim(object):
 
                 # parse headers as record, ensure headers match
                 url_no_scheme = url.split("//", 2)[1]
+                print(url_no_scheme)
                 headers = zim_fh.get_article("H/" + url_no_scheme)
                 parsed_record = next(
                     ArchiveIterator(BytesIO(headers.content.tobytes()))
@@ -397,9 +398,36 @@ class TestWarc2Zim(object):
 
         res = self.get_article(
             zim_output,
-            "H/youtube.fuzzy.replayweb.page/videoplayback?id=o-AE3bg3qVNY-gAWwYgL52vgpHKJe9ijdbu2eciNi5Uo_w&itag=18",
+            "H/youtube.fuzzy.replayweb.page/videoplayback?id=o-AE3bg3qVNY-gAWwYgL52vgpHKJe9ijdbu2eciNi5Uo_w",
         )
         assert b"Location: " in res
+
+    def test_video_fuzzy_urls_with_post(self, tmp_path):
+        zim_output = "test-fuzzy-2.zim"
+        warc2zim(
+            [
+                os.path.join(TEST_DATA_DIR, "video-fuzzy-2.warc.gz"),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "test-fuzzy",
+            ]
+        )
+        zim_output = tmp_path / zim_output
+        res = self.get_article(
+            zim_output,
+            "H/youtube.fuzzy.replayweb.page/youtubei/v1/player?videoId=aT-Up5Y4uRI",
+        )
+        assert b"Location: " in res
+
+        res = self.get_article(
+            zim_output,
+            "H/youtube.fuzzy.replayweb.page/videoplayback?id=o-AGDtIqpFRmvgVVZk96wgGyFxL_SFSdpBxs0iBHatQpRD",
+        )
+        assert b"Location: " in res
+
 
     def test_error_bad_replay_viewer_url(self, tmp_path):
         zim_output_not_created = "zim-out-not-created.zim"
