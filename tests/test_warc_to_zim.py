@@ -197,7 +197,7 @@ class TestWarc2Zim(object):
                 "--zim-file",
                 zim_output,
                 "-r",
-                "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.1.0-dev.3/dist/",
+                "https://cdn.jsdelivr.net/npm/@webrecorder/wabac/dist/",
                 "--tags",
                 "some",
                 "--tags",
@@ -430,6 +430,31 @@ class TestWarc2Zim(object):
             res = self.get_article(zim_output, entry)
             assert b"Location: " in res
 
+    def test_local_replay_viewer_url(self, tmp_path):
+        zim_local_sw = "zim-local-sw.zim"
+
+        res = requests.get("https://cdn.jsdelivr.net/npm/@webrecorder/wabac/dist/sw.js")
+
+        with open(tmp_path / "sw.js", "wt") as fh:
+            fh.write(res.text)
+
+        warc2zim(
+            [
+                "-v",
+                os.path.join(TEST_DATA_DIR, "example-response.warc"),
+                "-r",
+                str(tmp_path) + "/",
+                "--output",
+                str(tmp_path),
+                "--name",
+                "local-sw",
+                "--zim-file",
+                zim_local_sw,
+            ]
+        )
+
+        assert os.path.isfile(tmp_path / zim_local_sw)
+
     def test_error_bad_replay_viewer_url(self, tmp_path):
         zim_output_not_created = "zim-out-not-created.zim"
         with pytest.raises(Exception) as e:
@@ -449,7 +474,7 @@ class TestWarc2Zim(object):
             )
 
         # zim file should not have been created since replay viewer could not be loaded
-        assert not os.path.isfile(zim_output_not_created)
+        assert not os.path.isfile(tmp_path / zim_output_not_created)
 
     def test_error_bad_main_page(self, tmp_path):
         zim_output_not_created = "zim-out-not-created.zim"

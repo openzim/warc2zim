@@ -1,13 +1,19 @@
 warc2zim
 ===
 
+# 1.4.0
+
+* Additional fuzzy matching rules for youtube and vimeo, and additional test cases
+* Support for youtube videos, which require POST request handling to work.
+* Support for canonicalizing POST request data into URL for fuzzy matching (using cdxj-indexer)
+* Support loading custom sw.js from a local file path
+
 # 1.3.6
 
 * updated zimscraperlib (for libzim fix)
 
 # 1.3.5
 
-* Update to wabac.js 2.5.3, fixes for youtube/vimeo replay
 * don't crash on records without WARC-Target-URI
 * fixed failure if url contains a fragment
 * updated wabac.js to 2.7.3
