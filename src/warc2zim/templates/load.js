@@ -1,5 +1,7 @@
 async function main() {
-  if (!navigator.serviceWorker) {
+  const sw = navigator.serviceWorker;
+
+  if (!sw) {
 
     let msg;
     // check if service worker doesn't work due to http loading
@@ -19,8 +21,6 @@ async function main() {
     return;
   }
 
-  var worker = new Worker("./sw.js");
-
   // finds  '/A/' followed by a domain name with a .
   var prefix = window.location.href.slice(0, window.location.href.search(/[/]A[/][^/]+[.]/));
 
@@ -28,9 +28,9 @@ async function main() {
 
   prefix += "/A/";
 
-  await navigator.serviceWorker.register("./sw.js?replayPrefix=&root=" + name, {scope: prefix});
+  await sw.register("./sw.js?replayPrefix=&root=" + name, {scope: prefix});
 
-  worker.addEventListener("message", (event) => {
+  sw.addEventListener("message", (event) => {
     if (event.data.msg_type === "collAdded" && event.data.name === name) {
       if (window.location.hash && window.location.hash.startsWith("#redirect=")) {
         prefix += decodeURIComponent(window.location.hash.slice("#redirect=".length));
@@ -44,7 +44,17 @@ async function main() {
     }
   });
 
-  worker.postMessage({
+  await new Promise((resolve) => {
+    if (!sw.controller) {
+      sw.addEventListener("controllerchange", () => {
+        resolve();
+      });
+    } else {
+      resolve();
+    }
+  });
+
+  sw.controller.postMessage({
     msg_type: "addColl",
     name: name,
     file: {"sourceUrl": "proxy:../"},
