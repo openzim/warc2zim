@@ -699,8 +699,7 @@ def get_record_url(record):
     otherwise return the target url"""
     if hasattr(record, "urlkey"):
         return record.urlkey
-    else:
-        return record.rec_headers["WARC-Target-URI"]
+    return record.rec_headers["WARC-Target-URI"]
 
 
 # ============================================================================
