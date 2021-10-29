@@ -45,7 +45,7 @@ from bs4 import BeautifulSoup
 
 from jinja2 import Environment, PackageLoader
 
-from cdxj_indexer.main import CDXJIndexer
+from cdxj_indexer import iter_file_or_dir, buffering_record_iter
 
 
 # Shared logger
@@ -301,18 +301,8 @@ class FaviconRedirectArticle(RedirectArticle):
 
 
 # ============================================================================
-class WARC2Zim(CDXJIndexer):
+class WARC2Zim:
     def __init__(self, args):
-        super().__init__(
-            output=args.output,
-            inputs=args.inputs,
-            post_append=True,
-            filename=args.zim_file,
-        )
-
-        # set to list so can reuse
-        self.inputs = list(self.inputs)
-
         logging.basicConfig(format="[%(levelname)s] %(message)s")
         if args.verbose:
             logger.setLevel(logging.DEBUG)
@@ -321,7 +311,7 @@ class WARC2Zim(CDXJIndexer):
 
         self.indexed_urls = set({})
 
-        # self.output = args.output
+        self.output = args.output
         self.zim_file = args.zim_file
 
         if not self.zim_file:
@@ -335,6 +325,7 @@ class WARC2Zim(CDXJIndexer):
         with tempfile.NamedTemporaryFile(dir=self.output, delete=True) as fh:
             logger.debug(f"Confirming output is writable using {fh.name}")
 
+        self.inputs = args.inputs
         self.replay_viewer_source = args.replay_viewer_source
         self.custom_css = args.custom_css
 
@@ -499,20 +490,15 @@ class WARC2Zim(CDXJIndexer):
 
             logger.debug(f"Found {self.total_records} records in WARCs")
 
-    def iter_warc_records(self):
+    def iter_all_warc_records(self):
         # add custom css records
         if self.custom_css:
             yield self.get_custom_css_record()
 
-        # iter warc records, including appending request data to matching response
-        for filename in self.inputs:
-            with open(filename, "rb") as fh:
-                for record in self.req_resolving_iter(self._create_record_iter(fh), fh):
-                    if self.filter_record(record):
-                        yield record
+        yield from iter_warc_records(self.inputs)
 
     def find_main_page_metadata(self):
-        for record in self.iter_warc_records():
+        for record in self.iter_all_warc_records():
             if record.rec_type == "revisit":
                 continue
 
@@ -607,7 +593,7 @@ class WARC2Zim(CDXJIndexer):
         for article in self.replay_articles:
             yield article
 
-        for record in self.iter_warc_records():
+        for record in self.iter_all_warc_records():
             yield from self.articles_for_warc_record(record)
 
         # process revisits, headers only
@@ -711,8 +697,8 @@ class WARC2Zim(CDXJIndexer):
 def get_record_url(record):
     """Check if record has url converted from POST/PUT, and if so, use that
     otherwise return the target url"""
-    if hasattr(record, "urlconv"):
-        return record.urlconv
+    if hasattr(record, "urlkey"):
+        return record.urlkey
     else:
         return record.rec_headers["WARC-Target-URI"]
 
@@ -738,6 +724,16 @@ def parse_title(content):
         return soup.title.text or ""
     except AttributeError:
         return ""
+
+
+# ============================================================================
+def iter_warc_records(inputs):
+    """iter warc records, including appending request data to matching response"""
+    for filename in iter_file_or_dir(inputs):
+        with open(filename, "rb") as fh:
+            for record in buffering_record_iter(ArchiveIterator(fh), post_append=True):
+                if record.rec_type in ("resource", "response", "revisit"):
+                    yield record
 
 
 # ============================================================================

@@ -14,9 +14,20 @@ import libzim.reader
 from warcio import ArchiveIterator
 from jinja2 import Environment, PackageLoader
 
-from warc2zim.main import warc2zim, HTML_RAW, canonicalize
+from warc2zim.main import (
+    warc2zim,
+    HTML_RAW,
+    canonicalize,
+    WARC2Zim,
+    iter_warc_records,
+    get_record_url,
+)
 
 
+TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
+
+
+# ============================================================================
 CMDLINES = [
     ["example-response.warc"],
     ["example-response.warc", "--progress-file", "progress.json"],
@@ -38,11 +49,39 @@ CMDLINES = [
 ]
 
 
-TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
-
-
 @pytest.fixture(params=CMDLINES, ids=[" ".join(cmds) for cmds in CMDLINES])
 def cmdline(request):
+    return request.param
+
+
+# ============================================================================
+FUZZYCHECKS = [
+    {
+        "filename": "video-yt.warc.gz",
+        "entries": [
+            "H/youtube.fuzzy.replayweb.page/get_video_info?video_id=aT-Up5Y4uRI",
+            "H/youtube.fuzzy.replayweb.page/videoplayback?id=o-AE3bg3qVNY-gAWwYgL52vgpHKJe9ijdbu2eciNi5Uo_w",
+        ]
+    },
+    {
+        "filename": "video-yt-2.warc.gz",
+        "entries": [
+            "H/youtube.fuzzy.replayweb.page/youtubei/v1/player?videoId=aT-Up5Y4uRI",
+            "H/youtube.fuzzy.replayweb.page/videoplayback?id=o-AGDtIqpFRmvgVVZk96wgGyFxL_SFSdpBxs0iBHatQpRD",
+        ]
+    },
+    {
+        "filename": "video-vimeo.warc.gz",
+        "entries": [
+            "H/vimeo.fuzzy.replayweb.page/video/347119375",
+            "H/vimeo-cdn.fuzzy.replayweb.page/01/4423/13/347119375/1398505169.mp4"
+        ]
+    }
+]
+
+
+@pytest.fixture(params=FUZZYCHECKS, ids=[fuzzy["filename"] for fuzzy in FUZZYCHECKS])
+def fuzzycheck(request):
     return request.param
 
 
@@ -78,61 +117,57 @@ class TestWarc2Zim(object):
         warc_urls = set()
 
         zim_fh = libzim.reader.File(zimfile)
-        with open(warcfile, "rb") as warc_fh:
-            for record in ArchiveIterator(warc_fh):
-                url = record.rec_headers["WARC-Target-URI"]
-                if not url:
-                    continue
+        for record in iter_warc_records([warcfile]):
+            url = get_record_url(record)
+            if not url:
+                continue
 
-                if url in warc_urls:
-                    continue
+            if url in warc_urls:
+                continue
 
-                if record.rec_type not in (("response", "resource", "revisit")):
-                    continue
+            if record.rec_type not in (("response", "resource", "revisit")):
+                continue
 
-                # ignore revisit records that are to the same url
-                if (
-                    record.rec_type == "revisit"
-                    and record.rec_headers["WARC-Refers-To-Target-URI"] == url
-                ):
-                    continue
+            # ignore revisit records that are to the same url
+            if (
+                record.rec_type == "revisit"
+                and record.rec_headers["WARC-Refers-To-Target-URI"] == url
+            ):
+                continue
 
-                # parse headers as record, ensure headers match
-                url_no_scheme = url.split("//", 2)[1]
-                print(url_no_scheme)
-                headers = zim_fh.get_article("H/" + url_no_scheme)
-                parsed_record = next(
-                    ArchiveIterator(BytesIO(headers.content.tobytes()))
-                )
+            # parse headers as record, ensure headers match
+            url_no_scheme = url.split("//", 2)[1]
+            print(url_no_scheme)
+            headers = zim_fh.get_article("H/" + url_no_scheme)
+            parsed_record = next(ArchiveIterator(BytesIO(headers.content.tobytes())))
 
-                assert record.rec_headers == parsed_record.rec_headers
-                assert record.http_headers == parsed_record.http_headers
+            assert record.rec_headers == parsed_record.rec_headers
+            assert record.http_headers == parsed_record.http_headers
 
-                # ensure payloads match
-                try:
-                    payload = zim_fh.get_article("A/" + url_no_scheme)
-                except KeyError:
-                    payload = None
+            # ensure payloads match
+            try:
+                payload = zim_fh.get_article("A/" + url_no_scheme)
+            except KeyError:
+                payload = None
 
-                if record.rec_type == "revisit" or (
-                    record.http_headers
-                    and record.http_headers.get("Content-Length") == "0"
-                ):
-                    assert not payload
+            if record.rec_type == "revisit" or (
+                record.http_headers and record.http_headers.get("Content-Length") == "0"
+            ):
+                assert not payload
+            else:
+                payload_content = payload.content.tobytes()
+
+                # if HTML_RAW, still need to account for the head insert, otherwise should have exact match
+                if payload.mimetype == HTML_RAW:
+                    assert head_insert in payload_content
+                    assert (
+                        payload_content.replace(head_insert, b"")
+                        == record.buffered_stream.read()
+                    )
                 else:
-                    payload_content = payload.content.tobytes()
+                    assert payload_content == record.buffered_stream.read()
 
-                    # if HTML_RAW, still need to account for the head insert, otherwise should have exact match
-                    if payload.mimetype == HTML_RAW:
-                        assert head_insert in payload_content
-                        assert (
-                            payload_content.replace(head_insert, b"")
-                            == record.content_stream().read()
-                        )
-                    else:
-                        assert payload_content == record.content_stream().read()
-
-                warc_urls.add(url)
+            warc_urls.add(url)
 
     def test_canonicalize(self):
         assert canonicalize("http://example.com/?foo=bar") == "example.com/?foo=bar"
@@ -376,11 +411,11 @@ class TestWarc2Zim(object):
         # timestamp fuzzy match from example-with-timestamp.warc
         assert self.get_article(zim_output, "H/example.com/path.txt?") != b""
 
-    def test_video_fuzzy_urls(self, tmp_path):
-        zim_output = "test-fuzzy.zim"
+    def test_fuzzy_urls(self, tmp_path, fuzzycheck):
+        zim_output = fuzzycheck["filename"] + ".zim"
         warc2zim(
             [
-                os.path.join(TEST_DATA_DIR, "video-fuzzy.warc.gz"),
+                os.path.join(TEST_DATA_DIR, fuzzycheck["filename"]),
                 "--output",
                 str(tmp_path),
                 "--zim-file",
@@ -390,44 +425,10 @@ class TestWarc2Zim(object):
             ]
         )
         zim_output = tmp_path / zim_output
-        res = self.get_article(
-            zim_output,
-            "H/youtube.fuzzy.replayweb.page/get_video_info?video_id=aT-Up5Y4uRI",
-        )
-        assert b"Location: " in res
 
-        res = self.get_article(
-            zim_output,
-            "H/youtube.fuzzy.replayweb.page/videoplayback?id=o-AE3bg3qVNY-gAWwYgL52vgpHKJe9ijdbu2eciNi5Uo_w",
-        )
-        assert b"Location: " in res
-
-    def test_video_fuzzy_urls_with_post(self, tmp_path):
-        zim_output = "test-fuzzy-2.zim"
-        warc2zim(
-            [
-                os.path.join(TEST_DATA_DIR, "video-fuzzy-2.warc.gz"),
-                "--output",
-                str(tmp_path),
-                "--zim-file",
-                zim_output,
-                "--name",
-                "test-fuzzy",
-            ]
-        )
-        zim_output = tmp_path / zim_output
-        res = self.get_article(
-            zim_output,
-            "H/youtube.fuzzy.replayweb.page/youtubei/v1/player?videoId=aT-Up5Y4uRI",
-        )
-        assert b"Location: " in res
-
-        res = self.get_article(
-            zim_output,
-            "H/youtube.fuzzy.replayweb.page/videoplayback?id=o-AGDtIqpFRmvgVVZk96wgGyFxL_SFSdpBxs0iBHatQpRD",
-        )
-        assert b"Location: " in res
-
+        for entry in fuzzycheck["entries"]:
+            res = self.get_article(zim_output, entry)
+            assert b"Location: " in res
 
     def test_error_bad_replay_viewer_url(self, tmp_path):
         zim_output_not_created = "zim-out-not-created.zim"
