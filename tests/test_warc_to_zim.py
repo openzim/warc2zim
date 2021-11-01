@@ -197,7 +197,7 @@ class TestWarc2Zim(object):
                 "--zim-file",
                 zim_output,
                 "-r",
-                "https://cdn.jsdelivr.net/npm/@webrecorder/wabac/dist/",
+                "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.9.6/dist/",
                 "--tags",
                 "some",
                 "--tags",
@@ -433,7 +433,7 @@ class TestWarc2Zim(object):
     def test_local_replay_viewer_url(self, tmp_path):
         zim_local_sw = "zim-local-sw.zim"
 
-        res = requests.get("https://cdn.jsdelivr.net/npm/@webrecorder/wabac/dist/sw.js")
+        res = requests.get("https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.9.6/dist/sw.js")
 
         with open(tmp_path / "sw.js", "wt") as fh:
             fh.write(res.text)
