@@ -26,7 +26,6 @@ import json
 import pathlib
 import logging
 import tempfile
-import mimetypes
 import datetime
 import re
 import io
@@ -39,6 +38,7 @@ import requests
 from warcio import ArchiveIterator, StatusAndHeaders
 from warcio.recordbuilder import RecordBuilder
 from libzim.writer import Article, Blob
+from zimscraperlib.types import get_mime_for_name
 from zimscraperlib.zim.creator import Creator
 from zimscraperlib.i18n import setlocale, get_language_details, Locale
 from bs4 import BeautifulSoup
@@ -232,7 +232,7 @@ class RemoteArticle(BaseArticle):
                     self.content = fh.read()
                 self.mime = mime
                 if not self.mime:
-                    self.mime, _ = mimetypes.guess_type(filename)
+                    self.mime = get_mime_for_name(filename)
 
         except Exception as e:
             logger.error(e)
@@ -256,7 +256,7 @@ class StaticArticle(BaseArticle):
         self.filename = filename
         self.main_url = main_url
 
-        self.mime, _ = mimetypes.guess_type(filename)
+        self.mime = get_mime_for_name(filename)
         self.mime = self.mime or "application/octet-stream"
 
         if filename != SW_JS:

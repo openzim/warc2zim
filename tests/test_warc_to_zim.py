@@ -18,7 +18,6 @@ from warc2zim.main import (
     warc2zim,
     HTML_RAW,
     canonicalize,
-    WARC2Zim,
     iter_warc_records,
     get_record_url,
 )
