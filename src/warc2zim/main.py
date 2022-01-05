@@ -26,7 +26,6 @@ import json
 import pathlib
 import logging
 import tempfile
-import mimetypes
 import datetime
 import re
 import io
@@ -39,11 +38,14 @@ import requests
 from warcio import ArchiveIterator, StatusAndHeaders
 from warcio.recordbuilder import RecordBuilder
 from libzim.writer import Article, Blob
+from zimscraperlib.types import get_mime_for_name
 from zimscraperlib.zim.creator import Creator
 from zimscraperlib.i18n import setlocale, get_language_details, Locale
 from bs4 import BeautifulSoup
 
 from jinja2 import Environment, PackageLoader
+
+from cdxj_indexer import iter_file_or_dir, buffering_record_iter
 
 
 # Shared logger
@@ -75,9 +77,10 @@ DEFAULT_TAGS = ["_ftindex:yes", "_category:other", "_sw:yes"]
 FUZZY_RULES = [
     {
         "match": re.compile(
-            r"//.*googlevideo.com/(videoplayback\?).*(id=[^&]+).*([&]itag=[^&]+).*"
+            # r"//.*googlevideo.com/(videoplayback\?).*(id=[^&]+).*([&]itag=[^&]+).*"
+            r"//.*googlevideo.com/(videoplayback\?).*((?<=[?&])id=[^&]+).*"
         ),
-        "replace": r"//youtube.fuzzy.replayweb.page/\1\2\3",
+        "replace": r"//youtube.fuzzy.replayweb.page/\1\2",
     },
     {
         "match": re.compile(
@@ -87,6 +90,26 @@ FUZZY_RULES = [
         "replace": r"//youtube.fuzzy.replayweb.page/\1\2",
     },
     {"match": re.compile(r"(\.[^?]+\?)[\d]+$"), "replace": r"\1"},
+    {
+        "match": re.compile(
+            r"//(?:www\.)?youtube(?:-nocookie)?\.com\/(youtubei\/[^?]+).*(videoId[^&]+).*"
+        ),
+        "replace": r"//youtube.fuzzy.replayweb.page/\1?\2",
+    },
+    {
+        "match": re.compile(r"//(?:www\.)?youtube(?:-nocookie)?\.com/embed/([^?]+).*"),
+        "replace": r"//youtube.fuzzy.replayweb.page/embed/\1",
+    },
+    {
+        "match": re.compile(
+            r".*(?:gcs-vimeo|vod|vod-progressive)\.akamaized\.net.*?/([\d/]+.mp4)$"
+        ),
+        "replace": r"vimeo-cdn.fuzzy.replayweb.page/\1",
+    },
+    {
+        "match": re.compile(r".*player.vimeo.com/(video/[\d]+)\?.*"),
+        "replace": r"vimeo.fuzzy.replayweb.page/\1",
+    },
 ]
 
 CUSTOM_CSS_URL = "https://warc2zim.kiwix.app/custom.css"
@@ -127,7 +150,7 @@ class WARCHeadersArticle(BaseArticle):
     def __init__(self, record):
         super().__init__()
         self.record = record
-        self.url = record.rec_headers.get("WARC-Target-URI")
+        self.url = get_record_url(record)
 
     def get_url(self):
         return "H/" + canonicalize(self.url)
@@ -157,10 +180,15 @@ class WARCPayloadArticle(BaseArticle):
     def __init__(self, record, head_insert=None, css_insert=None):
         super().__init__()
         self.record = record
-        self.url = record.rec_headers.get("WARC-Target-URI")
+        self.url = get_record_url(record)
         self.mime = get_record_mime_type(record)
         self.title = ""
-        self.payload = self.record.content_stream().read()
+        if hasattr(record, "buffered_stream"):
+            self.record.buffered_stream.seek(0)
+            self.payload = self.record.buffered_stream.read()
+        else:
+            self.payload = self.record.content_stream().read()
+
         if self.mime == "text/html":
             self.title = parse_title(self.payload)
             if head_insert:
@@ -188,16 +216,24 @@ class WARCPayloadArticle(BaseArticle):
 
 # ============================================================================
 class RemoteArticle(BaseArticle):
-    def __init__(self, filename, url):
+    def __init__(self, filename, url, mime=""):
         super().__init__()
         self.filename = filename
         self.url = url
 
         try:
-            resp = requests.get(url)
-            resp.raise_for_status()
-            self.content = resp.content
-            self.mime = resp.headers.get("Content-Type").split(";")[0]
+            if url.startswith("http://") or url.startswith("https://"):
+                resp = requests.get(url)
+                resp.raise_for_status()
+                self.content = resp.content
+                self.mime = mime or resp.headers.get("Content-Type").split(";")[0]
+            else:
+                with open(url, "rt") as fh:
+                    self.content = fh.read()
+                self.mime = mime
+                if not self.mime:
+                    self.mime = get_mime_for_name(filename)
+
         except Exception as e:
             logger.error(e)
             logger.error("Unable to load URL: {0}".format(url))
@@ -220,7 +256,7 @@ class StaticArticle(BaseArticle):
         self.filename = filename
         self.main_url = main_url
 
-        self.mime, _ = mimetypes.guess_type(filename)
+        self.mime = get_mime_for_name(filename)
         self.mime = self.mime or "application/octet-stream"
 
         if filename != SW_JS:
@@ -289,7 +325,7 @@ class WARC2Zim:
         with tempfile.NamedTemporaryFile(dir=self.output, delete=True) as fh:
             logger.debug(f"Confirming output is writable using {fh.name}")
 
-        self.inputs = [pathlib.Path(path) for path in args.inputs]
+        self.inputs = args.inputs
         self.replay_viewer_source = args.replay_viewer_source
         self.custom_css = args.custom_css
 
@@ -332,9 +368,11 @@ class WARC2Zim:
             self.stats_filename = self.output / self.stats_filename
         self.written_records = self.total_records = 0
 
-    def add_remote_or_local(self, filename):
+    def add_remote_or_local(self, filename, mime=""):
         if self.replay_viewer_source:
-            article = RemoteArticle(filename, self.replay_viewer_source + filename)
+            article = RemoteArticle(
+                filename, self.replay_viewer_source + filename, mime
+            )
         else:
             article = StaticArticle(self.env, filename, self.main_url)
 
@@ -422,7 +460,7 @@ class WARC2Zim:
         else:
             self.css_insert = None
 
-        self.add_remote_or_local(SW_JS)
+        self.add_remote_or_local(SW_JS, "application/javascript")
 
         for filename in pkg_resources.resource_listdir("warc2zim", "templates"):
             if filename == HEAD_INSERT_FILE:
@@ -433,9 +471,6 @@ class WARC2Zim:
                     StaticArticle(self.env, filename, self.main_url)
                 )
 
-        self.total_records = sum(1 for _ in self.iter_warc_records())
-        logger.debug(f"Found {self.total_records} records in WARCs")
-
         with Creator(
             self.full_filename,
             main_page="index.html",
@@ -445,40 +480,25 @@ class WARC2Zim:
             compression="zstd",
             **self.metadata,
         ) as zimcreator:
-            # zimcreator.update_metadata(**self.metadata)
 
             for article in self.generate_all_articles():
                 if article:
                     zimcreator.add_zim_article(article)
                     if isinstance(article, WARCPayloadArticle):
+                        self.total_records += 1
                         self.update_stats()
 
-    def iter_warc_records(self, dir_iter=None):
+            logger.debug(f"Found {self.total_records} records in WARCs")
 
+    def iter_all_warc_records(self):
+        # add custom css records
         if self.custom_css:
             yield self.get_custom_css_record()
 
-        curr_iter = dir_iter or iter(self.inputs)
-
-        for filename in curr_iter:
-            if filename.is_dir():
-                yield from self.iter_warc_records(filename.iterdir())
-                continue
-
-            # for directory iterator, only accept .warc, .warc.gz files
-            # (accept all files directly specified in self.inputs)
-            if dir_iter and not filename.name.endswith((".warc", ".warc.gz")):
-                continue
-
-            with open(filename, "rb") as warc_fh:
-                for record in ArchiveIterator(warc_fh):
-                    if record.rec_type not in ("resource", "response", "revisit"):
-                        continue
-
-                    yield record
+        yield from iter_warc_records(self.inputs)
 
     def find_main_page_metadata(self):
-        for record in self.iter_warc_records():
+        for record in self.iter_all_warc_records():
             if record.rec_type == "revisit":
                 continue
 
@@ -513,7 +533,9 @@ class WARC2Zim:
                 )
                 return
 
-            content = record.content_stream().read()
+            # content = record.content_stream().read()
+            record.buffered_stream.seek(0)
+            content = record.buffered_stream.read()
 
             if not self.title:
                 self.title = parse_title(content)
@@ -571,7 +593,7 @@ class WARC2Zim:
         for article in self.replay_articles:
             yield article
 
-        for record in self.iter_warc_records():
+        for record in self.iter_all_warc_records():
             yield from self.articles_for_warc_record(record)
 
         # process revisits, headers only
@@ -608,7 +630,7 @@ class WARC2Zim:
         return canonicalize(url) == canonicalize(location)
 
     def articles_for_warc_record(self, record):
-        url = record.rec_headers["WARC-Target-URI"]
+        url = get_record_url(record)
         if not url:
             logger.debug(f"Skipping record with empty WARC-Target-URI {record}")
             return
@@ -672,6 +694,15 @@ class WARC2Zim:
 
 
 # ============================================================================
+def get_record_url(record):
+    """Check if record has url converted from POST/PUT, and if so, use that
+    otherwise return the target url"""
+    if hasattr(record, "urlkey"):
+        return record.urlkey
+    return record.rec_headers["WARC-Target-URI"]
+
+
+# ============================================================================
 def get_record_mime_type(record):
     if record.http_headers:
         # if the record has HTTP headers, use the Content-Type from those
@@ -692,6 +723,16 @@ def parse_title(content):
         return soup.title.text or ""
     except AttributeError:
         return ""
+
+
+# ============================================================================
+def iter_warc_records(inputs):
+    """iter warc records, including appending request data to matching response"""
+    for filename in iter_file_or_dir(inputs):
+        with open(filename, "rb") as fh:
+            for record in buffering_record_iter(ArchiveIterator(fh), post_append=True):
+                if record.rec_type in ("resource", "response", "revisit"):
+                    yield record
 
 
 # ============================================================================
