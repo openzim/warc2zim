@@ -6,12 +6,12 @@
 
 This utility provides a conversion from WARC records to ZIM files.
 The WARCs are converted in a 'lossless' way, no data from WARC records is lost.
-Each WARC record results in two ZIM articles:
+Each WARC record results in two ZIM items:
 - The WARC payload is stored under /A/<url>
 - The WARC headers + HTTP headers are stored under the /H/<url>
 
 Given a WARC response record for 'https://example.com/',
-two ZIM articles are created /A/example.com/ and /H/example.com/ are created.
+two ZIM items are created /A/example.com/ and /H/example.com/ are created.
 
 Only WARC response and resource records are stored.
 
@@ -31,16 +31,21 @@ import re
 import io
 import time
 from argparse import ArgumentParser
-from urllib.parse import urlsplit, urljoin, urlunsplit, urldefrag
+from urllib.parse import urlsplit, urljoin, urlunsplit, urldefrag, urlparse
 
 import pkg_resources
 import requests
+from libzim.writer import Hint
 from warcio import ArchiveIterator, StatusAndHeaders
 from warcio.recordbuilder import RecordBuilder
-from libzim.writer import Article, Blob
 from zimscraperlib.types import get_mime_for_name
-from zimscraperlib.zim.creator import Creator
 from zimscraperlib.i18n import setlocale, get_language_details, Locale
+from zimscraperlib.image.convertion import convert_image
+from zimscraperlib.image.transformation import resize_image
+from zimscraperlib.inputs import handle_user_provided_file
+from zimscraperlib.zim.creator import Creator
+from zimscraperlib.zim.items import StaticItem, URLItem
+from zimscraperlib.zim.providers import StringProvider
 from bs4 import BeautifulSoup
 
 from jinja2 import Environment, PackageLoader
@@ -55,7 +60,7 @@ logger = logging.getLogger("warc2zim")
 HTML_TYPES = ("text/html", "application/xhtml", "application/xhtml+xml")
 
 
-# HTML raw mime type
+# HTML raw mime type (until https://github.com/kiwix/libkiwix/issues/671)
 HTML_RAW = "text/html;raw=true"
 
 
@@ -114,36 +119,9 @@ FUZZY_RULES = [
 
 CUSTOM_CSS_URL = "https://warc2zim.kiwix.app/custom.css"
 
-
 # ============================================================================
-class BaseArticle(Article):
-    """BaseArticle for all ZIM Articles in warc2zim with default settings"""
-
-    def is_redirect(self):
-        return False
-
-    def get_title(self):
-        return ""
-
-    def get_filename(self):
-        return ""
-
-    def should_compress(self):
-        mime = self.get_mime_type()
-        return mime.startswith("text/") or mime in (
-            "application/warc-headers",
-            "application/javascript",
-            "application/json",
-            "image/svg+xml",
-        )
-
-    def should_index(self):
-        return False
-
-
-# ============================================================================
-class WARCHeadersArticle(BaseArticle):
-    """WARCHeadersArticle used to store the WARC + HTTP headers as text
+class WARCHeadersItem(StaticItem):
+    """WARCHeadersItem used to store the WARC + HTTP headers as text
     Usually stored under H namespace
     """
 
@@ -152,28 +130,31 @@ class WARCHeadersArticle(BaseArticle):
         self.record = record
         self.url = get_record_url(record)
 
-    def get_url(self):
+    def get_path(self):
         return "H/" + canonicalize(self.url)
 
     def get_title(self):
         return ""
 
-    def get_mime_type(self):
+    def get_mimetype(self):
         return "application/warc-headers"
 
-    def get_data(self):
+    def get_hints(self):
+        return {Hint.FRONT_ARTICLE: False}
+
+    def get_contentprovider(self):
         # add WARC headers
         buff = self.record.rec_headers.to_bytes(encoding="utf-8")
         # add HTTP headers, if present
         if self.record.http_headers:
             buff += self.record.http_headers.to_bytes(encoding="utf-8")
 
-        return Blob(buff)
+        return StringProvider(content=buff, ref=self)
 
 
 # ============================================================================
-class WARCPayloadArticle(BaseArticle):
-    """WARCPayloadArticle used to store the WARC payload
+class WARCPayloadItem(StaticItem):
+    """WARCPayloadItem used to store the WARC payload
     Usually stored under A namespace
     """
 
@@ -181,78 +162,37 @@ class WARCPayloadArticle(BaseArticle):
         super().__init__()
         self.record = record
         self.url = get_record_url(record)
-        self.mime = get_record_mime_type(record)
+        self.mimetype = get_record_mime_type(record)
         self.title = ""
-        if hasattr(record, "buffered_stream"):
+
+        if hasattr(self.record, "buffered_stream"):
             self.record.buffered_stream.seek(0)
-            self.payload = self.record.buffered_stream.read()
+            self.content = self.record.buffered_stream.read()
         else:
-            self.payload = self.record.content_stream().read()
+            self.content = self.record.content_stream().read()
 
-        if self.mime == "text/html":
-            self.title = parse_title(self.payload)
+        if self.mimetype == "text/html":
+            self.title = parse_title(self.content)
             if head_insert:
-                self.payload = HEAD_INS.sub(head_insert, self.payload)
+                self.content = HEAD_INS.sub(head_insert, self.content)
             if css_insert:
-                self.payload = CSS_INS.sub(css_insert, self.payload)
+                self.content = CSS_INS.sub(css_insert, self.content)
+            self.mimetype = HTML_RAW
 
-    def get_url(self):
+    def get_path(self):
         return "A/" + canonicalize(self.url)
 
     def get_title(self):
         return self.title
 
-    def get_mime_type(self):
-        # converting text/html to application/octet-stream to avoid rewriting by kiwix
-        # original mime type still preserved in the headers block
-        return HTML_RAW if self.mime == "text/html" else self.mime
-
-    def get_data(self):
-        return Blob(self.payload)
-
-    def should_index(self):
-        return self.mime in HTML_TYPES
+    def get_hints(self):
+        return {Hint.FRONT_ARTICLE: False}
 
 
 # ============================================================================
-class RemoteArticle(BaseArticle):
-    def __init__(self, filename, url, mime=""):
-        super().__init__()
-        self.filename = filename
-        self.url = url
-
-        try:
-            if url.startswith("http://") or url.startswith("https://"):
-                resp = requests.get(url)
-                resp.raise_for_status()
-                self.content = resp.content
-                self.mime = mime or resp.headers.get("Content-Type").split(";")[0]
-            else:
-                with open(url, "rt") as fh:
-                    self.content = fh.read()
-                self.mime = mime
-                if not self.mime:
-                    self.mime = get_mime_for_name(filename)
-
-        except Exception as e:
-            logger.error(e)
-            logger.error("Unable to load URL: {0}".format(url))
-            raise
-
-    def get_url(self):
-        return "A/" + self.filename
-
-    def get_mime_type(self):
-        return self.mime
-
-    def get_data(self):
-        return Blob(self.content)
-
-
-# ============================================================================
-class StaticArticle(BaseArticle):
-    def __init__(self, env, filename, main_url):
-        super().__init__()
+class StaticArticle(StaticItem):
+    def __init__(self, env, filename, main_url, **kwargs):
+        super().__init__(**kwargs)
         self.filename = filename
         self.main_url = main_url
 
@@ -267,37 +207,14 @@ class StaticArticle(BaseArticle):
                 "warc2zim", "templates/" + filename
             ).decode("utf-8")
 
-    def get_url(self):
+    def get_path(self):
         return "A/" + self.filename
 
-    def get_mime_type(self):
+    def get_mimetype(self):
         return self.mime
 
-    def get_data(self):
-        return Blob(self.content.encode("utf-8"))
-
-
-# ============================================================================
-class RedirectArticle(BaseArticle):
-    def __init__(self, from_url, to_url):
-        super().__init__()
-        self.from_url = from_url
-        self.to_url = to_url
-
-    def get_url(self):
-        return self.from_url
-
-    def is_redirect(self):
-        return True
-
-    def get_redirect_url(self):
-        return self.to_url
-
-
-# ============================================================================
-class FaviconRedirectArticle(RedirectArticle):
-    def __init__(self, favicon_url):
-        super().__init__("-/favicon", "A/" + canonicalize(favicon_url))
+    def get_hints(self):
+        return {Hint.FRONT_ARTICLE: False}
 
 
 # ============================================================================
@@ -357,7 +274,6 @@ class WARC2Zim:
             "scraper": "warc2zim " + get_version(),
         }
 
-        self.replay_articles = []
         self.revisits = {}
 
         # progress file handling
@@ -368,15 +284,29 @@ class WARC2Zim:
             self.stats_filename = self.output / self.stats_filename
         self.written_records = self.total_records = 0
 
-    def add_remote_or_local(self, filename, mime=""):
-        if self.replay_viewer_source:
-            article = RemoteArticle(
-                filename, self.replay_viewer_source + filename, mime
+    def add_replayer(self):
+        if self.replay_viewer_source and re.match(
+            r"^https?\:", self.replay_viewer_source
+        ):
+            self.creator.add_item(
+                URLItem(
+                    url=self.replay_viewer_source + SW_JS,
+                    path="A/" + SW_JS,
+                    mimetype="application/javascript",
+                )
+            )
+        elif self.replay_viewer_source:
+            self.creator.add_item_for(
+                fpath=self.replay_viewer_source + SW_JS,
+                path="A/" + SW_JS,
+                mimetype="application/javascript",
             )
         else:
-            article = StaticArticle(self.env, filename, self.main_url)
-
-        self.replay_articles.append(article)
+            self.creator.add_item(
+                StaticArticle(
+                    self.env, SW_JS, self.main_url, mimetype="application/javascript"
+                )
+            )
 
     def init_env(self):
         # autoescape=False to allow injecting html entities from translated text
@@ -460,35 +390,43 @@ class WARC2Zim:
         else:
             self.css_insert = None
 
-        self.add_remote_or_local(SW_JS, "application/javascript")
-
-        for filename in pkg_resources.resource_listdir("warc2zim", "templates"):
-            if filename == HEAD_INSERT_FILE:
-                continue
-
-            if filename != SW_JS:
-                self.replay_articles.append(
-                    StaticArticle(self.env, filename, self.main_url)
-                )
-
-        with Creator(
+        self.creator = Creator(
             self.full_filename,
-            main_page="index.html",
+            main_path="A/index.html",
             language=self.language or "eng",
             title=self.title,
             date=datetime.date.today(),
-            compression="zstd",
             **self.metadata,
-        ) as zimcreator:
+        ).start()
 
-            for article in self.generate_all_articles():
-                if article:
-                    zimcreator.add_zim_article(article)
-                    if isinstance(article, WARCPayloadArticle):
-                        self.total_records += 1
-                        self.update_stats()
+        self.add_replayer()
 
-            logger.debug(f"Found {self.total_records} records in WARCs")
+        for filename in pkg_resources.resource_listdir("warc2zim", "templates"):
+            if filename == HEAD_INSERT_FILE or filename == SW_JS:
+                continue
+
+            self.creator.add_item(StaticArticle(self.env, filename, self.main_url))
+
+        for record in self.iter_all_warc_records():
+            self.add_items_for_warc_record(record)
+
+        # process revisits, headers only
+        for url, record in self.revisits.items():
+            if url not in self.indexed_urls:
+                logger.debug(
+                    "Adding revisit {0} -> {1}".format(
+                        url, record.rec_headers["WARC-Refers-To-Target-URI"]
+                    )
+                )
+                self.creator.add_item(WARCHeadersItem(record))
+                self.indexed_urls.add(url)
+
+        if self.favicon_url:
+            self.add_illustration()
+
+        logger.debug(f"Found {self.total_records} records in WARCs")
+
+        self.creator.finish()
 
     def iter_all_warc_records(self):
         # add custom css records
@@ -588,36 +526,47 @@ class WARC2Zim:
                 self.language = lang_elem.attrs["content"]
                 return
 
-    def generate_all_articles(self):
-        # add replay system
-        for article in self.replay_articles:
-            yield article
-
-        for record in self.iter_all_warc_records():
-            yield from self.articles_for_warc_record(record)
-
-        # process revisits, headers only
-        for url, record in self.revisits.items():
-            if url not in self.indexed_urls:
-                logger.debug(
-                    "Adding revisit {0} -> {1}".format(
-                        url, record.rec_headers["WARC-Refers-To-Target-URI"]
-                    )
-                )
-                yield WARCHeadersArticle(record)
-                self.indexed_urls.add(url)
-
-        if not self.favicon_url:
+    def add_illustration(self, record=None):
+        if self.favicon_url in self.indexed_urls:
             return
 
-        if self.favicon_url not in self.indexed_urls:
-            logger.debug("Favicon not found in WARCs, fetching directly")
+        # add illustration from favicon option or in-warc favicon
+        logger.info(
+            "Adding illustration from "
+            + (self.favicon_url if record is None else "WARC")
+        )
+        favicon_fname = pathlib.Path(urlparse(self.favicon_url).path).name
+        src_illus_fpath = pathlib.Path(".").joinpath(favicon_fname)
+
+        # reusing payload from WARC record
+        if record:
+            with open(src_illus_fpath, "w") as fh:
+                if hasattr(record, "buffered_stream"):
+                    record.buffered_stream.seek(0)
+                    fh.write(record.buffered_stream.read())
+                else:
+                    fh.write(record.content_stream().read())
+        # fetching online
+        else:
             try:
-                yield RemoteArticle(canonicalize(self.favicon_url), self.favicon_url)
-            except Exception:
+                handle_user_provided_file(source=self.favicon_url, dest=src_illus_fpath)
+            except Exception as exc:
+                logger.warning(
+                    "Unable to retrieve favicon. "
+                    "ZIM won't have an illustration: {exc}".format(exc=exc)
+                )
                 return
 
-        yield FaviconRedirectArticle(self.favicon_url)
+        # convert to PNG (might already be PNG but it's OK)
+        illus_fpath = src_illus_fpath.with_suffix(".png")
+        convert_image(src_illus_fpath, illus_fpath)
+
+        # resize to appropriate size (ZIM uses 48x48 so we double for retina)
+        for size in (96, 48):
+            resize_image(illus_fpath, width=size, height=size, method="thumbnail")
+            with open(illus_fpath, "rb") as fh:
+                self.creator.add_illustration(size, fh.read())
+        src_illus_fpath.unlink()
 
     def is_self_redirect(self, record, url):
         if record.rec_type != "response":
@@ -629,7 +578,7 @@ class WARC2Zim:
         location = record.http_headers["Location"]
         return canonicalize(url) == canonicalize(location)
 
-    def articles_for_warc_record(self, record):
+    def add_items_for_warc_record(self, record):
         url = get_record_url(record)
         if not url:
             logger.debug(f"Skipping record with empty WARC-Target-URI {record}")
@@ -653,15 +602,19 @@ class WARC2Zim:
                 logger.debug("Skipping self-redirect: " + url)
                 return
 
-            yield WARCHeadersArticle(record)
-            payload_article = WARCPayloadArticle(
-                record, self.head_insert, self.css_insert
-            )
+            self.creator.add_item(WARCHeadersItem(record))
+            payload_item = WARCPayloadItem(record, self.head_insert, self.css_insert)
 
-            if len(payload_article.payload) != 0:
-                yield payload_article
+            if len(payload_item.content) != 0:
+                self.creator.add_item(payload_item)
+                self.total_records += 1
+                self.update_stats()
 
+            logger.debug(f"Adding {url}")
             self.indexed_urls.add(url)
+
+            if url == self.favicon_url:
+                self.add_illustration(record=record)
 
         elif (
             record.rec_headers["WARC-Refers-To-Target-URI"] != url
