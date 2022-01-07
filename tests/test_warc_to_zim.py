@@ -10,9 +10,9 @@ from io import BytesIO
 import pytest
 import requests
 
-import libzim.reader
 from warcio import ArchiveIterator
 from jinja2 import Environment, PackageLoader
+from zimscraperlib.zim import Archive
 
 from warc2zim.main import (
     warc2zim,
@@ -87,17 +87,21 @@ def fuzzycheck(request):
 # ============================================================================
 class TestWarc2Zim(object):
     def list_articles(self, zimfile):
-        zim_fh = libzim.reader.File(zimfile)
-        for x in range(zim_fh.article_count):
-            yield zim_fh.get_article_by_id(x)
+        zim_fh = Archive(zimfile)
+        for x in range(zim_fh.entry_count):
+            yield zim_fh.get_entry_by_id(x)
+
+    def get_metadata(self, zimfile, name):
+        zim_fh = Archive(zimfile)
+        return zim_fh.get_metadata(name)
 
     def get_article(self, zimfile, path):
-        zim_fh = libzim.reader.File(zimfile)
-        return zim_fh.get_article(path).content.tobytes()
+        zim_fh = Archive(zimfile)
+        return zim_fh.get_content(path)
 
     def get_article_raw(self, zimfile, path):
-        zim_fh = libzim.reader.File(zimfile)
-        return zim_fh.get_article(path)
+        zim_fh = Archive(zimfile)
+        return zim_fh.get_item(path)
 
     def verify_warc_and_zim(self, warcfile, zimfile):
         assert os.path.isfile(warcfile)
@@ -115,7 +119,7 @@ class TestWarc2Zim(object):
         # track to avoid checking duplicates, which are not written to ZIM
         warc_urls = set()
 
-        zim_fh = libzim.reader.File(zimfile)
+        zim_fh = Archive(zimfile)
         for record in iter_warc_records([warcfile]):
             url = get_record_url(record)
             if not url:
@@ -137,15 +141,16 @@ class TestWarc2Zim(object):
             # parse headers as record, ensure headers match
             url_no_scheme = url.split("//", 2)[1]
             print(url_no_scheme)
-            headers = zim_fh.get_article("H/" + url_no_scheme)
-            parsed_record = next(ArchiveIterator(BytesIO(headers.content.tobytes())))
+            parsed_record = next(
+                ArchiveIterator(BytesIO(zim_fh.get_content("H/" + url_no_scheme)))
+            )
 
             assert record.rec_headers == parsed_record.rec_headers
             assert record.http_headers == parsed_record.http_headers
 
             # ensure payloads match
             try:
-                payload = zim_fh.get_article("A/" + url_no_scheme)
+                payload = zim_fh.get_item("A/" + url_no_scheme)
             except KeyError:
                 payload = None
 
@@ -215,43 +220,47 @@ class TestWarc2Zim(object):
         assert os.path.isfile(zim_output)
 
         all_articles = {
-            article.longurl: article.title for article in self.list_articles(zim_output)
+            article.path: article.title for article in self.list_articles(zim_output)
         }
 
         assert all_articles == {
             # entries from WARC
             "A/example.com/": "Example Domain",
-            "H/example.com/": "example.com/",
+            "H/example.com/": "H/example.com/",
             # replay system files
-            "A/index.html": "index.html",
-            "A/load.js": "load.js",
-            "A/404.html": "404.html",
-            "A/sw.js": "sw.js",
-            "A/topFrame.html": "topFrame.html",
-            # ZIM metadata
-            "M/Compression": "Compression",
-            "M/Counter": "Counter",
-            "M/Creator": "Creator",
-            "M/Date": "Date",
-            "M/Description": "Description",
-            "M/Language": "Language",
-            "M/Name": "Name",
-            "M/Publisher": "Publisher",
-            "M/Scraper": "Scraper",
-            "M/Source": "Source",
-            "M/Tags": "Tags",
-            "M/Title": "Title",
-            # Xapian
-            "X/fulltext/xapian": "Xapian Fulltext Index",
-            "X/title/xapian": "Xapian Title Index",
+            "A/index.html": "A/index.html",
+            "A/load.js": "A/load.js",
+            "A/404.html": "A/404.html",
+            "A/sw.js": "A/sw.js",
+            "A/topFrame.html": "A/topFrame.html",
         }
 
-        assert self.get_article(zim_output, "M/Description") == b"test zim"
+        zim_fh = Archive(zim_output)
+
+        # ZIM metadata
+        assert list(zim_fh.metadata.keys()) == [
+            "Counter",
+            "Creator",
+            "Date",
+            "Description",
+            "Language",
+            "Name",
+            "Publisher",
+            "Scraper",
+            "Source",
+            "Tags",
+            "Title",
+        ]
+
+        assert zim_fh.has_fulltext_index
+        assert zim_fh.has_title_index
+
+        assert self.get_metadata(zim_output, "Description") == b"test zim"
         assert (
-            self.get_article(zim_output, "M/Tags")
+            self.get_metadata(zim_output, "Tags")
             == b"_ftindex:yes;_category:other;_sw:yes;some;foo;bar"
         )
-        assert self.get_article(zim_output, "M/Title") == b"Some Title"
+        assert self.get_metadata(zim_output, "Title") == b"Some Title"
 
     def test_warc_to_zim(self, cmdline, tmp_path):
         # intput filename
@@ -301,7 +310,7 @@ class TestWarc2Zim(object):
         zim_output = tmp_path / zim_output
 
         for article in self.list_articles(zim_output):
-            url = article.longurl
+            url = article.path
             # ignore the replay files, which have only one path segment
             if url.startswith("A/") and len(url.split("/")) > 2:
                 assert url.startswith("A/example.com/")
@@ -323,7 +332,7 @@ class TestWarc2Zim(object):
         zim_output = tmp_path / zim_output
 
         for article in self.list_articles(zim_output):
-            url = article.longurl
+            url = article.path
             if url.startswith("H/"):
                 # ensure there is only one H/ record, and its a 200 (not 301)
                 assert url == "H/kiwix.org/"
@@ -350,25 +359,25 @@ class TestWarc2Zim(object):
         zim_output = tmp_path / zim_output
 
         for article in self.list_articles(zim_output):
-            url = article.longurl
+            url = article.path
             # ignore the replay files, which have only one path segment
             if url.startswith("A/") and len(url.split("/")) > 2:
                 assert "reseau-canope.fr/" in url
 
         # test detected language
-        assert self.get_article(zim_output, "M/Language") == b"fra"
+        assert self.get_metadata(zim_output, "Language") == b"fra"
 
         # test detected favicon
-        favicon = self.get_article_raw(zim_output, "-/favicon")
-        assert favicon.is_redirect
-        assert (
-            favicon.get_redirect_article().longurl
-            == "A/lesfondamentaux.reseau-canope.fr/fileadmin/template/img/favicon.ico"
+        assert self.get_article(
+            zim_output,
+            "A/lesfondamentaux.reseau-canope.fr/fileadmin/template/img/favicon.ico",
         )
+        with pytest.raises(RuntimeError, match="Cannot find metadata"):
+            self.get_metadata(zim_output, "Illustration_48x48@1")
 
         # test default tags added
         assert (
-            self.get_article(zim_output, "M/Tags")
+            self.get_metadata(zim_output, "Tags")
             == b"_ftindex:yes;_category:other;_sw:yes"
         )
 
