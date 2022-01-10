@@ -372,8 +372,7 @@ class TestWarc2Zim(object):
             zim_output,
             "A/lesfondamentaux.reseau-canope.fr/fileadmin/template/img/favicon.ico",
         )
-        with pytest.raises(RuntimeError, match="Cannot find metadata"):
-            self.get_metadata(zim_output, "Illustration_48x48@1")
+        assert self.get_metadata(zim_output, "Illustration_48x48@1")
 
         # test default tags added
         assert (

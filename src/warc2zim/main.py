@@ -540,7 +540,7 @@ class WARC2Zim:
 
         # reusing payload from WARC record
         if record:
-            with open(src_illus_fpath, "w") as fh:
+            with open(src_illus_fpath, "wb") as fh:
                 if hasattr(record, "buffered_stream"):
                     record.buffered_stream.seek(0)
                     fh.write(record.buffered_stream.read())
@@ -610,11 +610,10 @@ class WARC2Zim:
                 self.total_records += 1
                 self.update_stats()
 
-            logger.debug(f"Adding {url}")
-            self.indexed_urls.add(url)
-
             if url == self.favicon_url:
                 self.add_illustration(record=record)
+
+            self.indexed_urls.add(url)
 
         elif (
             record.rec_headers["WARC-Refers-To-Target-URI"] != url
