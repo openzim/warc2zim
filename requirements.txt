@@ -7,3 +7,5 @@ jinja2>=2.11,<3.0
 # to support possible brotli content in warcs
 brotlipy==0.7.0
 cdxj_indexer>=1.4.3
+# jinja2 dependency (https://github.com/pallets/markupsafe/issues/284)
+MarkupSafe==2.0.1
