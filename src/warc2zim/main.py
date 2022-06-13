@@ -531,12 +531,26 @@ class WARC2Zim:
         if self.favicon_url in self.indexed_urls:
             return
 
+        if record and record.http_headers.get_statuscode() != "200":
+            logger.warning(
+                "Favicon WARC record ({url}) is not usable. Skipping".format(
+                    url=record.rec_headers.get("WARC-Target-URI")
+                )
+            )
+            return
+
         # add illustration from favicon option or in-warc favicon
-        logger.info(
-            "Adding illustration from "
-            + (self.favicon_url if record is None else "WARC")
-        )
-        favicon_fname = pathlib.Path(urlparse(self.favicon_url).path).name
+        if record is not None:
+            logger.info(
+                "Adding illustration from WARC record ({url})".format(
+                    url=record.rec_headers.get("WARC-Target-URI")
+                )
+            )
+            src_url = record.rec_headers.get("WARC-Target-URI")
+        else:
+            logger.info("Adding illustration from {url}".format(url=self.favicon_url))
+            src_url = self.favicon_url
+        favicon_fname = pathlib.Path(urlparse(src_url).path).name
         src_illus_fpath = pathlib.Path(".").joinpath(favicon_fname)
 
         # reusing payload from WARC record
