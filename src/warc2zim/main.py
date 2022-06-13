@@ -233,8 +233,9 @@ class WARC2Zim:
 
         if not self.zim_file:
             self.zim_file = "{name}_{period}.zim".format(
-                name=args.name, period=time.strftime("%Y-%m")
+                name=args.name, period="{period}"
             )
+        self.zim_file = self.zim_file.format(period=time.strftime("%Y-%m"))
 
         self.full_filename = os.path.join(self.output, self.zim_file)
 
