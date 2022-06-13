@@ -19,7 +19,7 @@ REPLAY_SOURCE_URL = "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.9.6/dist/
 
 def download_replay(name):
     print("Downloading " + REPLAY_SOURCE_URL + name)
-    with urllib.request.urlopen(REPLAY_SOURCE_URL + name) as response:
+    with urllib.request.urlopen(REPLAY_SOURCE_URL + name) as response:  # nosec
         with open(root_dir.joinpath("src", "warc2zim", "templates", name), "wb") as fh:
             fh.write(response.read())
 
