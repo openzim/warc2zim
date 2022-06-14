@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 * Updated zimscraperlib to 1.6 using libzim7.2
+* Updated warcio to 1.7.4
 * Added support for {period} replacement in --zim-file
 * Using fixed MarkupSafe version (Jinja2 dependency)
 

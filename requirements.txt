@@ -1,4 +1,4 @@
-warcio>=1.7.3,<1.8
+warcio>=1.7.4,<1.8
 requests>=2.25.1,<3.0
 beautifulsoup4>=4.9.3,<4.10
 zimscraperlib>=1.6.0,<1.7

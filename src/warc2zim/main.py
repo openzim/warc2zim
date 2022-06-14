@@ -186,7 +186,7 @@ class WARCPayloadItem(StaticItem):
         return self.title
 
     def get_hints(self):
-        return {Hint.FRONT_ARTICLE: False}
+        return {}
 
 
 # ============================================================================
@@ -413,7 +413,7 @@ class WARC2Zim:
 
         # process revisits, headers only
         for url, record in self.revisits.items():
-            if url not in self.indexed_urls:
+            if canonicalize(url) not in self.indexed_urls:
                 logger.debug(
                     "Adding revisit {0} -> {1}".format(
                         url, record.rec_headers["WARC-Refers-To-Target-URI"]
