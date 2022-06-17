@@ -20,6 +20,22 @@ warc2zim ./path/to/myarchive.warc --output /output --name myarchive.zim -u https
 
 The above will create a ZIM file `/output/myarchive.zim` with `https://example.com/` set as the main page.
 
+### Installation
+
+```sh
+python3 -m venv ./env  # creates a virtual python environment in ./env folder
+./env/bin/pip install -U pip  # upgrade pip (package manager). recommended
+./env/bin/pip install -U warc2zim  # install/upgrade warc2zim inside virtualenv
+
+# direct access to in-virtualenv warc2zim binary, without shell-attachment
+./env/bin/warc2zim --help
+
+# alternatively, attach virtualenv to shell
+source env/bin/activate
+warc2zim --help
+deactivate  # unloads virtualenv from shell
+```
+
 ## URL Filtering
 
 By default, only URLs from domain of the main page and subdomains are included, eg. only `*.example.com` urls in the above example.
