@@ -119,6 +119,13 @@ FUZZY_RULES = [
 
 CUSTOM_CSS_URL = "https://warc2zim.kiwix.app/custom.css"
 
+DUPLICATE_EXC_STR = re.compile(
+    r"^Impossible to add(.+)"
+    r"dirent\'s title to add is(.+)"
+    r"existing dirent's title is(.+)",
+    re.MULTILINE | re.DOTALL,
+)
+
 # ============================================================================
 class WARCHeadersItem(StaticItem):
     """WARCHeadersItem used to store the WARC + HTTP headers as text
@@ -419,8 +426,12 @@ class WARC2Zim:
                         url, record.rec_headers["WARC-Refers-To-Target-URI"]
                     )
                 )
-                self.creator.add_item(WARCHeadersItem(record))
-                self.indexed_urls.add(url)
+                try:
+                    self.creator.add_item(WARCHeadersItem(record))
+                except RuntimeError as exc:
+                    if not DUPLICATE_EXC_STR.match(str(exc)):
+                        raise exc
+                self.indexed_urls.add(canonicalize(url))
 
         if self.favicon_url:
             self.add_illustration()
@@ -599,7 +610,7 @@ class WARC2Zim:
             logger.debug(f"Skipping record with empty WARC-Target-URI {record}")
             return
 
-        if url in self.indexed_urls:
+        if canonicalize(url) in self.indexed_urls:
             logger.debug("Skipping duplicate {0}, already added to ZIM".format(url))
             return
 
@@ -617,18 +628,27 @@ class WARC2Zim:
                 logger.debug("Skipping self-redirect: " + url)
                 return
 
-            self.creator.add_item(WARCHeadersItem(record))
+            try:
+                self.creator.add_item(WARCHeadersItem(record))
+            except RuntimeError as exc:
+                if not DUPLICATE_EXC_STR.match(str(exc)):
+                    raise exc
+
             payload_item = WARCPayloadItem(record, self.head_insert, self.css_insert)
 
             if len(payload_item.content) != 0:
-                self.creator.add_item(payload_item)
+                try:
+                    self.creator.add_item(payload_item)
+                except RuntimeError as exc:
+                    if not DUPLICATE_EXC_STR.match(str(exc)):
+                        raise exc
                 self.total_records += 1
                 self.update_stats()
 
             if url == self.favicon_url:
                 self.add_illustration(record=record)
 
-            self.indexed_urls.add(url)
+            self.indexed_urls.add(canonicalize(url))
 
         elif (
             record.rec_headers["WARC-Refers-To-Target-URI"] != url
