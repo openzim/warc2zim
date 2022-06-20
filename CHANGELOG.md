@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * Using wabac.js 2.12.0
 * Prevent duplicate entries from failing
+* Fixed crash on HTTP 300 records (#94)
 
 ## [1.4.0] – 2022-06-14
 

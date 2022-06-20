@@ -598,7 +598,10 @@ class WARC2Zim:
         if record.rec_type != "response":
             return False
 
-        if not record.http_headers.get_statuscode().startswith("3"):
+        if (
+            not record.http_headers.get_statuscode().startswith("3")
+            or record.http_headers.get_statuscode() == "300"
+        ):
             return False
 
         location = record.http_headers["Location"]
