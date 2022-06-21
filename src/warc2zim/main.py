@@ -591,7 +591,12 @@ class WARC2Zim:
         for size in (96, 48):
             resize_image(illus_fpath, width=size, height=size, method="thumbnail")
             with open(illus_fpath, "rb") as fh:
-                self.creator.add_illustration(size, fh.read())
+                try:
+                    self.creator.add_illustration(size, fh.read())
+                except RuntimeError as exc:
+                    if not DUPLICATE_EXC_STR.match(str(exc)):
+                        raise exc
+                self.indexed_urls.add(src_url)
         src_illus_fpath.unlink()
 
     def is_self_redirect(self, record, url):
