@@ -585,7 +585,16 @@ class WARC2Zim:
 
         # convert to PNG (might already be PNG but it's OK)
         illus_fpath = src_illus_fpath.with_suffix(".png")
-        convert_image(src_illus_fpath, illus_fpath)
+        try:
+            convert_image(src_illus_fpath, illus_fpath)
+        except Exception as exc:
+            logger.warning(
+                f"Unable to convert image from {illus_fpath}: Skipping illustration"
+            )
+            logger.exception(exc)
+            if src_illus_fpath.exists():
+                src_illus_fpath.unlink()
+            return
 
         # resize to appropriate size (ZIM uses 48x48 so we double for retina)
         for size in (96, 48):
