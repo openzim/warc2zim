@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Don't crash on failure to convert illustration (skip illus instead)
 
+### Changed
+
+- Fixed 404 page (#96)
+
 ## [1.4.3] - 2022-06-21
 
 ### Changed
