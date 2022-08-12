@@ -618,7 +618,7 @@ class WARC2Zim:
         ):
             return False
 
-        location = record.http_headers["Location"]
+        location = record.http_headers.get("Location", "")
         return canonicalize(url) == canonicalize(location)
 
     def add_items_for_warc_record(self, record):

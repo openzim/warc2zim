@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Fixed 404 page (#96)
+- Dont't crash on missing Location headers on potential redirect
 
 ## [1.4.3] - 2022-06-21
 
