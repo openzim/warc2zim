@@ -384,6 +384,7 @@ class WARC2Zim:
             setlocale(pathlib.Path(__file__).parent, lang_data.get("iso-639-1"))
         except Exception:
             logger.error(f"Invalid language setting `{self.language}`. Using `eng`.")
+            self.language = "eng"
 
         self.env = self.init_env()
 
