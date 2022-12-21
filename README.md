@@ -2,7 +2,7 @@
 [![](https://img.shields.io/pypi/v/warc2zim.svg)](https://pypi.python.org/pypi/warc2zim)
 ![CI](https://github.com/openzim/warc2zim/workflows/CI/badge.svg)
 [![Docker Build Status](https://img.shields.io/docker/cloud/build/openzim/warc2zim)](https://hub.docker.com/r/openzim/warc2zim)
-[![codecov](https://codecov.io/gh/openzim/warc2zim/branch/master/graph/badge.svg)](https://codecov.io/gh/openzim/warc2zim)
+[![codecov](https://codecov.io/gh/openzim/warc2zim/branch/main/graph/badge.svg)](https://codecov.io/gh/openzim/warc2zim)
 [![CodeFactor](https://www.codefactor.io/repository/github/openzim/warc2zim/badge)](https://www.codefactor.io/repository/github/openzim/warc2zim)
 
 warc2zim provides a way to convert WARC files to ZIM, storing the WARC payload and WARC+HTTP headers separately.
