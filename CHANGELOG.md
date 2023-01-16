@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed 404 page (#96)
 - Dont't crash on missing Location headers on potential redirect
 - Fixed incorrect ISO-639-3 --lang not replaced with `eng`
+- Don't fallback to `eng` if the host doesnt have the matching locale
 - Using wabac.js 2.15.0
 
 ## [1.4.3] - 2022-06-21
