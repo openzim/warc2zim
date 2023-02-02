@@ -16,7 +16,6 @@ from zimscraperlib.zim import Archive
 
 from warc2zim.main import (
     warc2zim,
-    HTML_RAW,
     canonicalize,
     iter_warc_records,
     get_record_url,
@@ -161,8 +160,8 @@ class TestWarc2Zim(object):
             else:
                 payload_content = payload.content.tobytes()
 
-                # if HTML_RAW, still need to account for the head insert, otherwise should have exact match
-                if payload.mimetype == HTML_RAW:
+                # if HTML, still need to account for the head insert, otherwise should have exact match
+                if payload.mimetype.startswith("text/html"):
                     assert head_insert in payload_content
                     assert (
                         payload_content.replace(head_insert, b"")
