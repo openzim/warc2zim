@@ -121,6 +121,7 @@ DUPLICATE_EXC_STR = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 
+
 # ============================================================================
 class WARCHeadersItem(StaticItem):
     """WARCHeadersItem used to store the WARC + HTTP headers as text
