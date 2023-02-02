@@ -5,7 +5,7 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (as of version 1.4.0).
 
-## [Unreleased]
+## [1.5.0] - 2023-02-02
 
 ### Added
 
@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dont't crash on missing Location headers on potential redirect
 - Fixed incorrect ISO-639-3 --lang not replaced with `eng`
 - Don't fallback to `eng` if the host doesnt have the matching locale
-- Using wabac.js 2.15.0
+- Using wabac.js 2.15.0 with fix for scope conflict in SW/DB
 - Payload entries now uses original ~`text/html` mimetype instead of `text/html;raw=true`
 - dont't crash on icon link with no href
 
