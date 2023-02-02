@@ -59,11 +59,6 @@ logger = logging.getLogger("warc2zim")
 # HTML mime types
 HTML_TYPES = ("text/html", "application/xhtml", "application/xhtml+xml")
 
-
-# HTML raw mime type (until https://github.com/kiwix/libkiwix/issues/671)
-HTML_RAW = "text/html;raw=true"
-
-
 # external sw.js filename
 SW_JS = "sw.js"
 
@@ -178,13 +173,12 @@ class WARCPayloadItem(StaticItem):
         else:
             self.content = self.record.content_stream().read()
 
-        if self.mimetype == "text/html":
+        if self.mimetype.startswith("text/html"):
             self.title = parse_title(self.content)
             if head_insert:
                 self.content = HEAD_INS.sub(head_insert, self.content)
             if css_insert:
                 self.content = CSS_INS.sub(css_insert, self.content)
-            self.mimetype = HTML_RAW
 
     def get_path(self):
         return "A/" + canonicalize(self.url)
@@ -193,7 +187,8 @@ class WARCPayloadItem(StaticItem):
         return self.title
 
     def get_hints(self):
-        return {}
+        is_front = self.mimetype.startswith("text/html")
+        return {Hint.FRONT_ARTICLE: is_front}
 
 
 # ============================================================================

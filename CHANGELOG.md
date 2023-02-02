@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed incorrect ISO-639-3 --lang not replaced with `eng`
 - Don't fallback to `eng` if the host doesnt have the matching locale
 - Using wabac.js 2.15.0
+- Payload entries now uses original ~`text/html` mimetype instead of `text/html;raw=true`
 
 ## [1.4.3] - 2022-06-21
 
