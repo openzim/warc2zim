@@ -514,7 +514,7 @@ class WARC2Zim:
             if not icon:
                 icon = soup.find("link", rel="icon")
 
-            if icon:
+            if icon and icon.attrs.get("href"):
                 self.favicon_url = urljoin(self.main_url, icon.attrs["href"])
             else:
                 self.favicon_url = urljoin(self.main_url, "/favicon.ico")
