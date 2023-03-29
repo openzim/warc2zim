@@ -200,7 +200,7 @@ class TestWarc2Zim(object):
                 "--zim-file",
                 zim_output,
                 "-r",
-                "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.15.3/dist/",
+                "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.15.4/dist/",
                 "--tags",
                 "some",
                 "--tags",
@@ -440,7 +440,7 @@ class TestWarc2Zim(object):
         zim_local_sw = "zim-local-sw.zim"
 
         res = requests.get(
-            "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.15.3/dist/sw.js"
+            "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.15.4/dist/sw.js"
         )
 
         with open(tmp_path / "sw.js", "wt") as fh:
