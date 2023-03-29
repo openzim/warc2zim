@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Using scraperlib 2.1.0
 - Using wabac.js 2.15.3
 
 ## [1.5.1] - 2023-02-06
