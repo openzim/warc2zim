@@ -30,6 +30,7 @@ CMDLINES = [
     ["example-response.warc"],
     ["example-response.warc", "--progress-file", "progress.json"],
     ["example-resource.warc.gz", "--favicon", "https://example.com/some/favicon.ico"],
+    ["example-resource.warc.gz", "--favicon", "https://www.google.com/favicon.ico"],
     ["example-revisit.warc.gz"],
     [
         "example-revisit.warc.gz",
@@ -200,7 +201,7 @@ class TestWarc2Zim(object):
                 "--zim-file",
                 zim_output,
                 "-r",
-                "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.15.5/dist/",
+                "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.16.5/dist/",
                 "--tags",
                 "some",
                 "--tags",
@@ -246,7 +247,6 @@ class TestWarc2Zim(object):
             "Name",
             "Publisher",
             "Scraper",
-            "Source",
             "Tags",
             "Title",
         ]
@@ -440,7 +440,7 @@ class TestWarc2Zim(object):
         zim_local_sw = "zim-local-sw.zim"
 
         res = requests.get(
-            "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.15.5/dist/sw.js"
+            "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.16.5/dist/sw.js"
         )
 
         with open(tmp_path / "sw.js", "wt") as fh:

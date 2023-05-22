@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Using scraperlib 2.1.0
-- Using wabac.js 2.15.5
+- Using scraperlib 3.1.1, openZIM metatadata now always set, using default if missing
+- Using wabac.js 2.16.5
 
 ## [1.5.1] - 2023-02-06
 
