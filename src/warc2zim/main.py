@@ -52,6 +52,10 @@ from jinja2 import Environment, PackageLoader
 
 from cdxj_indexer import iter_file_or_dir, buffering_record_iter
 
+from pywb.rewrite.default_rewriter import DefaultRewriter
+from pywb.rewrite.url_rewriter import UrlRewriter
+from pywb.rewrite.wburl import WbUrl
+from pywb.warcserver.index.cdxobject import CDXObject
 
 # Shared logger
 logger = logging.getLogger("warc2zim")
@@ -119,13 +123,31 @@ DUPLICATE_EXC_STR = re.compile(
 )
 
 
+
+class MyUrlRewriter(UrlRewriter):
+    def rewrite(self, url, mod=None, force_abs=False):
+        if "style.css" in url:
+            print(f"mod: {mod} | url : {url}")
+            breakpoint()
+        return quote(super().rewrite(url, None, force_abs))
+        return super().rewrite(quote(canonicalize(url)), None, force_abs)
+
+    def rewrite(self, url, mod=None, force_abs=False):
+        import html
+        # The url maybe stored in a html and so be html encoded
+        url = html.unescape(url)
+        url = super().rewrite(url, None, force_abs)
+        #url = quote(url)
+        url = html.escape(url)
+        return url
+
 # ============================================================================
 class WARCHeadersItem(StaticItem):
     """WARCHeadersItem used to store the WARC + HTTP headers as text
     Usually stored under H namespace
     """
 
-    def __init__(self, record):
+    def __init__(self, record, status):
         super().__init__()
         self.record = record
         self.url = get_record_url(record)
@@ -158,28 +180,18 @@ class WARCPayloadItem(StaticItem):
     Usually stored under A namespace
     """
 
-    def __init__(self, record, head_insert=None, css_insert=None):
+    def __init__(self, record, content_gen):
         super().__init__()
         self.record = record
         self.url = get_record_url(record)
         self.mimetype = get_record_mime_type(record)
         self.title = ""
-
-        if hasattr(self.record, "buffered_stream"):
-            self.record.buffered_stream.seek(0)
-            self.content = self.record.buffered_stream.read()
-        else:
-            self.content = self.record.content_stream().read()
-
+        self.content = b"".join(content_gen)
         if self.mimetype.startswith("text/html"):
             self.title = parse_title(self.content)
-            if head_insert:
-                self.content = HEAD_INS.sub(head_insert, self.content)
-            if css_insert:
-                self.content = CSS_INS.sub(css_insert, self.content)
 
     def get_path(self):
-        return "A/" + canonicalize(self.url)
+        return canonicalize(self.url)
 
     def get_title(self):
         return self.title
@@ -368,8 +380,8 @@ class WARC2Zim:
         self.env = self.init_env()
 
         # init head insert
-        template = self.env.get_template(HEAD_INSERT_FILE)
-        self.head_insert = ("<head>" + template.render()).encode("utf-8")
+        self.head_template = self.env.get_template(HEAD_INSERT_FILE)
+
         if self.custom_css:
             self.css_insert = (
                 f'\n<link type="text/css" href="{CUSTOM_CSS_URL}" '
@@ -386,7 +398,6 @@ class WARC2Zim:
             date=datetime.date.today(),
             **self.metadata,
         ).start()
-
 
         for filename in pkg_resources.resource_listdir("warc2zim", "templates"):
             if filename == HEAD_INSERT_FILE:
@@ -627,13 +638,15 @@ class WARC2Zim:
                 logger.debug("Skipping self-redirect: " + url)
                 return
 
+            (status, content_gen, rewrited) = self.rewrite(record, self.css_insert)
             try:
-                self.creator.add_item(WARCHeadersItem(record))
+                self.creator.add_item(WARCHeadersItem(record, status))
             except RuntimeError as exc:
                 if not DUPLICATE_EXC_STR.match(str(exc)):
                     raise exc
 
-            payload_item = WARCPayloadItem(record, self.head_insert, self.css_insert)
+
+            payload_item = WARCPayloadItem(record, content_gen)
 
             if len(payload_item.content) != 0:
                 try:
@@ -656,6 +669,26 @@ class WARC2Zim:
             self.revisits[url] = record
 
         self.add_fuzzy_match_record(url)
+
+    def rewrite(self, record, css_insert):
+        rewriter = DefaultRewriter("mp_") # mp_ is the mode for "everything" (detect from mimetype)
+
+
+        record_url = get_record_url(record)
+        # We want to rewrite our url by inserting at beggining "${RW_PREFIX}/"
+        url_rewriter = MyUrlRewriter(record_url, "/content/test/")
+
+        cdx = CDXObject()
+        cdx['url'] = record_url
+        cdx['urlkey'] = canonicalize(record_url)
+
+        head_insert = self.head_template.render(cdx=cdx, static_prefix="/content/test/A").encode("utf-8")
+
+        def head_insert_func(rule, cdx):
+            return ((head_insert or b"") + (css_insert or b"")).decode("utf-8")
+
+        return rewriter(
+          record, url_rewriter, cookie_rewriter=None, head_insert_func=head_insert_func, cdx=cdx)
 
     def add_fuzzy_match_record(self, url):
         fuzzy_url = url
@@ -805,8 +838,11 @@ def warc2zim(args=None):
 # ============================================================================
 def canonicalize(url):
     """Return a 'canonical' version of the url under which it is stored in the ZIM
-    For now, just removing the scheme http:// or https:// scheme
+//    For now, just removing the scheme http:// or https:// scheme
+      Keep it as it is for now
     """
+
+    return url
     if url.startswith("https://"):
         return url[8:]
 
