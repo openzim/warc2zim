@@ -288,29 +288,6 @@ class WARC2Zim:
             self.stats_filename = self.output / self.stats_filename
         self.written_records = self.total_records = 0
 
-    def add_replayer(self):
-        if self.replay_viewer_source and re.match(
-            r"^https?\:", self.replay_viewer_source
-        ):
-            self.creator.add_item(
-                URLItem(
-                    url=self.replay_viewer_source + SW_JS,
-                    path="A/" + SW_JS,
-                    mimetype="application/javascript",
-                )
-            )
-        elif self.replay_viewer_source:
-            self.creator.add_item_for(
-                fpath=self.replay_viewer_source + SW_JS,
-                path="A/" + SW_JS,
-                mimetype="application/javascript",
-            )
-        else:
-            self.creator.add_item(
-                StaticArticle(
-                    self.env, SW_JS, self.main_url, mimetype="application/javascript"
-                )
-            )
 
     def init_env(self):
         # autoescape=False to allow injecting html entities from translated text
@@ -409,7 +386,6 @@ class WARC2Zim:
             **self.metadata,
         ).start()
 
-        self.add_replayer()
 
         for filename in pkg_resources.resource_listdir("warc2zim", "templates"):
             if filename == HEAD_INSERT_FILE or filename == SW_JS:
