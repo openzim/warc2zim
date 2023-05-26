@@ -59,9 +59,6 @@ logger = logging.getLogger("warc2zim")
 # HTML mime types
 HTML_TYPES = ("text/html", "application/xhtml", "application/xhtml+xml")
 
-# external sw.js filename
-SW_JS = "sw.js"
-
 # head insert template
 HEAD_INSERT_FILE = "sw_check.html"
 
@@ -202,13 +199,14 @@ class StaticArticle(StaticItem):
         self.mime = get_mime_for_name(filename)
         self.mime = self.mime or "application/octet-stream"
 
-        if filename != SW_JS:
+        if kwargs.get("raw", False):
+            self.content = pkg_resources.resource_string(
+                "warc2zim", "statics/" + filename
+            ).decode("utf-8")
+        else:
             template = env.get_template(filename)
             self.content = template.render(MAIN_URL=self.main_url)
-        else:
-            self.content = pkg_resources.resource_string(
-                "warc2zim", "templates/" + filename
-            ).decode("utf-8")
+
 
     def get_path(self):
         return "A/" + self.filename
@@ -388,10 +386,13 @@ class WARC2Zim:
 
 
         for filename in pkg_resources.resource_listdir("warc2zim", "templates"):
-            if filename == HEAD_INSERT_FILE or filename == SW_JS:
+            if filename == HEAD_INSERT_FILE:
                 continue
 
             self.creator.add_item(StaticArticle(self.env, filename, self.main_url))
+
+        for filename in pkg_resources.resource_listdir("warc2zim", "statics"):
+            self.creator.add_item(StaticArticle(self.env, filename, self.main_url, raw=True))
 
         for record in self.iter_all_warc_records():
             self.add_items_for_warc_record(record)
