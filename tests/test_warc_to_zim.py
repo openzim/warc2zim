@@ -112,7 +112,8 @@ class TestWarc2Zim(object):
             autoescape=False,
         )
 
-        head_insert = env.get_template("sw_check.html").render().encode("utf-8")
+        # [TOFIX]
+        head_insert = b""
 
         # track to avoid checking duplicates, which are not written to ZIM
         warc_urls = set()
@@ -220,8 +221,6 @@ class TestWarc2Zim(object):
                 str(tmp_path),
                 "--zim-file",
                 zim_output,
-                "-r",
-                "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.16.11/dist/",
                 "--tags",
                 "some",
                 "--tags",
@@ -248,10 +247,6 @@ class TestWarc2Zim(object):
             "example.com/": "Example Domain",
             # replay system files
             "A/index.html": "A/index.html",
-            "A/load.js": "A/load.js",
-            "A/404.html": "A/404.html",
-            "A/sw.js": "A/sw.js",
-            "A/topFrame.html": "A/topFrame.html",
         }
 
         zim_fh = Archive(zim_output)
@@ -408,18 +403,13 @@ class TestWarc2Zim(object):
 
         # check articles from different warc records in tests/data dir
 
-        # ensure trailing slash added
-        assert b'window.mainUrl = "http://example.com/"' in self.get_article(
-            zim_output, "A/index.html"
-        )
-
         # from example.warc.gz
-        assert self.get_article(zim_output, "A/example.com/") != b""
+        assert self.get_article(zim_output, "example.com/") != b""
 
         # from single-page-test.warc
         assert (
             self.get_article(
-                zim_output, "A/lesfondamentaux.reseau-canope.fr/accueil.html"
+                zim_output, "lesfondamentaux.reseau-canope.fr/accueil.html"
             )
             != b""
         )
@@ -445,54 +435,6 @@ class TestWarc2Zim(object):
         for entry in fuzzycheck["entries"]:
             # This should be item and get_article_raw is eq to getItem and it will fail if it is not a item
             self.get_article_raw(zim_output, entry)
-
-    def test_local_replay_viewer_url(self, tmp_path):
-        zim_local_sw = "zim-local-sw.zim"
-
-        res = requests.get(
-            "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.16.11/dist/sw.js"
-        )
-
-        with open(tmp_path / "sw.js", "wt") as fh:
-            fh.write(res.text)
-
-        main(
-            [
-                "-v",
-                os.path.join(TEST_DATA_DIR, "example-response.warc"),
-                "-r",
-                str(tmp_path) + "/",
-                "--output",
-                str(tmp_path),
-                "--name",
-                "local-sw",
-                "--zim-file",
-                zim_local_sw,
-            ]
-        )
-
-        assert os.path.isfile(tmp_path / zim_local_sw)
-
-    def test_error_bad_replay_viewer_url(self, tmp_path):
-        zim_output_not_created = "zim-out-not-created.zim"
-        with pytest.raises(Exception) as e:
-            main(
-                [
-                    "-v",
-                    os.path.join(TEST_DATA_DIR, "example-response.warc"),
-                    "-r",
-                    "x-invalid-x",
-                    "--output",
-                    str(tmp_path),
-                    "--name",
-                    "bad",
-                    "--zim-file",
-                    zim_output_not_created,
-                ]
-            )
-
-        # zim file should not have been created since replay viewer could not be loaded
-        assert not os.path.isfile(tmp_path / zim_output_not_created)
 
     def test_error_bad_main_page(self, tmp_path):
         zim_output_not_created = "zim-out-not-created.zim"

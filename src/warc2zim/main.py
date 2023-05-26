@@ -27,12 +27,6 @@ def main(args=None):
     )
 
     parser.add_argument(
-        "-r",
-        "--replay-viewer-source",
-        help="""URL from which to load the ReplayWeb.page replay viewer from""",
-    )
-
-    parser.add_argument(
         "-u",
         "--url",
         help="""The main url that should be loaded in the viewer on init""",

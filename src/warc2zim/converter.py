@@ -57,11 +57,8 @@ logger = logging.getLogger("warc2zim.converter")
 # HTML mime types
 HTML_TYPES = ("text/html", "application/xhtml", "application/xhtml+xml")
 
-# external sw.js filename
-SW_JS = "sw.js"
-
 # head insert template
-HEAD_INSERT_FILE = "sw_check.html"
+HEAD_INSERT_FILE = None
 
 # Default ZIM metadata tags
 DEFAULT_TAGS = ["_ftindex:yes", "_category:other", "_sw:yes"]
@@ -128,7 +125,6 @@ class Converter:
         self.inputs = args.inputs
         self.include_domains = args.include_domains
 
-        self.replay_viewer_source = args.replay_viewer_source
         self.custom_css = args.custom_css
 
         self.indexed_urls = set({})
@@ -142,30 +138,6 @@ class Converter:
             self.stats_filename = self.output / self.stats_filename
 
         self.written_records = self.total_records = 0
-
-    def add_replayer(self):
-        if self.replay_viewer_source and re.match(
-            r"^https?\:", self.replay_viewer_source
-        ):
-            self.creator.add_item(
-                URLItem(
-                    url=self.replay_viewer_source + SW_JS,
-                    path="A/" + SW_JS,
-                    mimetype="application/javascript",
-                )
-            )
-        elif self.replay_viewer_source:
-            self.creator.add_item_for(
-                fpath=self.replay_viewer_source + SW_JS,
-                path="A/" + SW_JS,
-                mimetype="application/javascript",
-            )
-        else:
-            self.creator.add_item(
-                StaticArticle(
-                    self.env, SW_JS, self.main_url, mimetype="application/javascript"
-                )
-            )
 
     def init_env(self):
         # autoescape=False to allow injecting html entities from translated text
@@ -250,8 +222,11 @@ class Converter:
         self.env = self.init_env()
 
         # init head insert
-        template = self.env.get_template(HEAD_INSERT_FILE)
-        self.head_insert = ("<head>" + template.render()).encode("utf-8")
+        if HEAD_INSERT_FILE:
+            template = self.env.get_template(HEAD_INSERT_FILE)
+            self.head_insert = ("<head>" + template.render()).encode("utf-8")
+        else:
+            self.head_insert = b""
         if self.custom_css:
             self.css_insert = (
                 f'\n<link type="text/css" href="{CUSTOM_CSS_URL}" '
@@ -280,10 +255,8 @@ class Converter:
             Scraper=f"warc2zim {get_version()}",
         ).start()
 
-        self.add_replayer()
-
         for filename in pkg_resources.resource_listdir("warc2zim", "templates"):
-            if filename == HEAD_INSERT_FILE or filename == SW_JS:
+            if filename == HEAD_INSERT_FILE:
                 continue
 
             self.creator.add_item(StaticArticle(self.env, filename, self.main_url))
