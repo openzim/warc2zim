@@ -718,7 +718,10 @@ def iter_warc_records(inputs):
         with open(filename, "rb") as fh:
             for record in buffering_record_iter(ArchiveIterator(fh), post_append=True):
                 if record.rec_type in ("resource", "response", "revisit"):
+                    __raw_stream = record.raw_stream
+                    record.raw_stream = record.buffered_stream
                     yield record
+                    record.raw_stream = __raw_stream
 
 
 # ============================================================================
