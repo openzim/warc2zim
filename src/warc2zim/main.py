@@ -420,7 +420,8 @@ class WARC2Zim:
                     )
                 )
                 try:
-                    self.creator.add_item(WARCHeadersItem(record))
+                    self.creator.add_redirection("H/" + canonicalize(url), "", record.rec_headers["WARC-Refers-To-Target-URI"], {})
+                    #self.creator.add_item(WARCHeadersItem(record, None))
                 except RuntimeError as exc:
                     if not DUPLICATE_EXC_STR.match(str(exc)):
                         raise exc
