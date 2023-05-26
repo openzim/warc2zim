@@ -1,0 +1,40 @@
+{% autoescape false %}
+
+<!-- WB Insert -->
+<script>
+{% set urlsplit = cdx.url | urlsplit %}
+  wbinfo = {};
+  wbinfo.top_url = "http://localhost:1234/content/test/{{ cdx.url }}/";
+  wbinfo.url = "{{ cdx.url }}";
+  wbinfo.timestamp = "";
+  wbinfo.request_ts = "";
+  wbinfo.prefix = decodeURI("http://localhost:1234/content/test/");
+  wbinfo.mod = "";
+  wbinfo.is_framed = false;
+  wbinfo.is_live = false;
+  wbinfo.coll = "test"; // Should be ${BOOK_NAME}
+  wbinfo.proxy_magic = "";
+  wbinfo.static_prefix = "{{ static_prefix }}/";
+  wbinfo.enable_auto_fetch = true;
+  wbinfo.convert_post_to_get = true;
+  wbinfo.target_frame = "___wb_replay_top_frame";
+  wbinfo.isSW = true;
+</script>
+<script src='{{ static_prefix }}/wombat.js'> </script>
+<script>
+  wbinfo.wombat_ts = "";
+  wbinfo.wombat_sec = "";
+  wbinfo.wombat_scheme = "{{ urlsplit.scheme }}"; // Should be ${SCHEME}
+  wbinfo.wombat_host = "{{ urlsplit.netloc }}";
+
+  wbinfo.wombat_opts = {};
+
+  if (window && window._WBWombatInit) {
+    window._WBWombatInit(wbinfo);
+  }
+</script>
+
+{% endautoescape %}
+
+<!-- End WB Insert -->
+

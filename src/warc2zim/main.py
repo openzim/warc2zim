@@ -31,7 +31,7 @@ import re
 import io
 import time
 from argparse import ArgumentParser
-from urllib.parse import urlsplit, urljoin, urlunsplit, urldefrag, urlparse
+from urllib.parse import urlsplit, urljoin, urlunsplit, urldefrag, urlparse, quote
 
 import pkg_resources
 import requests
@@ -60,7 +60,7 @@ logger = logging.getLogger("warc2zim")
 HTML_TYPES = ("text/html", "application/xhtml", "application/xhtml+xml")
 
 # head insert template
-HEAD_INSERT_FILE = "sw_check.html"
+HEAD_INSERT_FILE = "head_insert.html"
 
 
 HEAD_INS = re.compile(b"(<head>)", re.I)
@@ -294,6 +294,9 @@ class WARC2Zim:
             extensions=["jinja2.ext.i18n"],
             autoescape=False,
         )
+
+        env.filters['urlsplit'] = urlsplit
+        env.filters['tobool'] = lambda val: 'true' if val else 'false'
 
         try:
             env.install_gettext_translations(Locale.translation)
