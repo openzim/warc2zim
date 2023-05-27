@@ -123,22 +123,39 @@ DUPLICATE_EXC_STR = re.compile(
 )
 
 
-
 class MyUrlRewriter(UrlRewriter):
-    def rewrite(self, url, mod=None, force_abs=False):
-        if "style.css" in url:
-            print(f"mod: {mod} | url : {url}")
-            breakpoint()
-        return quote(super().rewrite(url, None, force_abs))
-        return super().rewrite(quote(canonicalize(url)), None, force_abs)
+    def standardize_url(self, url):
+        if url.startswith("//"):
+            return url[1:]
+        if url.startswith("/"):
+            # This is a absolute url, we must prefix with current host
+            host = urlsplit(str(self.wburl))[1]
+            return "/" + host + url
+        elif url.startswith("https://"):
+            url = url[7:]
+        elif url.startswith("http://"):
+            url = url[6:]
+        return url
 
     def rewrite(self, url, mod=None, force_abs=False):
         import html
         # The url maybe stored in a html and so be html encoded
-        url = html.unescape(url)
-        url = super().rewrite(url, None, force_abs)
-        #url = quote(url)
-        url = html.escape(url)
+        if mod in ["mp_"]:
+            url = html.unescape(url)
+        # Make the url absolute
+        url = self.standardize_url(url)
+        if url.startswith("/"):
+            base_url = self.standardize_url(str(self.wburl))
+            rel_url = os.path.relpath(url, os.path.dirname(base_url))
+            if url.endswith("/"):
+                rel_url+="/"
+            url = rel_url
+
+        else:
+            # Url is already relative (or is "data:", or ..)
+            pass
+        if mod in ["mp_"]:
+            url = html.escape(url)
         return url
 
 # ============================================================================
@@ -414,13 +431,14 @@ class WARC2Zim:
         # process revisits, headers only
         for url, record in self.revisits.items():
             if canonicalize(url) not in self.indexed_urls:
+                target_url = canonicalize(record.rec_headers["WARC-Refers-To-Target-URI"])
                 logger.debug(
                     "Adding revisit {0} -> {1}".format(
-                        url, record.rec_headers["WARC-Refers-To-Target-URI"]
+                        url, target_url
                     )
                 )
                 try:
-                    self.creator.add_redirection("H/" + canonicalize(url), "", record.rec_headers["WARC-Refers-To-Target-URI"], {})
+                    self.creator.add_redirection("H/" + canonicalize(url), "", target_url, {})
                     #self.creator.add_item(WARCHeadersItem(record, None))
                 except RuntimeError as exc:
                     if not DUPLICATE_EXC_STR.match(str(exc)):
@@ -692,6 +710,13 @@ class WARC2Zim:
           record, url_rewriter, cookie_rewriter=None, head_insert_func=head_insert_func, cdx=cdx)
 
     def add_fuzzy_match_record(self, url):
+        # fuzzy rules expect urls starting with a <scheme>//
+        for prefix in ("//", "http://", "https://"):
+            if url.startswith(prefix):
+                break
+        else:
+            url = "//"+url
+
         fuzzy_url = url
         for rule in FUZZY_RULES:
             fuzzy_url = rule["match"].sub(rule["replace"], url)
@@ -839,11 +864,9 @@ def warc2zim(args=None):
 # ============================================================================
 def canonicalize(url):
     """Return a 'canonical' version of the url under which it is stored in the ZIM
-//    For now, just removing the scheme http:// or https:// scheme
-      Keep it as it is for now
+       Remove the scheme.
     """
 
-    return url
     if url.startswith("https://"):
         return url[8:]
 

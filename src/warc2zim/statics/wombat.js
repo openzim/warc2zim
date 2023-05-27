@@ -2690,8 +2690,6 @@
       return url;
     }
 
-    url = check_url;
-
     // A special case where the port somehow gets dropped
     // Check for this and add it back in, eg http://localhost/path/ -> http://localhost:8080/path/
     if (
@@ -2815,13 +2813,57 @@
    * @param {?Document} [doc]
    * @return {?string}
    */
-  Wombat.prototype.rewriteUrl = function(url, useRel, mod, doc) {
-   // var rewritten = url.replace("?", "%3F");
-   // rewritten = rewritten.replace("&", "%26");
-    var rewritten = this.rewriteUrl_(url, useRel, "", doc);
+  Wombat.prototype.rewriteUrl = function(originalURL, useRel, mod, doc) {
+     // If undefined, just return it
+    if (!originalURL) return originalURL;
+
+    var urltype_ = typeof originalURL;
+    var url;
+
+    // If object, use toString
+    if (urltype_ === 'object') {
+      url = originalURL.toString();
+    } else if (urltype_ !== 'string') {
+      return originalURL;
+    } else {
+      url = originalURL;
+    }
+
+    // empty string check
+    if (!url) return url;
+
+    var preprocessed = url;
+    var rewritten;
+
+    if (url.indexOf(this.wb_info.prefix) === 0) {
+      // Url already starts with our prefix.  Allready rewritten ?
+      rewritten = url;
+    } else if (preprocessed.indexOf("//") === 0) {
+      preprocessed = preprocessed.substring(1);
+    } else {
+      if (preprocessed[0] == '/') {
+        preprocessed = "/" + this.wb_info.wombat_host + preprocessed;
+      } else {
+        var prefix = this.startsWithOneOf(url.toLowerCase(), ["http://", "https://"]);
+        if (prefix) {
+          preprocessed = url.substring(prefix.length-1);
+        } else {
+          preprocessed = url;
+        }
+      }
+    }
+
+    if (preprocessed[0] == '/') {
+      rewritten = this.wb_info.prefix + preprocessed.substring(1);
+      // Or this.wb_replay_prefix
+    } else {
+      rewritten = preprocessed;
+    }
+
+    //var rewritten = this.rewriteUrl_(preprocessed, useRel, "", doc);
     if (this.debug_rw) {
       if (url !== rewritten) {
-        console.log('REWRITE: ' + url + ' -> ' + rewritten);
+        console.log('REWRITE: ' + url + ' -> ' + preprocessed + ' -> ' + rewritten);
       } else {
         console.log('NOT REWRITTEN ' + url);
       }
