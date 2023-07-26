@@ -31,18 +31,19 @@ import re
 import io
 import time
 from argparse import ArgumentParser
-from urllib.parse import urlsplit, urljoin, urlunsplit, urldefrag, urlparse
+from urllib.parse import urlsplit, urljoin, urlunsplit, urldefrag
 
 import pkg_resources
 import requests
 from libzim.writer import Hint
 from warcio import ArchiveIterator, StatusAndHeaders
 from warcio.recordbuilder import RecordBuilder
+from zimscraperlib.constants import DEFAULT_DEV_ZIM_METADATA
+from zimscraperlib.download import stream_file
 from zimscraperlib.types import get_mime_for_name
 from zimscraperlib.i18n import setlocale, get_language_details, Locale
 from zimscraperlib.image.convertion import convert_image
 from zimscraperlib.image.transformation import resize_image
-from zimscraperlib.inputs import handle_user_provided_file
 from zimscraperlib.zim.creator import Creator
 from zimscraperlib.zim.items import StaticItem, URLItem
 from zimscraperlib.zim.providers import StringProvider
@@ -229,27 +230,6 @@ class WARC2Zim:
         else:
             logger.setLevel(logging.INFO)
 
-        self.indexed_urls = set({})
-
-        self.output = args.output
-        self.zim_file = args.zim_file
-
-        if not self.zim_file:
-            self.zim_file = "{name}_{period}.zim".format(
-                name=args.name, period="{period}"
-            )
-        self.zim_file = self.zim_file.format(period=time.strftime("%Y-%m"))
-
-        self.full_filename = os.path.join(self.output, self.zim_file)
-
-        # ensure output file is writable
-        with tempfile.NamedTemporaryFile(dir=self.output, delete=True) as fh:
-            logger.debug(f"Confirming output is writable using {fh.name}")
-
-        self.inputs = args.inputs
-        self.replay_viewer_source = args.replay_viewer_source
-        self.custom_css = args.custom_css
-
         self.main_url = args.url
         # ensure trailing slash is added if missing
         parts = urlsplit(self.main_url)
@@ -259,25 +239,40 @@ class WARC2Zim:
             parts[2] = "/"
             self.main_url = urlunsplit(parts)
 
-        self.include_domains = args.include_domains
-
+        self.name = args.name
+        self.title = args.title
         self.favicon_url = args.favicon
         self.language = args.lang
-        self.title = args.title
+        self.description = args.description
+        self.long_description = args.long_description
+        self.creator_metadata = args.creator
+        self.publisher = args.publisher
+        self.tags = DEFAULT_TAGS + (args.tags or [])
+        self.source = args.source or self.main_url
+        self.scraper = "warc2zim " + get_version()
+        self.illustration = b""
 
-        tags = DEFAULT_TAGS + (args.tags or [])
+        self.output = args.output
+        self.zim_file = args.zim_file
 
-        self.metadata = {
-            "name": args.name,
-            "description": args.description,
-            "creator": args.creator,
-            "publisher": args.publisher,
-            "tags": ";".join(tags),
-            # optional
-            "source": args.source,
-            "scraper": "warc2zim " + get_version(),
-        }
+        if not self.zim_file:
+            self.zim_file = "{name}_{period}.zim".format(
+                name=self.name, period="{period}"
+            )
+        self.zim_file = self.zim_file.format(period=time.strftime("%Y-%m"))
+        self.full_filename = os.path.join(self.output, self.zim_file)
 
+        # ensure output file is writable
+        with tempfile.NamedTemporaryFile(dir=self.output, delete=True) as fh:
+            logger.debug(f"Confirming output is writable using {fh.name}")
+
+        self.inputs = args.inputs
+        self.include_domains = args.include_domains
+
+        self.replay_viewer_source = args.replay_viewer_source
+        self.custom_css = args.custom_css
+
+        self.indexed_urls = set({})
         self.revisits = {}
 
         # progress file handling
@@ -286,6 +281,7 @@ class WARC2Zim:
         )
         if self.stats_filename and not self.stats_filename.is_absolute():
             self.stats_filename = self.output / self.stats_filename
+
         self.written_records = self.total_records = 0
 
     def add_replayer(self):
@@ -372,6 +368,11 @@ class WARC2Zim:
             return 100
 
         self.find_main_page_metadata()
+        self.title = self.title or "Untitled"
+        if len(self.title) > 30:
+            self.title = f"{self.title[0:29]}…"
+        self.retrieve_illustration()
+        self.convert_illustration()
 
         # make sure Language metadata is ISO-639-3 and setup translations
         try:
@@ -403,10 +404,21 @@ class WARC2Zim:
         self.creator = Creator(
             self.full_filename,
             main_path="A/index.html",
-            language=self.language or "eng",
-            title=self.title,
-            date=datetime.date.today(),
-            **self.metadata,
+        )
+
+        self.creator.config_metadata(
+            Name=self.name,
+            Language=self.language or "eng",
+            Title=self.title,
+            Description=self.description,
+            LongDescription=self.long_description,
+            Creator=self.creator_metadata,
+            Publisher=self.publisher,
+            Date=datetime.date.today(),
+            Illustration_48x48_at_1=self.illustration,
+            Tags=";".join(self.tags),
+            Source=self.source,
+            Scraper=f"warc2zim {get_version()}",
         ).start()
 
         self.add_replayer()
@@ -434,9 +446,6 @@ class WARC2Zim:
                     if not DUPLICATE_EXC_STR.match(str(exc)):
                         raise exc
                 self.indexed_urls.add(canonicalize(url))
-
-        if self.favicon_url:
-            self.add_illustration()
 
         logger.debug(f"Found {self.total_records} records in WARCs")
 
@@ -485,7 +494,6 @@ class WARC2Zim:
                 )
                 return
 
-            # content = record.content_stream().read()
             record.buffered_stream.seek(0)
             content = record.buffered_stream.read()
 
@@ -499,11 +507,9 @@ class WARC2Zim:
             logger.debug("Favicon: {0}".format(self.favicon_url))
             return
 
-        msg = "Unable to find WARC record for main page: {0}, ZIM not created".format(
-            self.main_url
+        raise KeyError(
+            f"Unable to find WARC record for main page: {self.main_url}, aborting"
         )
-        logger.error(msg)
-        raise KeyError(msg)
 
     def find_icon_and_language(self, content):
         soup = BeautifulSoup(content, "html.parser")
@@ -540,75 +546,59 @@ class WARC2Zim:
                 self.language = lang_elem.attrs["content"]
                 return
 
-    def add_illustration(self, record=None):
-        if self.favicon_url in self.indexed_urls:
+    def retrieve_illustration(self):
+        """sets self.illustration from self.favicon_url either from WARC or download
+
+        Uses fallback in case of errors/missing"""
+        if not self.favicon_url:
+            self.favicon_url = "fallback.png"
+            self.illustration = DEFAULT_DEV_ZIM_METADATA["Illustration_48x48_at_1"]
             return
-
-        if record and record.http_headers.get_statuscode() != "200":
-            logger.warning(
-                "Favicon WARC record ({url}) is not usable. Skipping".format(
-                    url=record.rec_headers.get("WARC-Target-URI")
-                )
-            )
-            return
-
-        # add illustration from favicon option or in-warc favicon
-        if record is not None:
-            logger.info(
-                "Adding illustration from WARC record ({url})".format(
-                    url=record.rec_headers.get("WARC-Target-URI")
-                )
-            )
-            src_url = record.rec_headers.get("WARC-Target-URI")
-        else:
-            logger.info("Adding illustration from {url}".format(url=self.favicon_url))
-            src_url = self.favicon_url
-        favicon_fname = pathlib.Path(urlparse(src_url).path).name
-        src_illus_fpath = pathlib.Path(".").joinpath(favicon_fname)
-
-        # reusing payload from WARC record
-        if record:
-            with open(src_illus_fpath, "wb") as fh:
+        # look into WARC records first
+        for record in self.iter_all_warc_records():
+            url = get_record_url(record)
+            if not url or record.rec_type == "revisit":
+                continue
+            if url == self.favicon_url:
+                logger.debug(f"Found WARC record for favicon: {self.favicon_url}")
+                if record and record.http_headers.get_statuscode() != "200":
+                    logger.warning("WARC record for favicon is unuable. Skipping")
+                    self.favicon_url = "fallback.png"
+                    self.illustration = DEFAULT_DEV_ZIM_METADATA[
+                        "Illustration_48x48_at_1"
+                    ]
+                    return
                 if hasattr(record, "buffered_stream"):
                     record.buffered_stream.seek(0)
-                    fh.write(record.buffered_stream.read())
+                    self.illustration = record.buffered_stream.read()
                 else:
-                    fh.write(record.content_stream().read())
-        # fetching online
-        else:
-            try:
-                handle_user_provided_file(source=self.favicon_url, dest=src_illus_fpath)
-            except Exception as exc:
-                logger.warning(
-                    "Unable to retrieve favicon. "
-                    "ZIM won't have an illustration: {exc}".format(exc=exc)
-                )
+                    self.illustration = record.content_stream().read()
                 return
 
-        # convert to PNG (might already be PNG but it's OK)
-        illus_fpath = src_illus_fpath.with_suffix(".png")
+        # favicon_url not in WARC ; downloading
         try:
-            convert_image(src_illus_fpath, illus_fpath)
+            dst = io.BytesIO()
+            if not stream_file(self.favicon_url, byte_stream=dst)[0]:
+                raise IOError("No bytes received downloading favicon")
+            self.illustration = dst.getvalue()
         except Exception as exc:
-            logger.warning(
-                f"Unable to convert image from {illus_fpath}: Skipping illustration"
-            )
-            logger.exception(exc)
-            if src_illus_fpath.exists():
-                src_illus_fpath.unlink()
+            logger.warning(f"Unable to retrieve favicon. Using fallback: {exc}")
+            self.favicon_url = "fallback.png"
+            self.illustration = DEFAULT_DEV_ZIM_METADATA["Illustration_48x48_at_1"]
             return
 
-        # resize to appropriate size (ZIM uses 48x48 so we double for retina)
-        for size in (96, 48):
-            resize_image(illus_fpath, width=size, height=size, method="thumbnail")
-            with open(illus_fpath, "rb") as fh:
-                try:
-                    self.creator.add_illustration(size, fh.read())
-                except RuntimeError as exc:
-                    if not DUPLICATE_EXC_STR.match(str(exc)):
-                        raise exc
-                self.indexed_urls.add(src_url)
-        src_illus_fpath.unlink()
+    def convert_illustration(self):
+        """convert self.illustration into a 48x48px PNG with fallback"""
+        src = io.BytesIO(self.illustration)
+        dst = io.BytesIO()
+        try:
+            convert_image(src, dst, fmt="PNG")
+            resize_image(dst, width=48, height=48, method="thumbnail")
+        except Exception as exc:
+            logger.warning(f"Failed to convert or resize favicon: {exc}")
+            self.illustration = DEFAULT_DEV_ZIM_METADATA["Illustration_48x48_at_1"]
+        else:
+            self.illustration = dst.getvalue()
 
     def is_self_redirect(self, record, url):
         if record.rec_type != "response":
@@ -663,9 +653,6 @@ class WARC2Zim:
                         raise exc
                 self.total_records += 1
                 self.update_stats()
-
-            if url == self.favicon_url:
-                self.add_illustration(record=record)
 
             self.indexed_urls.add(canonicalize(url))
 
@@ -790,17 +777,22 @@ def warc2zim(args=None):
     )
 
     # output
-    parser.add_argument("--name", help="The name of the ZIM", default="", required=True)
+    parser.add_argument("--name", help="ZIM Name metadata", default="", required=True)
     parser.add_argument("--output", help="Output directory", default="/output")
     parser.add_argument("--zim-file", help="ZIM Filename", default="")
 
     # optional metadata
-    parser.add_argument("--title", help="The Title", default="")
-    parser.add_argument("--description", help="The Description", default="")
-    parser.add_argument("--tags", action="append", help="One or more tags", default=[])
+    parser.add_argument("--title", help="ZIM Title", default="")
+    parser.add_argument(
+        "--description", help="ZIM Description (<=30 chars)", default="-"
+    )
+    parser.add_argument("--long-description", help="Longer description (<=4K chars)")
+    parser.add_argument(
+        "--tags", action="append", help="ZIM tags (use multiple times)", default=[]
+    )
     parser.add_argument(
         "--lang",
-        help="Language (should be a ISO-639-3 language code). "
+        help="ZIM Language (should be a ISO-639-3 language code). "
         "If unspecified, will attempt to detect from main page, or use 'eng'",
         default="",
     )

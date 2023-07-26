@@ -14,11 +14,7 @@ def read(*names, **kwargs):
         return fh.read()
 
 
-# REPLAY_SOURCE_URL = "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.15.5/dist/"
-REPLAY_SOURCE_URL = (
-    "https://gist.githubusercontent.com/rgaudin/"
-    "8045e7432b2184a81c9d6280be0f5724/raw/86c464e612205c0bdb5af1653f822e72e82ca2d9/"
-)
+REPLAY_SOURCE_URL = "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.16.5/dist/"
 
 
 def download_replay(name):
@@ -77,13 +73,15 @@ setup(
         warc2zim = warc2zim.main:warc2zim
     """,
     classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     ],
-    python_requires=">=3.6",
+    python_requires=">=3.7",
 )
