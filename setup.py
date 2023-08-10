@@ -14,7 +14,7 @@ def read(*names, **kwargs):
         return fh.read()
 
 
-REPLAY_SOURCE_URL = "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.16.6/dist/"
+REPLAY_SOURCE_URL = "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.16.7/dist/"
 
 
 def download_replay(name):
