@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Using wabac.js 2.16.7
+- Using wabac.js 2.16.8
 
 ## [1.5.2] - 2023-08-02
 
