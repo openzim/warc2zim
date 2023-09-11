@@ -593,7 +593,7 @@ class WARC2Zim:
         dst = io.BytesIO()
         try:
             convert_image(src, dst, fmt="PNG")
-            resize_image(dst, width=48, height=48, method="thumbnail")
+            resize_image(dst, width=48, height=48, method="cover")
         except Exception as exc:
             logger.warning(f"Failed to convert or resize favicon: {exc}")
             self.illustration = DEFAULT_DEV_ZIM_METADATA["Illustration_48x48_at_1"]
