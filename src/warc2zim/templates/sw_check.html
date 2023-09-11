@@ -1,6 +1,6 @@
 <script>
 // No SW Fallback check: hit if loaded via direct link (no SW installed or not supported)
-if (window.top === window && !window._WBWombat) {
+if (!window._WBWombat) {  // WBWombat is injected by service worker
   if (!navigator.serviceWorker || !navigator.serviceWorker.controller) {
     // finds  '/A/' followed by a domain name with a .
     var inx =  window.location.href.search(/[/]A[/][^/]+[.]/);

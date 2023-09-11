@@ -39,7 +39,7 @@ iframe {
       if (event.data.title) {
         document.title = event.data.title;
       }
-      
+
       // remove scheme to be consistent with current canonicalization
       const urlNoScheme = event.data.url.slice(event.data.url.indexOf("//") + 2);
       window.history.replaceState(null, "", prefix + urlNoScheme);
@@ -81,7 +81,7 @@ iframe {
           encodedUrl = encodeURIComponent(urlNoScheme)
 
           link.href = parts[0] + "/" + encodedUrl;
-          
+
           head.appendChild(link);
         }
       }
