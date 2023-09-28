@@ -711,10 +711,10 @@ def get_record_mime_type(record):
 
 # ============================================================================
 def parse_title(content):
-    soup = BeautifulSoup(content, "html.parser")
     try:
+        soup = BeautifulSoup(content, "html.parser")
         return soup.title.text or ""
-    except AttributeError:
+    except Exception:
         return ""
 
 
