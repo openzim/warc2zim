@@ -5,6 +5,7 @@
 import os
 import time
 import json
+import re
 from io import BytesIO
 
 import pytest
@@ -55,22 +56,22 @@ FUZZYCHECKS = [
     {
         "filename": "video-yt.warc.gz",
         "entries": [
-            "H/youtube.fuzzy.replayweb.page/get_video_info?video_id=aT-Up5Y4uRI",
-            "H/youtube.fuzzy.replayweb.page/videoplayback?id=o-AE3bg3qVNY-gAWwYgL52vgpHKJe9ijdbu2eciNi5Uo_w",
+            "youtube.fuzzy.replayweb.page/get_video_info?video_id=aT-Up5Y4uRI",
+            "youtube.fuzzy.replayweb.page/videoplayback?id=o-AE3bg3qVNY-gAWwYgL52vgpHKJe9ijdbu2eciNi5Uo_w",
         ],
     },
     {
         "filename": "video-yt-2.warc.gz",
         "entries": [
-            "H/youtube.fuzzy.replayweb.page/youtubei/v1/player?videoId=aT-Up5Y4uRI",
-            "H/youtube.fuzzy.replayweb.page/videoplayback?id=o-AGDtIqpFRmvgVVZk96wgGyFxL_SFSdpBxs0iBHatQpRD",
+            "youtube.fuzzy.replayweb.page/youtubei/v1/player?videoId=aT-Up5Y4uRI",
+            "youtube.fuzzy.replayweb.page/videoplayback?id=o-AGDtIqpFRmvgVVZk96wgGyFxL_SFSdpBxs0iBHatQpRD",
         ],
     },
     {
         "filename": "video-vimeo.warc.gz",
         "entries": [
-            "H/vimeo.fuzzy.replayweb.page/video/347119375",
-            "H/vimeo-cdn.fuzzy.replayweb.page/01/4423/13/347119375/1398505169.mp4",
+            "vimeo.fuzzy.replayweb.page/video/347119375",
+            "vimeo-cdn.fuzzy.replayweb.page/01/4423/13/347119375/1398505169.mp4",
         ],
     },
 ]
@@ -138,6 +139,12 @@ class TestWarc2Zim(object):
             # parse headers as record, ensure headers match
             url_no_scheme = url.split("//", 2)[1]
             print(url_no_scheme)
+
+            if "www.youtube.com/embed" in url_no_scheme:
+                # We know that those url are rewritten in zim. Don't check for them.
+                break
+
+            url_no_scheme = re.sub(r"\?\d+$", "?", url_no_scheme)
             parsed_record = next(
                 ArchiveIterator(BytesIO(zim_fh.get_content("H/" + url_no_scheme)))
             )
@@ -201,7 +208,7 @@ class TestWarc2Zim(object):
             normalize(
                 "http://lesfondamentaux.reseau-canope.fr/fileadmin/template/css/main.css?1588230493"
             )
-            == "lesfondamentaux.reseau-canope.fr/fileadmin/template/css/main.css?1588230493"
+            == "lesfondamentaux.reseau-canope.fr/fileadmin/template/css/main.css?"
         )
 
     def test_warc_to_zim_specify_params_and_metadata(self, tmp_path):
@@ -431,7 +438,7 @@ class TestWarc2Zim(object):
         )
 
         # timestamp fuzzy match from example-with-timestamp.warc
-        assert self.get_article(zim_output, "H/example.com/path.txt?") != b""
+        assert self.get_article(zim_output, "example.com/path.txt?") != b""
 
     def test_fuzzy_urls(self, tmp_path, fuzzycheck):
         zim_output = fuzzycheck["filename"] + ".zim"
@@ -449,8 +456,8 @@ class TestWarc2Zim(object):
         zim_output = tmp_path / zim_output
 
         for entry in fuzzycheck["entries"]:
-            res = self.get_article(zim_output, entry)
-            assert b"Location: " in res
+            # This should be item and get_article_raw is eq to getItem and it will fail if it is not a item
+            self.get_article_raw(zim_output, entry)
 
     def test_local_replay_viewer_url(self, tmp_path):
         zim_local_sw = "zim-local-sw.zim"

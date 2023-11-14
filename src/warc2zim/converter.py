@@ -5,19 +5,12 @@
 """ warc2zim conversion utility
 
 This utility provides a conversion from WARC records to ZIM files.
-The WARCs are converted in a 'lossless' way, no data from WARC records is lost.
-Each WARC record results in two ZIM items:
-- The WARC payload is stored under /A/<url>
-- The WARC headers + HTTP headers are stored under the /H/<url>
-
-Given a WARC response record for 'https://example.com/',
-two ZIM items are created /A/example.com/ and /H/example.com/ are created.
-
-Only WARC response and resource records are stored.
+WARC record are directly stored in a zim file as:
+- Response WARC record as item "normalized" <url>
+- Revisit record as alias (using "normalized" <url> to)
 
 If the WARC contains multiple entries for the same URL, only the first entry is added,
 and later entries are ignored. A warning is printed as well.
-
 """
 
 import os
@@ -49,7 +42,7 @@ from jinja2 import Environment, PackageLoader
 
 from cdxj_indexer import iter_file_or_dir, buffering_record_iter
 
-from warc2zim.url_rewriting import FUZZY_RULES, normalize
+from warc2zim.url_rewriting import normalize
 from warc2zim.items import WARCHeadersItem, WARCPayloadItem, StaticArticle
 from warc2zim.utils import (
     get_version,
@@ -527,29 +520,6 @@ class Converter:
             and normalized_url not in self.revisits
         ):
             self.revisits[normalized_url] = record
-
-        self.add_fuzzy_match_record(normalized_url)
-
-    def add_fuzzy_match_record(self, url):
-        fuzzy_url = url
-        for rule in FUZZY_RULES:
-            fuzzy_url = rule["match"].sub(rule["replace"], url)
-            if fuzzy_url != url:
-                break
-
-        if fuzzy_url == url:
-            return
-
-        http_headers = StatusAndHeaders("302 Redirect", {"Location": url})
-
-        date = datetime.datetime.utcnow().isoformat()
-        builder = RecordBuilder()
-        record = builder.create_revisit_record(
-            fuzzy_url, "3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ", url, date, http_headers
-        )
-
-        self.revisits[fuzzy_url] = record
-        logger.debug("Adding fuzzy redirect {0} -> {1}".format(fuzzy_url, url))
 
 
 def iter_warc_records(inputs):

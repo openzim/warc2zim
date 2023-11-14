@@ -30,6 +30,10 @@ In python words :
 - The querystring part must be parsable by `urllib.parse.parse_qs` (even if we don't do it here)
 - The querystring must be generated as by `urllib.parse.urlencode(<query>, quote_via=quote)`
 
+On top of that, paths are "reduced" using fuzzy rules:
+A path "https://www.youtube.com/youtubei/v1/foo/baz/things?key=value&other_key=other_value&videoId=xxxx&yet_another_key=yet_another_value"
+is reduced to "youtube.fuzzy.replayweb.page/youtubei/v1/foo/baz/things?videoId=xxxx"
+by slightly simplifying the path and keeping only the usefull arguments in the querystring.
 """
 
 import logging
@@ -56,7 +60,7 @@ FUZZY_RULES = [
         ),
         "replace": r"youtube.fuzzy.replayweb.page/\1\2",
     },
-    {"match": re.compile(r"(\.[^?]+\?)[\d]+$"), "replace": r"\1"},
+    {"match": re.compile(r"([^?]+\?)[\d]+$"), "replace": r"\1"},
     {
         "match": re.compile(
             r"(?:www\.)?youtube(?:-nocookie)?\.com\/(youtubei\/[^?]+).*(videoId[^&]+).*"
@@ -80,6 +84,14 @@ FUZZY_RULES = [
 ]
 
 
+def reduce(path: str) -> str:
+    """Reduce a path"""
+    for rule in FUZZY_RULES:
+        if match := rule["match"].match(path):
+            return match.expand(rule["replace"])
+    return path
+
+
 def normalize(url: str | bytes) -> str:
     """Normalize a properly contructed url to a path to use as a entry's key.
 
@@ -87,6 +99,8 @@ def normalize(url: str | bytes) -> str:
     "exemple.com/path/to/article?foo=bar"
     >>> normalize("http://other.com/path to strange ar+t%3Ficle?foo=bar+baz")
     "other.com/path to strange ar+t%3Ficle?foo=bar%20baz"
+    >>> normalize("http://youtube.com/youtubei/bar?key=value&videoId=xxxx&otherKey=otherValue")
+    "youtube.fuzzy.replayweb.page/youtubei/bar?videoId=xxxx"
     """
 
     if not url:
@@ -105,5 +119,6 @@ def normalize(url: str | bytes) -> str:
         url_parts = url_parts._replace(path=url_parts.path[1:])
 
     path = urlunsplit(url_parts)
+    path = reduce(path)
 
     return path

@@ -2,24 +2,6 @@
 # -*- coding: utf-8 -*-
 # vim: ai ts=4 sts=4 et sw=4 nu
 
-""" warc2zim conversion utility
-
-This utility provides a conversion from WARC records to ZIM files.
-The WARCs are converted in a 'lossless' way, no data from WARC records is lost.
-Each WARC record results in two ZIM items:
-- The WARC payload is stored under /A/<url>
-- The WARC headers + HTTP headers are stored under the /H/<url>
-
-Given a WARC response record for 'https://example.com/',
-two ZIM items are created /A/example.com/ and /H/example.com/ are created.
-
-Only WARC response and resource records are stored.
-
-If the WARC contains multiple entries for the same URL, only the first entry is added,
-and later entries are ignored. A warning is printed as well.
-
-"""
-
 import sys
 import logging
 from argparse import ArgumentParser
