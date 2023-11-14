@@ -16,9 +16,6 @@ from zimscraperlib.types import get_mime_for_name
 from zimscraperlib.zim.items import StaticItem
 from zimscraperlib.zim.providers import StringProvider
 
-from bs4 import BeautifulSoup
-
-from warc2zim.url_rewriting import canonicalize
 from warc2zim.utils import get_record_url, get_record_mime_type, parse_title
 
 # Shared logger
@@ -36,13 +33,13 @@ class WARCHeadersItem(StaticItem):
     Usually stored under H namespace
     """
 
-    def __init__(self, record):
+    def __init__(self, path, record):
         super().__init__()
         self.record = record
-        self.url = get_record_url(record)
+        self.path = path
 
     def get_path(self):
-        return "H/" + canonicalize(self.url)
+        return self.path
 
     def get_title(self):
         return ""
@@ -68,10 +65,10 @@ class WARCPayloadItem(StaticItem):
     Usually stored under A namespace
     """
 
-    def __init__(self, record, head_insert=None, css_insert=None):
+    def __init__(self, path, record, head_insert=None, css_insert=None):
         super().__init__()
         self.record = record
-        self.url = get_record_url(record)
+        self.path = path
         self.mimetype = get_record_mime_type(record)
         self.title = ""
 
@@ -89,7 +86,7 @@ class WARCPayloadItem(StaticItem):
                 self.content = CSS_INS.sub(css_insert, self.content)
 
     def get_path(self):
-        return "A/" + canonicalize(self.url)
+        return self.path
 
     def get_title(self):
         return self.title

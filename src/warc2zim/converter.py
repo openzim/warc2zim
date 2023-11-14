@@ -49,7 +49,7 @@ from jinja2 import Environment, PackageLoader
 
 from cdxj_indexer import iter_file_or_dir, buffering_record_iter
 
-from warc2zim.url_rewriting import FUZZY_RULES, canonicalize
+from warc2zim.url_rewriting import FUZZY_RULES, normalize
 from warc2zim.items import WARCHeadersItem, WARCPayloadItem, StaticArticle
 from warc2zim.utils import (
     get_version,
@@ -294,19 +294,21 @@ class Converter:
             self.add_items_for_warc_record(record)
 
         # process revisits, headers only
-        for url, record in self.revisits.items():
-            if canonicalize(url) not in self.indexed_urls:
+        for normalized_url, record in self.revisits.items():
+            if normalized_url not in self.indexed_urls:
                 logger.debug(
                     "Adding revisit {0} -> {1}".format(
-                        url, record.rec_headers["WARC-Refers-To-Target-URI"]
+                        normalized_url, record.rec_headers["WARC-Refers-To-Target-URI"]
                     )
                 )
                 try:
-                    self.creator.add_item(WARCHeadersItem(record))
+                    self.creator.add_item(
+                        WARCHeadersItem("H/" + normalized_url, record)
+                    )
                 except RuntimeError as exc:
                     if not DUPLICATE_EXC_STR.match(str(exc)):
                         raise exc
-                self.indexed_urls.add(canonicalize(url))
+                self.indexed_urls.add(normalized_url)
 
         logger.debug(f"Found {self.total_records} records in WARCs")
 
@@ -472,15 +474,16 @@ class Converter:
             return False
 
         location = record.http_headers.get("Location", "")
-        return canonicalize(url) == canonicalize(location)
+        return normalize(url) == normalize(location)
 
     def add_items_for_warc_record(self, record):
         url = get_record_url(record)
+        normalized_url = normalize(url)
         if not url:
             logger.debug(f"Skipping record with empty WARC-Target-URI {record}")
             return
 
-        if canonicalize(url) in self.indexed_urls:
+        if normalized_url in self.indexed_urls:
             logger.debug("Skipping duplicate {0}, already added to ZIM".format(url))
             return
 
@@ -499,12 +502,14 @@ class Converter:
                 return
 
             try:
-                self.creator.add_item(WARCHeadersItem(record))
+                self.creator.add_item(WARCHeadersItem("H/" + normalized_url, record))
             except RuntimeError as exc:
                 if not DUPLICATE_EXC_STR.match(str(exc)):
                     raise exc
 
-            payload_item = WARCPayloadItem(record, self.head_insert, self.css_insert)
+            payload_item = WARCPayloadItem(
+                normalized_url, record, self.head_insert, self.css_insert
+            )
 
             if len(payload_item.content) != 0:
                 try:
@@ -515,15 +520,15 @@ class Converter:
                 self.total_records += 1
                 self.update_stats()
 
-            self.indexed_urls.add(canonicalize(url))
+            self.indexed_urls.add(normalized_url)
 
         elif (
             record.rec_headers["WARC-Refers-To-Target-URI"] != url
-            and url not in self.revisits
+            and normalized_url not in self.revisits
         ):
-            self.revisits[url] = record
+            self.revisits[normalized_url] = record
 
-        self.add_fuzzy_match_record(url)
+        self.add_fuzzy_match_record(normalized_url)
 
     def add_fuzzy_match_record(self, url):
         fuzzy_url = url

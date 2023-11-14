@@ -14,7 +14,7 @@ from warcio import ArchiveIterator
 from jinja2 import Environment, PackageLoader
 from zimscraperlib.zim import Archive
 
-from warc2zim.url_rewriting import canonicalize
+from warc2zim.url_rewriting import normalize
 from warc2zim.converter import iter_warc_records
 from warc2zim.utils import get_record_url
 from warc2zim.main import main
@@ -170,19 +170,38 @@ class TestWarc2Zim(object):
 
             warc_urls.add(url)
 
-    def test_canonicalize(self):
-        assert canonicalize("http://example.com/?foo=bar") == "example.com/?foo=bar"
+    def test_normalize(self):
+        assert normalize(None) == None
+        assert normalize("") == ""
+        assert normalize("https://exemple.com") == "exemple.com"
+        assert normalize("https://exemple.com/") == "exemple.com/"
+        assert normalize("http://example.com/?foo=bar") == "example.com/?foo=bar"
+        assert normalize(b"http://example.com/?foo=bar") == "example.com/?foo=bar"
 
-        assert canonicalize("https://example.com/?foo=bar") == "example.com/?foo=bar"
+        assert normalize("https://example.com/?foo=bar") == "example.com/?foo=bar"
 
         assert (
-            canonicalize("https://example.com/some/path/http://example.com/?foo=bar")
+            normalize("https://example.com/some/path/http://example.com/?foo=bar")
             == "example.com/some/path/http://example.com/?foo=bar"
         )
 
         assert (
-            canonicalize("example.com/some/path/http://example.com/?foo=bar")
+            normalize("example.com/some/path/http://example.com/?foo=bar")
             == "example.com/some/path/http://example.com/?foo=bar"
+        )
+
+        assert (
+            normalize("http://example.com/path/with/final/slash/")
+            == "example.com/path/with/final/slash/"
+        )
+
+        assert normalize("http://test@example.com/") == "test@example.com/"
+
+        assert (
+            normalize(
+                "http://lesfondamentaux.reseau-canope.fr/fileadmin/template/css/main.css?1588230493"
+            )
+            == "lesfondamentaux.reseau-canope.fr/fileadmin/template/css/main.css?1588230493"
         )
 
     def test_warc_to_zim_specify_params_and_metadata(self, tmp_path):
@@ -222,7 +241,7 @@ class TestWarc2Zim(object):
 
         assert all_articles == {
             # entries from WARC
-            "A/example.com/": "Example Domain",
+            "example.com/": "Example Domain",
             "H/example.com/": "H/example.com/",
             # replay system files
             "A/index.html": "A/index.html",
