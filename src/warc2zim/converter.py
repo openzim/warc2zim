@@ -50,10 +50,9 @@ from jinja2 import Environment, PackageLoader
 from cdxj_indexer import iter_file_or_dir, buffering_record_iter
 
 from warc2zim.url_rewriting import FUZZY_RULES, canonicalize
-from warc2zim.items import (
-    WARCHeadersItem,
-    WARCPayloadItem,
-    StaticArticle,
+from warc2zim.items import WARCHeadersItem, WARCPayloadItem, StaticArticle
+from warc2zim.utils import (
+    get_version,
     get_record_url,
     get_record_mime_type,
     parse_title,
@@ -555,7 +554,3 @@ def iter_warc_records(inputs):
             for record in buffering_record_iter(ArchiveIterator(fh), post_append=True):
                 if record.rec_type in ("resource", "response", "revisit"):
                     yield record
-
-
-def get_version():
-    return pkg_resources.get_distribution("warc2zim").version

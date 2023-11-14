@@ -16,12 +16,10 @@ from zimscraperlib.zim import Archive
 
 from warc2zim.url_rewriting import canonicalize
 from warc2zim.converter import iter_warc_records
-from warc2zim.items import get_record_url
+from warc2zim.utils import get_record_url
 
-# Import last to not mask warc2zim module
+# Import last to not mask the warc2zim module
 from warc2zim.main import warc2zim
-
-
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
 

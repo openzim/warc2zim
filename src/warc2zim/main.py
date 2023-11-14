@@ -24,7 +24,8 @@ import sys
 import logging
 from argparse import ArgumentParser
 
-from warc2zim.converter import Converter, get_version
+from warc2zim.converter import Converter
+from warc2zim.utils import get_version
 
 # Shared logger
 logger = logging.getLogger("warc2zim")
