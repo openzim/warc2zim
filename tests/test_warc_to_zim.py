@@ -353,15 +353,6 @@ class TestWarc2Zim(object):
 
         zim_output = tmp_path / zim_output
 
-        for article in self.list_articles(zim_output):
-            url = article.path
-            if url.startswith("H/"):
-                # ensure there is only one H/ record, and its a 200 (not 301)
-                assert url == "H/kiwix.org/"
-                assert b"HTTP/1.1 200 OK" in self.get_article(
-                    zim_output, "H/kiwix.org/"
-                )
-
     def test_include_domains_favicon_and_language(self, tmp_path):
         zim_output = "spt.zim"
         main(

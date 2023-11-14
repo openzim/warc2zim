@@ -494,12 +494,6 @@ class Converter:
                 logger.debug("Skipping self-redirect: " + url)
                 return
 
-            try:
-                self.creator.add_item(WARCHeadersItem("H/" + normalized_url, record))
-            except RuntimeError as exc:
-                if not DUPLICATE_EXC_STR.match(str(exc)):
-                    raise exc
-
             payload_item = WARCPayloadItem(
                 normalized_url, record, self.head_insert, self.css_insert
             )
