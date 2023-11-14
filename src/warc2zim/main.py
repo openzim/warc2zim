@@ -53,6 +53,7 @@ from jinja2 import Environment, PackageLoader
 
 from cdxj_indexer import iter_file_or_dir, buffering_record_iter
 
+from .url_rewriting import FUZZY_RULES, canonicalize
 
 # Shared logger
 logger = logging.getLogger("warc2zim")
@@ -73,45 +74,6 @@ CSS_INS = re.compile(b"(</head>)", re.I)
 
 # Default ZIM metadata tags
 DEFAULT_TAGS = ["_ftindex:yes", "_category:other", "_sw:yes"]
-
-
-FUZZY_RULES = [
-    {
-        "match": re.compile(
-            # r"//.*googlevideo.com/(videoplayback\?).*(id=[^&]+).*([&]itag=[^&]+).*"
-            r"//.*googlevideo.com/(videoplayback\?).*((?<=[?&])id=[^&]+).*"
-        ),
-        "replace": r"//youtube.fuzzy.replayweb.page/\1\2",
-    },
-    {
-        "match": re.compile(
-            r"//(?:www\.)?youtube(?:-nocookie)?\.com/(get_video_info\?)"
-            r".*(video_id=[^&]+).*"
-        ),
-        "replace": r"//youtube.fuzzy.replayweb.page/\1\2",
-    },
-    {"match": re.compile(r"(\.[^?]+\?)[\d]+$"), "replace": r"\1"},
-    {
-        "match": re.compile(
-            r"//(?:www\.)?youtube(?:-nocookie)?\.com\/(youtubei\/[^?]+).*(videoId[^&]+).*"
-        ),
-        "replace": r"//youtube.fuzzy.replayweb.page/\1?\2",
-    },
-    {
-        "match": re.compile(r"//(?:www\.)?youtube(?:-nocookie)?\.com/embed/([^?]+).*"),
-        "replace": r"//youtube.fuzzy.replayweb.page/embed/\1",
-    },
-    {
-        "match": re.compile(
-            r".*(?:gcs-vimeo|vod|vod-progressive)\.akamaized\.net.*?/([\d/]+.mp4)$"
-        ),
-        "replace": r"vimeo-cdn.fuzzy.replayweb.page/\1",
-    },
-    {
-        "match": re.compile(r".*player.vimeo.com/(video/[\d]+)\?.*"),
-        "replace": r"vimeo.fuzzy.replayweb.page/\1",
-    },
-]
 
 CUSTOM_CSS_URL = "https://warc2zim.kiwix.app/custom.css"
 
@@ -809,20 +771,6 @@ def warc2zim(args=None):
     r = parser.parse_args(args=args)
     warc2zim = WARC2Zim(r)
     return warc2zim.run()
-
-
-# ============================================================================
-def canonicalize(url):
-    """Return a 'canonical' version of the url under which it is stored in the ZIM
-    For now, just removing the scheme http:// or https:// scheme
-    """
-    if url.startswith("https://"):
-        return url[8:]
-
-    if url.startswith("http://"):
-        return url[7:]
-
-    return url
 
 
 # ============================================================================
