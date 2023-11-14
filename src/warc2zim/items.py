@@ -14,7 +14,6 @@ import pkg_resources
 from libzim.writer import Hint
 from zimscraperlib.types import get_mime_for_name
 from zimscraperlib.zim.items import StaticItem
-from zimscraperlib.zim.providers import StringProvider
 
 from warc2zim.utils import get_record_url, get_record_mime_type, parse_title
 
@@ -26,38 +25,6 @@ SW_JS = "sw.js"
 
 HEAD_INS = re.compile(b"(<head>)", re.I)
 CSS_INS = re.compile(b"(</head>)", re.I)
-
-
-class WARCHeadersItem(StaticItem):
-    """WARCHeadersItem used to store the WARC + HTTP headers as text
-    Usually stored under H namespace
-    """
-
-    def __init__(self, path, record):
-        super().__init__()
-        self.record = record
-        self.path = path
-
-    def get_path(self):
-        return self.path
-
-    def get_title(self):
-        return ""
-
-    def get_mimetype(self):
-        return "application/warc-headers"
-
-    def get_hints(self):
-        return {Hint.FRONT_ARTICLE: False}
-
-    def get_contentprovider(self):
-        # add WARC headers
-        buff = self.record.rec_headers.to_bytes(encoding="utf-8")
-        # add HTTP headers, if present
-        if self.record.http_headers:
-            buff += self.record.http_headers.to_bytes(encoding="utf-8")
-
-        return StringProvider(content=buff, ref=self)
 
 
 class WARCPayloadItem(StaticItem):

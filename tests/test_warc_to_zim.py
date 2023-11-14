@@ -145,12 +145,6 @@ class TestWarc2Zim(object):
                 break
 
             url_no_scheme = re.sub(r"\?\d+$", "?", url_no_scheme)
-            parsed_record = next(
-                ArchiveIterator(BytesIO(zim_fh.get_content("H/" + url_no_scheme)))
-            )
-
-            assert record.rec_headers == parsed_record.rec_headers
-            assert record.http_headers == parsed_record.http_headers
 
             # ensure payloads match
             try:
@@ -158,10 +152,13 @@ class TestWarc2Zim(object):
             except KeyError:
                 payload = None
 
-            if record.rec_type == "revisit" or (
-                record.http_headers and record.http_headers.get("Content-Length") == "0"
-            ):
+            if record.http_headers and record.http_headers.get("Content-Length") == "0":
                 assert not payload
+            elif record.rec_type == "revisit":
+                # We must have a payload
+                # We should check with the content of the targeted record...
+                # But difficult to test as we don't have it
+                assert payload
             else:
                 payload_content = payload.content.tobytes()
 
@@ -249,7 +246,6 @@ class TestWarc2Zim(object):
         assert all_articles == {
             # entries from WARC
             "example.com/": "Example Domain",
-            "H/example.com/": "H/example.com/",
             # replay system files
             "A/index.html": "A/index.html",
             "A/load.js": "A/load.js",

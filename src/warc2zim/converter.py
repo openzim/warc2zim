@@ -43,7 +43,7 @@ from jinja2 import Environment, PackageLoader
 from cdxj_indexer import iter_file_or_dir, buffering_record_iter
 
 from warc2zim.url_rewriting import normalize
-from warc2zim.items import WARCHeadersItem, WARCPayloadItem, StaticArticle
+from warc2zim.items import WARCPayloadItem, StaticArticle
 from warc2zim.utils import (
     get_version,
     get_record_url,
@@ -72,6 +72,11 @@ DUPLICATE_EXC_STR = re.compile(
     r"^Impossible to add(.+)"
     r"dirent\'s title to add is(.+)"
     r"existing dirent's title is(.+)",
+    re.MULTILINE | re.DOTALL,
+)
+
+ALIAS_EXC_STR = re.compile(
+    r"^Impossible to alias(.+)" r"(.+) doesn't exist.",
     re.MULTILINE | re.DOTALL,
 )
 
@@ -286,20 +291,14 @@ class Converter:
         for record in self.iter_all_warc_records():
             self.add_items_for_warc_record(record)
 
-        # process revisits, headers only
-        for normalized_url, record in self.revisits.items():
+        # process revisits
+        for normalized_url, target_url in self.revisits.items():
             if normalized_url not in self.indexed_urls:
-                logger.debug(
-                    "Adding revisit {0} -> {1}".format(
-                        normalized_url, record.rec_headers["WARC-Refers-To-Target-URI"]
-                    )
-                )
+                logger.debug(f"Adding alias {normalized_url} -> {target_url}")
                 try:
-                    self.creator.add_item(
-                        WARCHeadersItem("H/" + normalized_url, record)
-                    )
+                    self.creator.add_alias(normalized_url, "", target_url, {})
                 except RuntimeError as exc:
-                    if not DUPLICATE_EXC_STR.match(str(exc)):
+                    if not ALIAS_EXC_STR.match(str(exc)):
                         raise exc
                 self.indexed_urls.add(normalized_url)
 
@@ -513,7 +512,9 @@ class Converter:
             record.rec_headers["WARC-Refers-To-Target-URI"] != url
             and normalized_url not in self.revisits
         ):
-            self.revisits[normalized_url] = record
+            self.revisits[normalized_url] = normalize(
+                record.rec_headers["WARC-Refers-To-Target-URI"]
+            )
 
 
 def iter_warc_records(inputs):
