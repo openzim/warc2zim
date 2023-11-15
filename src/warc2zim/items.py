@@ -15,7 +15,8 @@ from libzim.writer import Hint
 from zimscraperlib.types import get_mime_for_name
 from zimscraperlib.zim.items import StaticItem
 
-from warc2zim.utils import get_record_url, get_record_mime_type, parse_title
+from warc2zim.utils import get_record_url, get_record_mime_type
+from warc2zim.content_rewriting import HtmlRewriter
 
 # Shared logger
 logger = logging.getLogger("warc2zim.items")
@@ -46,17 +47,12 @@ class WARCPayloadItem(StaticItem):
             self.content = self.record.content_stream().read()
 
         if self.mimetype.startswith("text/html"):
-            self.title = parse_title(self.content)
-            if head_insert:
-                self.content = HEAD_INS.sub(head_insert, self.content)
-            if css_insert:
-                self.content = CSS_INS.sub(css_insert, self.content)
+            self.title, self.content = HtmlRewriter(self.path).rewrite(self.content)
 
-    def get_path(self):
-        return self.path
-
-    def get_title(self):
-        return self.title
+    #            if head_insert:
+    #                self.content = HEAD_INS.sub(head_insert, self.content)
+    #            if css_insert:
+    #                self.content = CSS_INS.sub(css_insert, self.content)
 
     def get_hints(self):
         is_front = self.mimetype.startswith("text/html")

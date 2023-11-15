@@ -40,7 +40,16 @@ from __future__ import annotations
 
 import logging
 import re
-from urllib.parse import urlsplit, urlunsplit, quote, unquote, parse_qs, urlencode
+import posixpath
+from urllib.parse import (
+    urlsplit,
+    urljoin,
+    urlunsplit,
+    quote,
+    unquote,
+    parse_qs,
+    urlencode,
+)
 from warc2zim.utils import to_string
 
 # Shared logger
@@ -124,3 +133,32 @@ def normalize(url: str | bytes) -> str:
     path = reduce(path)
 
     return path
+
+
+class ArticleUrlRewriter:
+    """Rewrite urls in article."""
+
+    def __init__(self, article_url: str):
+        self.article_url = article_url
+        self.base_path = f"/{urlsplit(normalize(article_url)).path}"
+        if self.base_path[-1] != "/":
+            # We want a directory
+            self.base_path = posixpath.dirname(self.base_path)
+
+    def __call__(self, url: str) -> str:
+        """Rewrite a url contained in a article.
+
+        The url is "fully" rewrited to point to a normalized entry path
+        """
+        absolute_url = urljoin(self.article_url, url)
+
+        normalized_url = urlsplit(f"/{normalize(absolute_url)}")
+
+        # relative_to will lost our potential last '/'
+        slash_ending = normalized_url.path[-1] == "/"
+        relative_path = posixpath.relpath(normalized_url.path, self.base_path)
+
+        if slash_ending:
+            relative_path += "/"
+        normalized_url = normalized_url._replace(path=relative_path)
+        return urlunsplit(normalized_url)
