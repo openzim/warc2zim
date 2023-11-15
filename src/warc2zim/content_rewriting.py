@@ -1,6 +1,11 @@
 from html import escape
 from html.parser import HTMLParser
-from tinycss2 import parse_stylesheet_bytes, serialize
+from tinycss2 import (
+    parse_stylesheet,
+    parse_stylesheet_bytes,
+    parse_declaration_list,
+    serialize,
+)
 from tinycss2.serializer import serialize_url
 from tinycss2.ast import Node as TCSS2Node
 import io
@@ -13,7 +18,9 @@ AttrsList = List[Tuple[str, Optional[str]]]
 
 
 def process_attr(
-    attr: Tuple[str, Optional[str]], url_rewriter: Callable[[str], str]
+    attr: Tuple[str, Optional[str]],
+    url_rewriter: Callable[[str], str],
+    css_rewriter: "CssRewriter",
 ) -> Tuple[str, Optional[str]]:
     if attr[0] in ("href", "src"):
         return (attr[0], url_rewriter(attr[1]))
@@ -26,6 +33,8 @@ def process_attr(
             new_value = " ".join([new_url, *other])
             new_value_list.append(new_value)
         return (attr[0], ", ".join(new_value_list))
+    if attr[0] == "style":
+        return (attr[0], css_rewriter.rewrite_inline(attr[1]))
     return attr
 
 
@@ -36,8 +45,10 @@ def format_attr(name: str, value: Optional[str]) -> str:
     return f'{name}="{html_escaped_value}"'
 
 
-def transform_attrs(attrs: AttrsList, url_rewriter: Callable[[str], str]) -> str:
-    processed_attrs = (process_attr(attr, url_rewriter) for attr in attrs)
+def transform_attrs(
+    attrs: AttrsList, url_rewriter: Callable[[str], str], css_rewriter: "CssRewriter"
+) -> str:
+    processed_attrs = (process_attr(attr, url_rewriter, css_rewriter) for attr in attrs)
     return " ".join(format_attr(*attr) for attr in processed_attrs)
 
 
@@ -48,6 +59,7 @@ class HtmlRewriter(HTMLParser):
     def __init__(self, article_url: str, pre_head_insert: str, post_head_insert: str):
         super().__init__()
         self.url_rewriter = ArticleUrlRewriter(article_url)
+        self.css_rewriter = CSSRewriter(article_url)
         self.title = None
         self.output = None
         # This works only for tag without children.
@@ -78,7 +90,7 @@ class HtmlRewriter(HTMLParser):
         self.send(f"<{tag}")
         if attrs:
             self.send(" ")
-        self.send(transform_attrs(attrs, self.url_rewriter))
+        self.send(transform_attrs(attrs, self.url_rewriter, self.css_rewriter))
 
         if auto_close:
             self.send(" />")
@@ -100,6 +112,8 @@ class HtmlRewriter(HTMLParser):
     def handle_data(self, data: str):
         if self._active_tag == "title" and self.title is None:
             self.title = data.strip()
+        elif self._active_tag == "style":
+            data = self.css_rewriter.rewrite(data)
         self.send(data)
 
     def handle_comment(self, data: str):
@@ -119,10 +133,19 @@ class CSSRewriter:
     def __init__(self, css_url: str):
         self.url_rewriter = ArticleUrlRewriter(css_url)
 
-    def rewrite(self, content: bytes) -> str:
-        rules = parse_stylesheet_bytes(content)
+    def rewrite(self, content: Union[str, bytes]) -> str:
+        if isinstance(content, bytes):
+            rules = parse_stylesheet_bytes(content)[0]
+        else:
+            rules = parse_stylesheet(content)
         self.process_list(rules)
 
+        output = serialize(rules)
+        return output
+
+    def rewrite_inline(self, content: str) -> str:
+        rules = parse_declaration_list(content)
+        self.process_list(rules)
         output = serialize(rules)
         return output
 

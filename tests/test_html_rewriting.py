@@ -8,8 +8,8 @@ from textwrap import dedent
         "A simple string without url",
         "<html><body><p>This is a sentence with a http://exemple.com/path link</p></body></html>",
         '<a data-source="http://exemple.com/path">A link we should not rewrite</a>',
-        '<p style="background: url(some/image.png)">A url (relative) in a inline style</p>',
-        "<style>p { /* A comment with a http://link.org/ */ background: url('some/image.png') ; }</style>",
+        '<p style="background: url(some/image.png);">A url (relative) in a inline style</p>',
+        '<style>p { /* A comment with a http://link.org/ */ background: url("some/image.png") ; }</style>',
     ]
 )
 def no_rewrite_content(request):
@@ -27,13 +27,16 @@ def test_no_rewrite(no_rewrite_content):
     params=[
         (
             "<p style='background: url(\"some/image.png\")'>A link in a inline style</p>",
-            '<p style="background: url(&quot;some/image.png&quot;)">A link in a inline style</p>',
+            '<p style="background: url(&quot;some/image.png&quot;);">A link in a inline style</p>',
         ),
         (
             "<p style=\"background: url('some/image.png')\">A link in a inline style</p>",
-            '<p style="background: url(&#x27;some/image.png&#x27;)">A link in a inline style</p>',
+            '<p style="background: url(&quot;some/image.png&quot;);">A link in a inline style</p>',
         ),
-        ("<ul style='list-style: \">\"'>", '<ul style="list-style: &quot;&gt;&quot;">'),
+        (
+            "<ul style='list-style: \">\"'>",
+            '<ul style="list-style: &quot;&gt;&quot;;">',
+        ),
     ]
 )
 def escaped_content(request):
@@ -152,6 +155,20 @@ def test_rewrite_attributes():
             "<img srcset='https://kiwix.org/img-480w.jpg 480w, https://kiwix.org/img-800w.jpg 800w'></img>"
         ).content
         == '<img srcset="img-480w.jpg 480w, img-800w.jpg 800w"></img>'
+    )
+
+
+def test_rewrite_css():
+    output = (
+        HtmlRewriter("", "", "")
+        .rewrite(
+            "<style>p { /* A comment with a http://link.org/ */ background: url('some/image.png') ; }</style>",
+        )
+        .content
+    )
+    assert (
+        output
+        == '<style>p { /* A comment with a http://link.org/ */ background: url("some/image.png") ; }</style>'
     )
 
 
