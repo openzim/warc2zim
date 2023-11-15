@@ -86,14 +86,14 @@ class Converter:
         else:
             logger.setLevel(logging.INFO)
 
-        self.main_url = args.url
+        main_url = args.url
         # ensure trailing slash is added if missing
-        parts = urlsplit(self.main_url)
+        parts = urlsplit(main_url)
         if parts.path == "":
             parts = list(parts)
             # set path
             parts[2] = "/"
-            self.main_url = urlunsplit(parts)
+            main_url = urlunsplit(parts)
 
         self.name = args.name
         self.title = args.title
@@ -104,9 +104,10 @@ class Converter:
         self.creator_metadata = args.creator
         self.publisher = args.publisher
         self.tags = DEFAULT_TAGS + (args.tags or [])
-        self.source = args.source or self.main_url
+        self.source = args.source or main_url
         self.scraper = "warc2zim " + get_version()
         self.illustration = b""
+        self.main_url = normalize(main_url)
 
         self.output = args.output
         self.zim_file = args.zim_file
@@ -237,7 +238,7 @@ class Converter:
 
         self.creator = Creator(
             self.full_filename,
-            main_path="A/index.html",
+            main_path=self.main_url,
         )
 
         self.creator.config_metadata(
@@ -306,9 +307,9 @@ class Converter:
                     or record.http_headers.get_statuscode() == "200"
                 )
             ):
-                self.main_url = url
+                self.main_url = normalize(url)
 
-            if urldefrag(self.main_url).url != url:
+            if urldefrag(self.main_url).url != normalize(url):
                 continue
 
             # if we get here, found record for the main page

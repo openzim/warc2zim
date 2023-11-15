@@ -244,9 +244,7 @@ class TestWarc2Zim(object):
 
         assert all_articles == {
             # entries from WARC
-            "example.com/": "Example Domain",
-            # replay system files
-            "A/index.html": "A/index.html",
+            "example.com/": "Example Domain"
         }
 
         zim_fh = Archive(zim_output)
