@@ -42,7 +42,7 @@ RewritenHtml = namedtuple("RewritenHmtl", ["title", "content"])
 
 
 class HtmlRewriter(HTMLParser):
-    def __init__(self, article_url: str):
+    def __init__(self, article_url: str, pre_head_insert: str, post_head_insert: str):
         super().__init__()
         self.url_rewriter = ArticleUrlRewriter(article_url)
         self.title = None
@@ -50,6 +50,8 @@ class HtmlRewriter(HTMLParser):
         # This works only for tag without children.
         # But as we use it to get the title, we are ok
         self._active_tag = None
+        self.pre_head_insert = pre_head_insert
+        self.post_head_insert = post_head_insert
 
     def rewrite(self, content: Union[str, bytes]) -> RewritenHtml:
         assert self.output == None
@@ -79,9 +81,13 @@ class HtmlRewriter(HTMLParser):
             self.send(" />")
         else:
             self.send(">")
+        if tag == "head" and self.pre_head_insert:
+            self.send(self.pre_head_insert)
 
     def handle_endtag(self, tag: str):
         self._active_tag = None
+        if tag == "head" and self.post_head_insert:
+            self.send(self.post_head_insert)
         self.send(f"</{tag}>")
 
     def handle_startendtag(self, tag: str, attrs: AttrsList):

@@ -483,8 +483,7 @@ class TestWarc2Zim(object):
         zim_output = tmp_path / zim_output
 
         res = self.get_article(zim_output, "example.com/")
-        # [TOFIX]
-        # assert "https://warc2zim.kiwix.app/custom.css".encode("utf-8") in res
+        assert "warc2zim.kiwix.app/custom.css".encode("utf-8") in res
 
         res = self.get_article(zim_output, "warc2zim.kiwix.app/custom.css")
         assert custom_css == res
@@ -511,8 +510,7 @@ class TestWarc2Zim(object):
         zim_output = tmp_path / zim_output
 
         res = self.get_article(zim_output, "example.com/")
-        # [TOFIX]
-        # assert "https://warc2zim.kiwix.app/custom.css".encode("utf-8") in res
+        assert "warc2zim.kiwix.app/custom.css".encode("utf-8") in res
 
         res = self.get_article(zim_output, "warc2zim.kiwix.app/custom.css")
         assert res == requests.get(url).content

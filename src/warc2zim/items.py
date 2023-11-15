@@ -33,7 +33,7 @@ class WARCPayloadItem(StaticItem):
     Usually stored under A namespace
     """
 
-    def __init__(self, path, record, head_insert=None, css_insert=None):
+    def __init__(self, path, record, head_insert, css_insert):
         super().__init__()
         self.record = record
         self.path = path
@@ -47,12 +47,9 @@ class WARCPayloadItem(StaticItem):
             self.content = self.record.content_stream().read()
 
         if self.mimetype.startswith("text/html"):
-            self.title, self.content = HtmlRewriter(self.path).rewrite(self.content)
-
-    #            if head_insert:
-    #                self.content = HEAD_INS.sub(head_insert, self.content)
-    #            if css_insert:
-    #                self.content = CSS_INS.sub(css_insert, self.content)
+            self.title, self.content = HtmlRewriter(
+                self.path, head_insert, css_insert
+            ).rewrite(self.content)
 
     def get_hints(self):
         is_front = self.mimetype.startswith("text/html")

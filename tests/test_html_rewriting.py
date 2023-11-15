@@ -1,5 +1,6 @@
 import pytest
 from warc2zim.content_rewriting import HtmlRewriter
+from textwrap import dedent
 
 
 @pytest.fixture(
@@ -17,7 +18,7 @@ def no_rewrite_content(request):
 
 def test_no_rewrite(no_rewrite_content):
     assert (
-        HtmlRewriter("kiwix.org").rewrite(no_rewrite_content).content
+        HtmlRewriter("kiwix.org", "", "").rewrite(no_rewrite_content).content
         == no_rewrite_content
     )
 
@@ -41,7 +42,7 @@ def escaped_content(request):
 
 def test_escaped_content(escaped_content):
     (input_str, expected) = escaped_content
-    transformed = HtmlRewriter("kiwix.org").rewrite(input_str).content
+    transformed = HtmlRewriter("kiwix.org", "", "").rewrite(input_str).content
     assert transformed == expected
 
 
@@ -117,7 +118,7 @@ def rewrite_url(request):
 def test_rewrite(rewrite_url):
     (input_str, article_url, rewriten) = rewrite_url
     expected = input_str.replace("http://exemple.com/a/long/path", rewriten)
-    assert HtmlRewriter(article_url).rewrite(input_str).content == expected
+    assert HtmlRewriter(article_url, "", "").rewrite(input_str).content == expected
 
 
 def test_extract_title():
@@ -130,11 +131,11 @@ def test_extract_title():
       </body>
     </html>"""
 
-    assert HtmlRewriter("kiwix.org").rewrite(content).title == "Page title"
+    assert HtmlRewriter("kiwix.org", "", "").rewrite(content).title == "Page title"
 
 
 def test_rewrite_attributes():
-    rewriter = HtmlRewriter("kiwix.org/")
+    rewriter = HtmlRewriter("kiwix.org/", "", "")
 
     assert (
         rewriter.rewrite("<a href='https://kiwix.org/foo'>A link</a>").content
@@ -151,4 +152,29 @@ def test_rewrite_attributes():
             "<img srcset='https://kiwix.org/img-480w.jpg 480w, https://kiwix.org/img-800w.jpg 800w'></img>"
         ).content
         == '<img srcset="img-480w.jpg 480w, img-800w.jpg 800w"></img>'
+    )
+
+
+def test_head_insert():
+    content = """<html>
+    <head>
+        <title>A test content</title>
+    </head>
+    <body></body>
+    </html>"""
+
+    content = dedent(content)
+
+    assert HtmlRewriter("foo", "", "").rewrite(content).content == content
+
+    assert HtmlRewriter("foo", "PRE_HEAD_INSERT", "").rewrite(
+        content
+    ).content == content.replace("<head>", "<head>PRE_HEAD_INSERT")
+    assert HtmlRewriter("foo", "", "POST_HEAD_INSERT").rewrite(
+        content
+    ).content == content.replace("</head>", "POST_HEAD_INSERT</head>")
+    assert HtmlRewriter("foo", "PRE_HEAD_INSERT", "POST_HEAD_INSERT").rewrite(
+        content
+    ).content == content.replace("<head>", "<head>PRE_HEAD_INSERT").replace(
+        "</head>", "POST_HEAD_INSERT</head>"
     )
