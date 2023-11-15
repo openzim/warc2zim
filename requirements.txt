@@ -8,3 +8,4 @@ setuptools==68.2.2
 # to support possible brotli content in warcs
 brotlipy==0.7.0
 cdxj_indexer==1.4.5
+tinycss2==1.2.1

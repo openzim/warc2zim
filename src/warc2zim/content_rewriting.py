@@ -1,10 +1,13 @@
 from html import escape
 from html.parser import HTMLParser
+from tinycss2 import parse_stylesheet_bytes, serialize
+from tinycss2.serializer import serialize_url
+from tinycss2.ast import Node as TCSS2Node
 import io
 from collections import namedtuple
 from warc2zim.url_rewriting import ArticleUrlRewriter
 from warc2zim.utils import to_string
-from typing import Callable, Optional, List, Tuple, Union
+from typing import Callable, Optional, Iterable, List, Tuple, Union
 
 AttrsList = List[Tuple[str, Optional[str]]]
 
@@ -110,3 +113,42 @@ class HtmlRewriter(HTMLParser):
 
     def unknown_decl(self, data: str):
         self.handle_decl(data)
+
+
+class CSSRewriter:
+    def __init__(self, css_url: str):
+        self.url_rewriter = ArticleUrlRewriter(css_url)
+
+    def rewrite(self, content: bytes) -> str:
+        rules = parse_stylesheet_bytes(content)
+        self.process_list(rules)
+
+        output = serialize(rules)
+        return output
+
+    def process_list(self, components: Iterable[TCSS2Node]):
+        if components:  # May be null
+            for component in components:
+                self.process(component)
+
+    def process(self, component: TCSS2Node):
+        match component.type:
+            case "qualified-rule" | "() block" | "[] block" | "{} block":
+                self.process_list(component.content)
+            case "function":
+                if component.lower_name == "url":
+                    url_component = component.arguments[0]
+                    new_url = self.url_rewriter(url_component.value)
+                    url_component.value = new_url
+                    url_component.representation = f'"{serialize_url(new_url)}"'
+                else:
+                    self.process_list(component.arguments)
+            case "at-rule":
+                self.process_list(component.prelude)
+                self.process_list(component.content)
+            case "declaration":
+                self.process_list(component.value)
+            case "url":
+                new_url = self.url_rewriter(component.value)
+                component.value = new_url
+                component.representation = f"url({serialize_url(new_url)})"

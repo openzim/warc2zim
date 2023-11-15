@@ -165,4 +165,6 @@ class ArticleUrlRewriter:
         if slash_ending:
             relative_path += "/"
         normalized_url = normalized_url._replace(path=relative_path)
-        return urlunsplit(normalized_url)
+        normalized_url = urlunsplit(normalized_url)
+
+        return quote(normalized_url, safe="/#")
