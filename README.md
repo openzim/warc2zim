@@ -19,7 +19,7 @@ warc2zim ./path/to/myarchive.warc --output /output --name myarchive.zim -u https
 
 The above will create a ZIM file `/output/myarchive.zim` with `https://example.com/` set as the main page.
 
-### Installation
+## Installation
 
 ```sh
 python3 -m venv ./env  # creates a virtual python environment in ./env folder
@@ -63,9 +63,7 @@ If main page is on a subdomain, `https://subdomain1.example.com/` and only URLs 
 warc2zim myarchive.warc --name myarchive -i subdomain1.example.com -i subdomain2.example.com -u https://subdomain1.example.com/starting/page.html
 ```
 
-
-
-### Custom CSS
+## Custom CSS
 
 `--custom-css` allows passing an URL or a path to a CSS file that gets added to the ZIM and gets included on **every HTML article** at the very end of `</head>` (if it exists).
 
@@ -87,7 +85,7 @@ For `revisit` records, the WARC + optional HTTP headers are stored under `H/<url
 If the payload `A/<url>` is zero-length, the record is omitted to conform to ZIM specifications of not storing empty records.
 
 
-### Duplicate URIs
+## Duplicate URIs
 
 WARCs allow multiple records for the same URL, while ZIM does not. As a result, only the first encountered response or resource record is stored in the ZIM,
 and subsequent records are ignored.
