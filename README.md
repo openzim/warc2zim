@@ -19,7 +19,7 @@ warc2zim ./path/to/myarchive.warc --output /output --name myarchive.zim -u https
 
 The above will create a ZIM file `/output/myarchive.zim` with `https://example.com/` set as the main page.
 
-### Installation
+## Installation
 
 ```sh
 python3 -m venv ./env  # creates a virtual python environment in ./env folder
@@ -37,25 +37,33 @@ deactivate  # unloads virtualenv from shell
 
 ## URL Filtering
 
-By default, only URLs from domain of the main page and subdomains are included, eg. only `*.example.com` urls in the above example.
+By default, all URLs found in the WARC files are included unless the `--include-domains`/ `-i` flag is set.
 
-This allows for filtering out URLs that may be out of scope (eg. ads, social media trackers).
+To filter URLs that may be out of scope (eg. ads, social media trackers), use the `--include-domains`/ `-i` flag to specify each domain you want to include. 
 
-To specify a different top-level domain, use the `--include-domains`/ `-i` flag for each domain, eg. if main page is on a subdomain, `https://subdomain.example.com/` but all URLs from `*.example.com` should be included, use:
+Other URLs will be filtered and not pushed to the ZIM.
 
+Note that the domain passed **and all its subdomains** are included.
+
+Eg. if main page is on a subdomain `https://subdomain.example.com/` but all URLs from `*.example.com` should be included, use:
 
 ```
 warc2zim myarchive.warc --name myarchive -i example.com -u https://subdomain.example.com/starting/page.html
 ```
 
-
-To simply include all urls, use the `--include-all` / `-a` flag:
+If main page is on a subdomain, `https://subdomain.example.com/` and only URLs from `subdomain.example.com` should be included, use:
 
 ```
-warc2zim myarchive.warc --name myarchive -a -u https://someother.example.com/page.html
+warc2zim myarchive.warc --name myarchive -i subdomain.example.com -u https://subdomain.example.com/starting/page.html
 ```
 
-### Custom CSS
+If main page is on a subdomain, `https://subdomain1.example.com/` and only URLs from `subdomain1.example.com` and `subdomain2.example.com` should be included, use:
+
+```
+warc2zim myarchive.warc --name myarchive -i subdomain1.example.com -i subdomain2.example.com -u https://subdomain1.example.com/starting/page.html
+```
+
+## Custom CSS
 
 `--custom-css` allows passing an URL or a path to a CSS file that gets added to the ZIM and gets included on **every HTML article** at the very end of `</head>` (if it exists).
 
@@ -77,7 +85,7 @@ For `revisit` records, the WARC + optional HTTP headers are stored under `H/<url
 If the payload `A/<url>` is zero-length, the record is omitted to conform to ZIM specifications of not storing empty records.
 
 
-### Duplicate URIs
+## Duplicate URIs
 
 WARCs allow multiple records for the same URL, while ZIM does not. As a result, only the first encountered response or resource record is stored in the ZIM,
 and subsequent records are ignored.
