@@ -37,23 +37,33 @@ deactivate  # unloads virtualenv from shell
 
 ## URL Filtering
 
-By default, only URLs from domain of the main page and subdomains are included, eg. only `*.example.com` urls in the above example.
+By default, all URLs found in the WARC files are included unless the `--include-domains`/ `-i` flag is set.
 
-This allows for filtering out URLs that may be out of scope (eg. ads, social media trackers).
+To filter URLs that may be out of scope (eg. ads, social media trackers), use the `--include-domains`/ `-i` flag to specify each domain you want to include. 
 
-To specify a different top-level domain, use the `--include-domains`/ `-i` flag for each domain, eg. if main page is on a subdomain, `https://subdomain.example.com/` but all URLs from `*.example.com` should be included, use:
+Other URLs will be filtered and not pushed to the ZIM.
 
+Note that the domain passed **and all its subdomains** are included.
+
+Eg. if main page is on a subdomain `https://subdomain.example.com/` but all URLs from `*.example.com` should be included, use:
 
 ```
 warc2zim myarchive.warc --name myarchive -i example.com -u https://subdomain.example.com/starting/page.html
 ```
 
-
-To simply include all urls, use the `--include-all` / `-a` flag:
+If main page is on a subdomain, `https://subdomain.example.com/` and only URLs from `subdomain.example.com` should be included, use:
 
 ```
-warc2zim myarchive.warc --name myarchive -a -u https://someother.example.com/page.html
+warc2zim myarchive.warc --name myarchive -i subdomain.example.com -u https://subdomain.example.com/starting/page.html
 ```
+
+If main page is on a subdomain, `https://subdomain1.example.com/` and only URLs from `subdomain1.example.com` and `subdomain2.example.com` should be included, use:
+
+```
+warc2zim myarchive.warc --name myarchive -i subdomain1.example.com -i subdomain2.example.com -u https://subdomain1.example.com/starting/page.html
+```
+
+
 
 ### Custom CSS
 
