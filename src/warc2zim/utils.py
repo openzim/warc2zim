@@ -43,7 +43,7 @@ def parse_title(content):
 
 def to_string(input: str | bytes) -> str:
     try:
-        input = input.decode("utf8")
+        input = input.decode("utf-8-sig")
     except AttributeError:
         pass
     return input
