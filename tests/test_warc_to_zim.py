@@ -149,7 +149,7 @@ class TestWarc2Zim(object):
 
             # ensure payloads match
             try:
-                payload = zim_fh.get_item("A/" + url_no_scheme)
+                payload = zim_fh.get_item(url_no_scheme)
             except KeyError:
                 payload = None
 
@@ -323,8 +323,8 @@ class TestWarc2Zim(object):
         for article in self.list_articles(zim_output):
             url = article.path
             # ignore the replay files, which have only one path segment
-            if url.startswith("A/") and len(url.split("/")) > 2:
-                assert url.startswith("A/example.com/")
+            if not url.startswith("_zim_static/"):
+                assert url.startswith("example.com/")
 
     def test_skip_self_redirect(self, tmp_path):
         zim_output = "self-redir.zim"
@@ -363,7 +363,7 @@ class TestWarc2Zim(object):
         for article in self.list_articles(zim_output):
             url = article.path
             # ignore the replay files, which have only one path segment
-            if url.startswith("A/") and len(url.split("/")) > 2:
+            if not url.startswith("_zim_static/"):
                 assert "reseau-canope.fr/" in url
 
         # test detected language
@@ -372,7 +372,7 @@ class TestWarc2Zim(object):
         # test detected favicon
         assert self.get_article(
             zim_output,
-            "A/lesfondamentaux.reseau-canope.fr/fileadmin/template/img/favicon.ico",
+            "lesfondamentaux.reseau-canope.fr/fileadmin/template/img/favicon.ico",
         )
         assert self.get_metadata(zim_output, "Illustration_48x48@1")
 
@@ -488,10 +488,10 @@ class TestWarc2Zim(object):
         )
         zim_output = tmp_path / zim_output
 
-        res = self.get_article(zim_output, "A/example.com/")
+        res = self.get_article(zim_output, "example.com/")
         assert "https://warc2zim.kiwix.app/custom.css".encode("utf-8") in res
 
-        res = self.get_article(zim_output, "A/warc2zim.kiwix.app/custom.css")
+        res = self.get_article(zim_output, "warc2zim.kiwix.app/custom.css")
         assert custom_css == res
 
     def test_custom_css_remote(self, tmp_path):
@@ -515,8 +515,8 @@ class TestWarc2Zim(object):
         )
         zim_output = tmp_path / zim_output
 
-        res = self.get_article(zim_output, "A/example.com/")
+        res = self.get_article(zim_output, "example.com/")
         assert "https://warc2zim.kiwix.app/custom.css".encode("utf-8") in res
 
-        res = self.get_article(zim_output, "A/warc2zim.kiwix.app/custom.css")
+        res = self.get_article(zim_output, "warc2zim.kiwix.app/custom.css")
         assert res == requests.get(url).content

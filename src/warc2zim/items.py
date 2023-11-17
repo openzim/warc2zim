@@ -81,7 +81,7 @@ class StaticArticle(StaticItem):
             ).decode("utf-8")
 
     def get_path(self):
-        return "A/" + self.filename
+        return "_zim_static/" + self.filename
 
     def get_mimetype(self):
         return self.mime
