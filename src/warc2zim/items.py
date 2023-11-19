@@ -45,6 +45,9 @@ class WARCPayloadItem(StaticItem):
         else:
             self.content = self.record.content_stream().read()
 
+        if getattr(record, "method", "GET") == "POST":
+            return
+
         if self.mimetype.startswith("text/html"):
             orig_url_str = get_record_url(record)
             orig_url = urlsplit(orig_url_str)
