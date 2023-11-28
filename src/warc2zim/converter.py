@@ -49,8 +49,8 @@ from jinja2 import Environment, PackageLoader
 
 from cdxj_indexer import iter_file_or_dir, buffering_record_iter
 
-from .url_rewriting import FUZZY_RULES, canonicalize
-from .items import (
+from warc2zim.url_rewriting import FUZZY_RULES, canonicalize
+from warc2zim.items import (
     WARCHeadersItem,
     WARCPayloadItem,
     StaticArticle,
