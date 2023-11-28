@@ -51,7 +51,12 @@ from cdxj_indexer import iter_file_or_dir, buffering_record_iter
 
 from warc2zim.url_rewriting import FUZZY_RULES, canonicalize
 from warc2zim.items import WARCHeadersItem, WARCPayloadItem, StaticArticle
-from .utils import get_version, get_record_url, get_record_mime_type, parse_title
+from warc2zim.utils import (
+    get_version,
+    get_record_url,
+    get_record_mime_type,
+    parse_title,
+)
 
 # Shared logger
 logger = logging.getLogger("warc2zim.converter")

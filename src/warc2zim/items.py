@@ -19,7 +19,7 @@ from zimscraperlib.zim.providers import StringProvider
 from bs4 import BeautifulSoup
 
 from warc2zim.url_rewriting import canonicalize
-from .utils import get_record_url, get_record_mime_type, parse_title
+from warc2zim.utils import get_record_url, get_record_mime_type, parse_title
 
 # Shared logger
 logger = logging.getLogger("warc2zim.items")
