@@ -18,7 +18,7 @@ from zimscraperlib.zim.providers import StringProvider
 
 from bs4 import BeautifulSoup
 
-from .url_rewriting import canonicalize
+from warc2zim.url_rewriting import canonicalize
 
 # Shared logger
 logger = logging.getLogger("warc2zim.items")
