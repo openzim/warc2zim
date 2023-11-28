@@ -17,9 +17,7 @@ from zimscraperlib.zim import Archive
 from warc2zim.url_rewriting import canonicalize
 from warc2zim.converter import iter_warc_records
 from warc2zim.utils import get_record_url
-
-# Import last to not mask the warc2zim module
-from warc2zim.main import warc2zim
+from warc2zim.main import main
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
 
@@ -189,7 +187,7 @@ class TestWarc2Zim(object):
 
     def test_warc_to_zim_specify_params_and_metadata(self, tmp_path):
         zim_output = "zim-out-filename.zim"
-        warc2zim(
+        main(
             [
                 "-v",
                 os.path.join(TEST_DATA_DIR, "example-response.warc"),
@@ -270,7 +268,7 @@ class TestWarc2Zim(object):
 
         cmdline.extend(["--output", str(tmp_path), "--name", filename])
 
-        warc2zim(cmdline)
+        main(cmdline)
 
         zimfile = filename + "_" + time.strftime("%Y-%m") + ".zim"
 
@@ -287,7 +285,7 @@ class TestWarc2Zim(object):
 
     def test_same_domain_only(self, tmp_path):
         zim_output = "same-domain.zim"
-        warc2zim(
+        main(
             [
                 os.path.join(TEST_DATA_DIR, "example-revisit.warc.gz"),
                 "--favicon",
@@ -315,7 +313,7 @@ class TestWarc2Zim(object):
 
     def test_skip_self_redirect(self, tmp_path):
         zim_output = "self-redir.zim"
-        warc2zim(
+        main(
             [
                 os.path.join(TEST_DATA_DIR, "self-redirect.warc"),
                 "--output",
@@ -340,7 +338,7 @@ class TestWarc2Zim(object):
 
     def test_include_domains_favicon_and_language(self, tmp_path):
         zim_output = "spt.zim"
-        warc2zim(
+        main(
             [
                 os.path.join(TEST_DATA_DIR, "single-page-test.warc"),
                 "-i",
@@ -380,7 +378,7 @@ class TestWarc2Zim(object):
 
     def test_all_warcs_root_dir(self, tmp_path):
         zim_output = "test-all.zim"
-        warc2zim(
+        main(
             [
                 os.path.join(TEST_DATA_DIR),
                 "--output",
@@ -418,7 +416,7 @@ class TestWarc2Zim(object):
 
     def test_fuzzy_urls(self, tmp_path, fuzzycheck):
         zim_output = fuzzycheck["filename"] + ".zim"
-        warc2zim(
+        main(
             [
                 os.path.join(TEST_DATA_DIR, fuzzycheck["filename"]),
                 "--output",
@@ -445,7 +443,7 @@ class TestWarc2Zim(object):
         with open(tmp_path / "sw.js", "wt") as fh:
             fh.write(res.text)
 
-        warc2zim(
+        main(
             [
                 "-v",
                 os.path.join(TEST_DATA_DIR, "example-response.warc"),
@@ -465,7 +463,7 @@ class TestWarc2Zim(object):
     def test_error_bad_replay_viewer_url(self, tmp_path):
         zim_output_not_created = "zim-out-not-created.zim"
         with pytest.raises(Exception) as e:
-            warc2zim(
+            main(
                 [
                     "-v",
                     os.path.join(TEST_DATA_DIR, "example-response.warc"),
@@ -486,7 +484,7 @@ class TestWarc2Zim(object):
     def test_error_bad_main_page(self, tmp_path):
         zim_output_not_created = "zim-out-not-created.zim"
         with pytest.raises(Exception) as e:
-            warc2zim(
+            main(
                 [
                     "-v",
                     os.path.join(TEST_DATA_DIR, "example-response.warc"),
@@ -504,15 +502,15 @@ class TestWarc2Zim(object):
     def test_args_only(self):
         # error, name required
         with pytest.raises(SystemExit) as e:
-            warc2zim([])
+            main([])
             assert e.code == 2
 
         # error, no such output directory
         with pytest.raises(Exception) as e:
-            warc2zim(["--name", "test", "--output", "/no-such-dir"])
+            main(["--name", "test", "--output", "/no-such-dir"])
 
         # success, special error code for no output files
-        assert warc2zim(["--name", "test", "--output", "./"]) == 100
+        assert main(["--name", "test", "--output", "./"]) == 100
 
     def test_custom_css(self, tmp_path):
         custom_css = b"* { background-color: red; }"
@@ -522,7 +520,7 @@ class TestWarc2Zim(object):
 
         zim_output = "test-css.zim"
 
-        warc2zim(
+        main(
             [
                 os.path.join(TEST_DATA_DIR, "example-response.warc"),
                 "--output",
@@ -549,7 +547,7 @@ class TestWarc2Zim(object):
             "https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap-reboot.css"
         )
 
-        warc2zim(
+        main(
             [
                 os.path.join(TEST_DATA_DIR, "example-response.warc"),
                 "--output",
