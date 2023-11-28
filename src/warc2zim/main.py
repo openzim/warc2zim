@@ -31,7 +31,7 @@ from warc2zim.utils import get_version
 logger = logging.getLogger("warc2zim")
 
 
-def warc2zim(args=None):
+def main(args=None):
     parser = ArgumentParser(description="Create ZIM files from WARC files")
 
     parser.add_argument("-V", "--version", action="version", version=get_version())
@@ -114,4 +114,4 @@ def warc2zim(args=None):
 
 
 if __name__ == "__main__":  # pragma: no cover
-    sys.exit(warc2zim())
+    sys.exit(main())
