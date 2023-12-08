@@ -142,8 +142,12 @@ class Converter:
 
     def init_env(self):
         # autoescape=False to allow injecting html entities from translated text
+
+        # We don't have any files in templates directory.
+        # So `templates` directory doesn't exist and pkg_resources complains about that.
+        # Comment this part until we readd new file in `templates` directory
         env = Environment(
-            loader=PackageLoader("warc2zim", "templates"),
+            # loader=PackageLoader("warc2zim", "templates"),
             extensions=["jinja2.ext.i18n"],
             autoescape=False,
         )
@@ -256,11 +260,14 @@ class Converter:
             Scraper=f"warc2zim {get_version()}",
         ).start()
 
-        for filename in pkg_resources.resource_listdir("warc2zim", "templates"):
-            if filename == HEAD_INSERT_FILE:
-                continue
-
-            self.creator.add_item(StaticArticle(self.env, filename, self.main_url))
+        # We don't have any files in templates directory.
+        # So `templates` directory doesn't exist and pkg_resources complains about that.
+        # Comment this part until we readd new file in `templates` directory
+        # for filename in pkg_resources.resource_listdir("warc2zim", "templates"):
+        #    if filename == HEAD_INSERT_FILE:
+        #        continue
+        #
+        #    self.creator.add_item(StaticArticle(self.env, filename, self.main_url))
 
         for record in self.iter_all_warc_records():
             self.add_items_for_warc_record(record)

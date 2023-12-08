@@ -107,7 +107,7 @@ class TestWarc2Zim(object):
 
         # autoescape=False to allow injecting html entities from translated text
         env = Environment(
-            loader=PackageLoader("warc2zim", "templates"),
+            # loader=PackageLoader("warc2zim", "templates"),
             extensions=["jinja2.ext.i18n"],
             autoescape=False,
         )
