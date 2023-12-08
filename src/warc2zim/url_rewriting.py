@@ -150,6 +150,10 @@ class ArticleUrlRewriter:
 
         The url is "fully" rewrited to point to a normalized entry path
         """
+
+        if url.startswith("data:") or url.startswith("blob:"):
+            return url
+
         absolute_url = urljoin(self.article_url, url)
 
         normalized_url = urlsplit(f"/{normalize(absolute_url)}")

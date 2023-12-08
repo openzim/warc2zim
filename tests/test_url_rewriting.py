@@ -71,3 +71,8 @@ def test_absolute_url(rewriter):
             urljoin(serving_address, rewriten)
             == "https://serving.com" + url.split(":", 1)[1][1:]
         )
+
+
+def test_no_rewrite_blob_data(rewriter):
+    for url in ["data:0548datacontent", "blob:exemple.com/url"]:
+        assert rewriter(url) == url
