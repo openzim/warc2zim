@@ -58,7 +58,7 @@ logger = logging.getLogger("warc2zim.converter")
 HTML_TYPES = ("text/html", "application/xhtml", "application/xhtml+xml")
 
 # head insert template
-HEAD_INSERT_FILE = None
+HEAD_INSERT_FILE = "head_insert.html"
 
 # Default ZIM metadata tags
 DEFAULT_TAGS = ["_ftindex:yes", "_category:other", "_sw:yes"]
@@ -142,15 +142,14 @@ class Converter:
 
     def init_env(self):
         # autoescape=False to allow injecting html entities from translated text
-
-        # We don't have any files in templates directory.
-        # So `templates` directory doesn't exist and pkg_resources complains about that.
-        # Comment this part until we readd new file in `templates` directory
         env = Environment(
-            # loader=PackageLoader("warc2zim", "templates"),
+            loader=PackageLoader("warc2zim", "templates"),
             extensions=["jinja2.ext.i18n"],
             autoescape=False,
         )
+
+        env.filters["urlsplit"] = urlsplit
+        env.filters["tobool"] = lambda val: "true" if val else "false"
 
         try:
             env.install_gettext_translations(Locale.translation)
@@ -227,11 +226,7 @@ class Converter:
         self.env = self.init_env()
 
         # init head insert
-        if HEAD_INSERT_FILE:
-            template = self.env.get_template(HEAD_INSERT_FILE)
-            self.head_insert = ("<head>" + template.render()).encode("utf-8")
-        else:
-            self.head_insert = b""
+        self.head_template = self.env.get_template(HEAD_INSERT_FILE)
         if self.custom_css:
             self.css_insert = (
                 f'\n<link type="text/css" href="{CUSTOM_CSS_URL}" rel="Stylesheet" />\n'
@@ -258,15 +253,6 @@ class Converter:
             Source=self.source,
             Scraper=f"warc2zim {get_version()}",
         ).start()
-
-        # We don't have any files in templates directory.
-        # So `templates` directory doesn't exist and pkg_resources complains about that.
-        # Comment this part until we readd new file in `templates` directory
-        # for filename in pkg_resources.resource_listdir("warc2zim", "templates"):
-        #    if filename == HEAD_INSERT_FILE:
-        #        continue
-        #
-        #    self.creator.add_item(StaticArticle(self.env, filename, self.main_url))
 
         for filename in pkg_resources.resource_listdir("warc2zim", "statics"):
             self.creator.add_item(StaticArticle(self.env, filename, self.main_url))
@@ -477,7 +463,7 @@ class Converter:
                 return
 
             payload_item = WARCPayloadItem(
-                normalized_url, record, self.head_insert, self.css_insert
+                normalized_url, record, self.head_template, self.css_insert
             )
 
             if len(payload_item.content) != 0:

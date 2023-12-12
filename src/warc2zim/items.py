@@ -8,12 +8,13 @@ This module contains the differents Item we may want to add to a Zim archive.
 """
 
 import logging
-import re
-
 import pkg_resources
+from urllib.parse import urlsplit
 from libzim.writer import Hint
 from zimscraperlib.types import get_mime_for_name
 from zimscraperlib.zim.items import StaticItem
+
+from warcio.recordloader import ArcWarcRecord
 
 from warc2zim.utils import get_record_url, get_record_mime_type
 from warc2zim.url_rewriting import ArticleUrlRewriter
@@ -22,19 +23,15 @@ from warc2zim.content_rewriting import HtmlRewriter, CSSRewriter, JSRewriter
 # Shared logger
 logger = logging.getLogger("warc2zim.items")
 
-# external sw.js filename
-SW_JS = "sw.js"
-
-HEAD_INS = re.compile(b"(<head>)", re.I)
-CSS_INS = re.compile(b"(</head>)", re.I)
-
 
 class WARCPayloadItem(StaticItem):
     """WARCPayloadItem used to store the WARC payload
     Usually stored under A namespace
     """
 
-    def __init__(self, path, record, head_insert, css_insert):
+    def __init__(
+        self, path: str, record: ArcWarcRecord, head_template: str, css_insert: str
+    ):
         super().__init__()
         self.record = record
         self.path = path
@@ -49,6 +46,17 @@ class WARCPayloadItem(StaticItem):
             self.content = self.record.content_stream().read()
 
         if self.mimetype.startswith("text/html"):
+            orig_url_str = get_record_url(record)
+            orig_url = urlsplit(orig_url_str)
+
+            wombat_path = url_rewriter.from_normalized("_zim_static/wombat.js")
+            head_insert = head_template.render(
+                path=path,
+                wombat_path=wombat_path,
+                orig_url=orig_url_str,
+                orig_scheme=orig_url.scheme,
+                orig_host=orig_url.netloc,
+            )
             self.title, self.content = HtmlRewriter(
                 self.path, head_insert, css_insert
             ).rewrite(self.content)
