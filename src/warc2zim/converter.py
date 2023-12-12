@@ -268,6 +268,9 @@ class Converter:
         #
         #    self.creator.add_item(StaticArticle(self.env, filename, self.main_url))
 
+        for filename in pkg_resources.resource_listdir("warc2zim", "statics"):
+            self.creator.add_item(StaticArticle(self.env, filename, self.main_url))
+
         for record in self.iter_all_warc_records():
             self.add_items_for_warc_record(record)
 

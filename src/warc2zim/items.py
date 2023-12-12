@@ -67,13 +67,9 @@ class StaticArticle(StaticItem):
         self.mime = get_mime_for_name(filename)
         self.mime = self.mime or "application/octet-stream"
 
-        if filename != SW_JS:
-            template = env.get_template(filename)
-            self.content = template.render(MAIN_URL=self.main_url)
-        else:
-            self.content = pkg_resources.resource_string(
-                "warc2zim", "templates/" + filename
-            ).decode("utf-8")
+        self.content = pkg_resources.resource_string(
+            "warc2zim", "statics/" + filename
+        ).decode("utf-8")
 
     def get_path(self):
         return "_zim_static/" + self.filename
