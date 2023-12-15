@@ -1,15 +1,30 @@
 import pytest
 from warc2zim.content_rewriting import HtmlRewriter
 from textwrap import dedent
+from collections import namedtuple
+
+
+class TestContent(namedtuple("TestContent", ["input", "expected", "article_url"])):
+    def __new__(cls, input, expected=None, article_url="kiwix.org"):
+        expected = expected or input
+        return super().__new__(cls, input, expected, article_url)
 
 
 @pytest.fixture(
     params=[
-        "A simple string without url",
-        "<html><body><p>This is a sentence with a http://exemple.com/path link</p></body></html>",
-        '<a data-source="http://exemple.com/path">A link we should not rewrite</a>',
-        '<p style="background: url(some/image.png);">A url (relative) in a inline style</p>',
-        '<style>p { /* A comment with a http://link.org/ */ background: url("some/image.png") ; }</style>',
+        TestContent("A simple string without url"),
+        TestContent(
+            "<html><body><p>This is a sentence with a http://exemple.com/path link</p></body></html>"
+        ),
+        TestContent(
+            '<a data-source="http://exemple.com/path">A link we should not rewrite</a>'
+        ),
+        TestContent(
+            '<p style="background: url(some/image.png);">A url (relative) in a inline style</p>'
+        ),
+        TestContent(
+            '<style>p { /* A comment with a http://link.org/ */ background: url("some/image.png") ; }</style>'
+        ),
     ]
 )
 def no_rewrite_content(request):
@@ -18,22 +33,24 @@ def no_rewrite_content(request):
 
 def test_no_rewrite(no_rewrite_content):
     assert (
-        HtmlRewriter("kiwix.org", "", "").rewrite(no_rewrite_content).content
-        == no_rewrite_content
+        HtmlRewriter(no_rewrite_content.article_url, "", "")
+        .rewrite(no_rewrite_content.input)
+        .content
+        == no_rewrite_content.expected
     )
 
 
 @pytest.fixture(
     params=[
-        (
+        TestContent(
             "<p style='background: url(\"some/image.png\")'>A link in a inline style</p>",
             '<p style="background: url(&quot;some/image.png&quot;);">A link in a inline style</p>',
         ),
-        (
+        TestContent(
             "<p style=\"background: url('some/image.png')\">A link in a inline style</p>",
             '<p style="background: url(&quot;some/image.png&quot;);">A link in a inline style</p>',
         ),
-        (
+        TestContent(
             "<ul style='list-style: \">\"'>",
             '<ul style="list-style: &quot;&gt;&quot;;">',
         ),
@@ -44,73 +61,84 @@ def escaped_content(request):
 
 
 def test_escaped_content(escaped_content):
-    (input_str, expected) = escaped_content
-    transformed = HtmlRewriter("kiwix.org", "", "").rewrite(input_str).content
-    assert transformed == expected
+    transformed = (
+        HtmlRewriter(escaped_content.article_url, "", "")
+        .rewrite(escaped_content.input)
+        .content
+    )
+    assert transformed == escaped_content.expected
+
+
+def long_path_replace_test_content(input: str, rewriten_url: str, article_url: str):
+    expected = input.replace("http://exemple.com/a/long/path", rewriten_url)
+    return TestContent(input, expected, article_url)
+
+
+lprtc = long_path_replace_test_content
 
 
 @pytest.fixture(
     params=[
         # Normalized path is "exemple.com/a/long/path"
-        (
+        lprtc(
             '<a href="http://exemple.com/a/long/path">A link to rewrite</a>',
+            "exemple.com/a/long/path",
             "exemple.com",
-            "exemple.com/a/long/path",
         ),
-        (
+        lprtc(
             '<a href="http://exemple.com/a/long/path">A link to rewrite</a>',
+            "exemple.com/a/long/path",
             "kiwix.org",
-            "exemple.com/a/long/path",
         ),
-        (
+        lprtc(
             '<a href="http://exemple.com/a/long/path">A link to rewrite</a>',
-            "kiwix.org/",
             "../exemple.com/a/long/path",
+            "kiwix.org/",
         ),
-        (
+        lprtc(
             '<a href="http://exemple.com/a/long/path">A link to rewrite</a>',
+            "a/long/path",
             "exemple.com/",
-            "a/long/path",
         ),
-        (
+        lprtc(
             '<a href="http://exemple.com/a/long/path">A link to rewrite</a>',
+            "a/long/path",
             "exemple.com/a",
-            "a/long/path",
         ),
-        (
+        lprtc(
             '<a href="http://exemple.com/a/long/path">A link to rewrite</a>',
+            "long/path",
             "exemple.com/a/",
-            "long/path",
         ),
-        (
+        lprtc(
             '<a href="http://exemple.com/a/long/path">A link to rewrite</a>',
+            "long/path",
             "exemple.com/a/long",
-            "long/path",
         ),
-        (
+        lprtc(
             '<a href="http://exemple.com/a/long/path">A link to rewrite</a>',
+            "path",
             "exemple.com/a/long/",
-            "path",
         ),
-        (
+        lprtc(
             '<a href="http://exemple.com/a/long/path">A link to rewrite</a>',
+            "path",
             "exemple.com/a/long/path",
-            "path",
         ),
-        (
+        lprtc(
             '<a href="http://exemple.com/a/long/path">A link to rewrite</a>',
-            "exemple.com/a/long/path/yes",
             ".",
+            "exemple.com/a/long/path/yes",
         ),
-        (
+        lprtc(
             '<a href="http://exemple.com/a/long/path">A link to rewrite</a>',
-            "exemple.com/a/very/long/path",
             "../../long/path",
+            "exemple.com/a/very/long/path",
         ),
-        (
+        lprtc(
             '<a href="http://exemple.com/a/long/path">A link to rewrite</a>',
-            "kiwix.org/another/path",
             "../../exemple.com/a/long/path",
+            "kiwix.org/another/path",
         ),
     ]
 )
@@ -119,9 +147,10 @@ def rewrite_url(request):
 
 
 def test_rewrite(rewrite_url):
-    (input_str, article_url, rewriten) = rewrite_url
-    expected = input_str.replace("http://exemple.com/a/long/path", rewriten)
-    assert HtmlRewriter(article_url, "", "").rewrite(input_str).content == expected
+    assert (
+        HtmlRewriter(rewrite_url.article_url, "", "").rewrite(rewrite_url.input).content
+        == rewrite_url.expected
+    )
 
 
 def test_extract_title():
