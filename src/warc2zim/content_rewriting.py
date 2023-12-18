@@ -155,23 +155,22 @@ class CSSRewriter:
                 self.process(component)
 
     def process(self, component: TCSS2Node):
-        match component.type:
-            case "qualified-rule" | "() block" | "[] block" | "{} block":
-                self.process_list(component.content)
-            case "function":
-                if component.lower_name == "url":
-                    url_component = component.arguments[0]
-                    new_url = self.url_rewriter(url_component.value)
-                    url_component.value = new_url
-                    url_component.representation = f'"{serialize_url(new_url)}"'
-                else:
-                    self.process_list(component.arguments)
-            case "at-rule":
-                self.process_list(component.prelude)
-                self.process_list(component.content)
-            case "declaration":
-                self.process_list(component.value)
-            case "url":
-                new_url = self.url_rewriter(component.value)
-                component.value = new_url
-                component.representation = f"url({serialize_url(new_url)})"
+        if component.type in ("qualified-rule", "() block", "[] block", "{} block"):
+            self.process_list(component.content)
+        elif component.type == "function":
+            if component.lower_name == "url":
+                url_component = component.arguments[0]
+                new_url = self.url_rewriter(url_component.value)
+                url_component.value = new_url
+                url_component.representation = f'"{serialize_url(new_url)}"'
+            else:
+                self.process_list(component.arguments)
+        elif component.type == "at-rule":
+            self.process_list(component.prelude)
+            self.process_list(component.content)
+        elif component.type == "declaration":
+            self.process_list(component.value)
+        elif component.type == "url":
+            new_url = self.url_rewriter(component.value)
+            component.value = new_url
+            component.representation = f"url({serialize_url(new_url)})"
