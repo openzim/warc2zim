@@ -36,6 +36,8 @@ is reduced to "youtube.fuzzy.replayweb.page/youtubei/v1/foo/baz/things?videoId=x
 by slightly simplifying the path and keeping only the usefull arguments in the querystring.
 """
 
+from __future__ import annotations
+
 import logging
 import re
 from urllib.parse import urlsplit, urlunsplit, quote, unquote, parse_qs, urlencode
