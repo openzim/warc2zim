@@ -38,7 +38,6 @@ class WARCPayloadItem(StaticItem):
         self.mimetype = get_record_mime_type(record)
         self.title = ""
 
-        url_rewriter = ArticleUrlRewriter(self.path)
         if hasattr(self.record, "buffered_stream"):
             self.record.buffered_stream.seek(0)
             self.content = self.record.buffered_stream.read()
@@ -48,8 +47,10 @@ class WARCPayloadItem(StaticItem):
         if getattr(record, "method", "GET") == "POST":
             return
 
+        orig_url_str = get_record_url(record)
+        url_rewriter = ArticleUrlRewriter(orig_url_str)
+
         if self.mimetype.startswith("text/html"):
-            orig_url_str = get_record_url(record)
             orig_url = urlsplit(orig_url_str)
 
             wombat_path = url_rewriter.from_normalized("_zim_static/wombat.js")
@@ -61,10 +62,10 @@ class WARCPayloadItem(StaticItem):
                 orig_host=orig_url.netloc,
             )
             self.title, self.content = HtmlRewriter(
-                self.path, head_insert, css_insert
+                orig_url_str, head_insert, css_insert
             ).rewrite(self.content)
         elif self.mimetype.startswith("text/css"):
-            self.content = CSSRewriter(self.path).rewrite(self.content)
+            self.content = CSSRewriter(orig_url_str).rewrite(self.content)
         elif "javascript" in self.mimetype:
             self.content = JSRewriter(url_rewriter).rewrite(self.content.decode())
 
