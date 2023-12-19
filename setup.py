@@ -70,7 +70,7 @@ setup(
     },
     entry_points="""
         [console_scripts]
-        warc2zim = warc2zim.main:warc2zim
+        warc2zim = warc2zim.main:main
     """,
     classifiers=[
         "Development Status :: 5 - Production/Stable",
