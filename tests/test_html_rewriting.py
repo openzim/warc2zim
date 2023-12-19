@@ -1,20 +1,9 @@
-from dataclasses import dataclass
 from textwrap import dedent
 
 import pytest
 
 from warc2zim.content_rewriting import HtmlRewriter
-
-
-@dataclass
-class TestContent:
-    input: str
-    expected: str = ""
-    article_url: str = "kiwix.org"
-
-    def __post_init__(self):
-        if not self.expected:
-            self.expected = self.input
+from .utils import TestContent
 
 
 @pytest.fixture(

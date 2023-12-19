@@ -156,7 +156,11 @@ class ArticleUrlRewriter:
 
         absolute_url = urljoin(self.article_url, url)
 
-        normalized_url = urlsplit(f"/{normalize(absolute_url)}")
+        normalized_url = normalize(absolute_url)
+        return self.from_normalized(normalized_url)
+
+    def from_normalized(self, normalized_url_str: str) -> str:
+        normalized_url = urlsplit(f"/{normalized_url_str}")
 
         # relative_to will lost our potential last '/'
         slash_ending = normalized_url.path[-1] == "/"

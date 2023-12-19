@@ -4,6 +4,7 @@ import io
 from collections import namedtuple
 from warc2zim.url_rewriting import ArticleUrlRewriter
 from warc2zim.content_rewriting.css import CSSRewriter
+from warc2zim.content_rewriting.js import JSRewriter
 from warc2zim.utils import to_string
 from typing import Callable, Optional, List, Tuple, Union
 
@@ -107,6 +108,9 @@ class HtmlRewriter(HTMLParser):
             self.title = data.strip()
         elif self._active_tag == "style":
             data = self.css_rewriter.rewrite(data)
+        elif self._active_tag == "script":
+            if data.strip():
+                data = JSRewriter(self.url_rewriter).rewrite(data)
         self.send(data)
 
     def handle_comment(self, data: str):

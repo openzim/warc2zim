@@ -16,7 +16,8 @@ from zimscraperlib.types import get_mime_for_name
 from zimscraperlib.zim.items import StaticItem
 
 from warc2zim.utils import get_record_url, get_record_mime_type
-from warc2zim.content_rewriting import HtmlRewriter, CSSRewriter
+from warc2zim.url_rewriting import ArticleUrlRewriter
+from warc2zim.content_rewriting import HtmlRewriter, CSSRewriter, JSRewriter
 
 # Shared logger
 logger = logging.getLogger("warc2zim.items")
@@ -40,6 +41,7 @@ class WARCPayloadItem(StaticItem):
         self.mimetype = get_record_mime_type(record)
         self.title = ""
 
+        url_rewriter = ArticleUrlRewriter(self.path)
         if hasattr(self.record, "buffered_stream"):
             self.record.buffered_stream.seek(0)
             self.content = self.record.buffered_stream.read()
@@ -52,6 +54,8 @@ class WARCPayloadItem(StaticItem):
             ).rewrite(self.content)
         elif self.mimetype.startswith("text/css"):
             self.content = CSSRewriter(self.path).rewrite(self.content)
+        elif "javascript" in self.mimetype:
+            self.content = JSRewriter(url_rewriter).rewrite(self.content.decode())
 
     def get_hints(self):
         is_front = self.mimetype.startswith("text/html")

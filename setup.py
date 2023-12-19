@@ -15,7 +15,7 @@ def read(*names, **kwargs):
 
 
 def get_package_data():
-    pkgs = ["templates/*"]
+    pkgs = ["templates/*", "statics/*"]
 
     package_path = root_dir / "src" / "warc2zim"
     for path in package_path.glob("locale/*/LC_MESSAGES/*.mo"):
