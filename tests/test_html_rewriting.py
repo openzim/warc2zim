@@ -1,13 +1,20 @@
-import pytest
-from warc2zim.content_rewriting import HtmlRewriter
+from dataclasses import dataclass
 from textwrap import dedent
-from collections import namedtuple
+
+import pytest
+
+from warc2zim.content_rewriting import HtmlRewriter
 
 
-class TestContent(namedtuple("TestContent", ["input", "expected", "article_url"])):
-    def __new__(cls, input, expected=None, article_url="kiwix.org"):
-        expected = expected or input
-        return super().__new__(cls, input, expected, article_url)
+@dataclass
+class TestContent:
+    input: str
+    expected: str = ""
+    article_url: str = "kiwix.org"
+
+    def __post_init__(self):
+        if not self.expected:
+            self.expected = self.input
 
 
 @pytest.fixture(
