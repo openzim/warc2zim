@@ -5,19 +5,12 @@
 """ warc2zim conversion utility
 
 This utility provides a conversion from WARC records to ZIM files.
-The WARCs are converted in a 'lossless' way, no data from WARC records is lost.
-Each WARC record results in two ZIM items:
-- The WARC payload is stored under /A/<url>
-- The WARC headers + HTTP headers are stored under the /H/<url>
-
-Given a WARC response record for 'https://example.com/',
-two ZIM items are created /A/example.com/ and /H/example.com/ are created.
-
-Only WARC response and resource records are stored.
+WARC record are directly stored in a zim file as:
+- Response WARC record as item "normalized" <url>
+- Revisit record as alias (using "normalized" <url> to)
 
 If the WARC contains multiple entries for the same URL, only the first entry is added,
 and later entries are ignored. A warning is printed as well.
-
 """
 
 import os
@@ -49,8 +42,8 @@ from jinja2 import Environment, PackageLoader
 
 from cdxj_indexer import iter_file_or_dir, buffering_record_iter
 
-from warc2zim.url_rewriting import FUZZY_RULES, canonicalize
-from warc2zim.items import WARCHeadersItem, WARCPayloadItem, StaticArticle
+from warc2zim.url_rewriting import normalize
+from warc2zim.items import WARCPayloadItem, StaticArticle
 from warc2zim.utils import (
     get_version,
     get_record_url,
@@ -64,11 +57,8 @@ logger = logging.getLogger("warc2zim.converter")
 # HTML mime types
 HTML_TYPES = ("text/html", "application/xhtml", "application/xhtml+xml")
 
-# external sw.js filename
-SW_JS = "sw.js"
-
 # head insert template
-HEAD_INSERT_FILE = "sw_check.html"
+HEAD_INSERT_FILE = None
 
 # Default ZIM metadata tags
 DEFAULT_TAGS = ["_ftindex:yes", "_category:other", "_sw:yes"]
@@ -82,6 +72,11 @@ DUPLICATE_EXC_STR = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 
+ALIAS_EXC_STR = re.compile(
+    r"^Impossible to alias(.+)" r"(.+) doesn't exist.",
+    re.MULTILINE | re.DOTALL,
+)
+
 
 class Converter:
     def __init__(self, args):
@@ -91,14 +86,14 @@ class Converter:
         else:
             logger.setLevel(logging.INFO)
 
-        self.main_url = args.url
+        main_url = args.url
         # ensure trailing slash is added if missing
-        parts = urlsplit(self.main_url)
+        parts = urlsplit(main_url)
         if parts.path == "":
             parts = list(parts)
             # set path
             parts[2] = "/"
-            self.main_url = urlunsplit(parts)
+            main_url = urlunsplit(parts)
 
         self.name = args.name
         self.title = args.title
@@ -109,9 +104,10 @@ class Converter:
         self.creator_metadata = args.creator
         self.publisher = args.publisher
         self.tags = DEFAULT_TAGS + (args.tags or [])
-        self.source = args.source or self.main_url
+        self.source = args.source or main_url
         self.scraper = "warc2zim " + get_version()
         self.illustration = b""
+        self.main_url = normalize(main_url)
 
         self.output = args.output
         self.zim_file = args.zim_file
@@ -130,7 +126,6 @@ class Converter:
         self.inputs = args.inputs
         self.include_domains = args.include_domains
 
-        self.replay_viewer_source = args.replay_viewer_source
         self.custom_css = args.custom_css
 
         self.indexed_urls = set({})
@@ -145,34 +140,14 @@ class Converter:
 
         self.written_records = self.total_records = 0
 
-    def add_replayer(self):
-        if self.replay_viewer_source and re.match(
-            r"^https?\:", self.replay_viewer_source
-        ):
-            self.creator.add_item(
-                URLItem(
-                    url=self.replay_viewer_source + SW_JS,
-                    path="A/" + SW_JS,
-                    mimetype="application/javascript",
-                )
-            )
-        elif self.replay_viewer_source:
-            self.creator.add_item_for(
-                fpath=self.replay_viewer_source + SW_JS,
-                path="A/" + SW_JS,
-                mimetype="application/javascript",
-            )
-        else:
-            self.creator.add_item(
-                StaticArticle(
-                    self.env, SW_JS, self.main_url, mimetype="application/javascript"
-                )
-            )
-
     def init_env(self):
         # autoescape=False to allow injecting html entities from translated text
+
+        # We don't have any files in templates directory.
+        # So `templates` directory doesn't exist and pkg_resources complains about that.
+        # Comment this part until we readd new file in `templates` directory
         env = Environment(
-            loader=PackageLoader("warc2zim", "templates"),
+            # loader=PackageLoader("warc2zim", "templates"),
             extensions=["jinja2.ext.i18n"],
             autoescape=False,
         )
@@ -252,8 +227,11 @@ class Converter:
         self.env = self.init_env()
 
         # init head insert
-        template = self.env.get_template(HEAD_INSERT_FILE)
-        self.head_insert = ("<head>" + template.render()).encode("utf-8")
+        if HEAD_INSERT_FILE:
+            template = self.env.get_template(HEAD_INSERT_FILE)
+            self.head_insert = ("<head>" + template.render()).encode("utf-8")
+        else:
+            self.head_insert = b""
         if self.custom_css:
             self.css_insert = (
                 f'\n<link type="text/css" href="{CUSTOM_CSS_URL}" '
@@ -264,7 +242,7 @@ class Converter:
 
         self.creator = Creator(
             self.full_filename,
-            main_path="A/index.html",
+            main_path=self.main_url,
         )
 
         self.creator.config_metadata(
@@ -282,31 +260,28 @@ class Converter:
             Scraper=f"warc2zim {get_version()}",
         ).start()
 
-        self.add_replayer()
-
-        for filename in pkg_resources.resource_listdir("warc2zim", "templates"):
-            if filename == HEAD_INSERT_FILE or filename == SW_JS:
-                continue
-
-            self.creator.add_item(StaticArticle(self.env, filename, self.main_url))
+        # We don't have any files in templates directory.
+        # So `templates` directory doesn't exist and pkg_resources complains about that.
+        # Comment this part until we readd new file in `templates` directory
+        # for filename in pkg_resources.resource_listdir("warc2zim", "templates"):
+        #    if filename == HEAD_INSERT_FILE:
+        #        continue
+        #
+        #    self.creator.add_item(StaticArticle(self.env, filename, self.main_url))
 
         for record in self.iter_all_warc_records():
             self.add_items_for_warc_record(record)
 
-        # process revisits, headers only
-        for url, record in self.revisits.items():
-            if canonicalize(url) not in self.indexed_urls:
-                logger.debug(
-                    "Adding revisit {0} -> {1}".format(
-                        url, record.rec_headers["WARC-Refers-To-Target-URI"]
-                    )
-                )
+        # process revisits
+        for normalized_url, target_url in self.revisits.items():
+            if normalized_url not in self.indexed_urls:
+                logger.debug(f"Adding alias {normalized_url} -> {target_url}")
                 try:
-                    self.creator.add_item(WARCHeadersItem(record))
+                    self.creator.add_alias(normalized_url, "", target_url, {})
                 except RuntimeError as exc:
-                    if not DUPLICATE_EXC_STR.match(str(exc)):
+                    if not ALIAS_EXC_STR.match(str(exc)):
                         raise exc
-                self.indexed_urls.add(canonicalize(url))
+                self.indexed_urls.add(normalized_url)
 
         logger.debug(f"Found {self.total_records} records in WARCs")
 
@@ -339,9 +314,9 @@ class Converter:
                     or record.http_headers.get_statuscode() == "200"
                 )
             ):
-                self.main_url = url
+                self.main_url = normalize(url)
 
-            if urldefrag(self.main_url).url != url:
+            if urldefrag(self.main_url).url != normalize(url):
                 continue
 
             # if we get here, found record for the main page
@@ -472,15 +447,16 @@ class Converter:
             return False
 
         location = record.http_headers.get("Location", "")
-        return canonicalize(url) == canonicalize(location)
+        return normalize(url) == normalize(location)
 
     def add_items_for_warc_record(self, record):
         url = get_record_url(record)
+        normalized_url = normalize(url)
         if not url:
             logger.debug(f"Skipping record with empty WARC-Target-URI {record}")
             return
 
-        if canonicalize(url) in self.indexed_urls:
+        if normalized_url in self.indexed_urls:
             logger.debug("Skipping duplicate {0}, already added to ZIM".format(url))
             return
 
@@ -498,13 +474,9 @@ class Converter:
                 logger.debug("Skipping self-redirect: " + url)
                 return
 
-            try:
-                self.creator.add_item(WARCHeadersItem(record))
-            except RuntimeError as exc:
-                if not DUPLICATE_EXC_STR.match(str(exc)):
-                    raise exc
-
-            payload_item = WARCPayloadItem(record, self.head_insert, self.css_insert)
+            payload_item = WARCPayloadItem(
+                normalized_url, record, self.head_insert, self.css_insert
+            )
 
             if len(payload_item.content) != 0:
                 try:
@@ -515,36 +487,15 @@ class Converter:
                 self.total_records += 1
                 self.update_stats()
 
-            self.indexed_urls.add(canonicalize(url))
+            self.indexed_urls.add(normalized_url)
 
         elif (
             record.rec_headers["WARC-Refers-To-Target-URI"] != url
-            and url not in self.revisits
+            and normalized_url not in self.revisits
         ):
-            self.revisits[url] = record
-
-        self.add_fuzzy_match_record(url)
-
-    def add_fuzzy_match_record(self, url):
-        fuzzy_url = url
-        for rule in FUZZY_RULES:
-            fuzzy_url = rule["match"].sub(rule["replace"], url)
-            if fuzzy_url != url:
-                break
-
-        if fuzzy_url == url:
-            return
-
-        http_headers = StatusAndHeaders("302 Redirect", {"Location": url})
-
-        date = datetime.datetime.utcnow().isoformat()
-        builder = RecordBuilder()
-        record = builder.create_revisit_record(
-            fuzzy_url, "3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ", url, date, http_headers
-        )
-
-        self.revisits[fuzzy_url] = record
-        logger.debug("Adding fuzzy redirect {0} -> {1}".format(fuzzy_url, url))
+            self.revisits[normalized_url] = normalize(
+                record.rec_headers["WARC-Refers-To-Target-URI"]
+            )
 
 
 def iter_warc_records(inputs):

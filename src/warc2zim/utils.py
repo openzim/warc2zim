@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 # vim: ai ts=4 sts=4 et sw=4 nu
 
+from __future__ import annotations
+
 import pkg_resources
 from bs4 import BeautifulSoup
 
@@ -37,3 +39,11 @@ def parse_title(content):
         return soup.title.text or ""
     except Exception:
         return ""
+
+
+def to_string(input: str | bytes) -> str:
+    try:
+        input = input.decode("utf8")
+    except AttributeError:
+        pass
+    return input
