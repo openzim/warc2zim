@@ -234,9 +234,8 @@ class Converter:
             self.head_insert = b""
         if self.custom_css:
             self.css_insert = (
-                f'\n<link type="text/css" href="{CUSTOM_CSS_URL}" '
-                'rel="Stylesheet" />\n</head>'
-            ).encode("utf-8")
+                f'\n<link type="text/css" href="{CUSTOM_CSS_URL}" rel="Stylesheet" />\n'
+            )
         else:
             self.css_insert = None
 

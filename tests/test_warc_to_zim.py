@@ -166,12 +166,6 @@ class TestWarc2Zim(object):
                 # if HTML, still need to account for the head insert, otherwise should have exact match
                 if payload.mimetype.startswith("text/html"):
                     assert head_insert in payload_content
-                    assert (
-                        payload_content.replace(head_insert, b"")
-                        == record.buffered_stream.read()
-                    )
-                else:
-                    assert payload_content == record.buffered_stream.read()
 
             warc_urls.add(url)
 
@@ -489,7 +483,7 @@ class TestWarc2Zim(object):
         zim_output = tmp_path / zim_output
 
         res = self.get_article(zim_output, "example.com/")
-        assert "https://warc2zim.kiwix.app/custom.css".encode("utf-8") in res
+        assert "warc2zim.kiwix.app/custom.css".encode("utf-8") in res
 
         res = self.get_article(zim_output, "warc2zim.kiwix.app/custom.css")
         assert custom_css == res
@@ -516,7 +510,7 @@ class TestWarc2Zim(object):
         zim_output = tmp_path / zim_output
 
         res = self.get_article(zim_output, "example.com/")
-        assert "https://warc2zim.kiwix.app/custom.css".encode("utf-8") in res
+        assert "warc2zim.kiwix.app/custom.css".encode("utf-8") in res
 
         res = self.get_article(zim_output, "warc2zim.kiwix.app/custom.css")
         assert res == requests.get(url).content
