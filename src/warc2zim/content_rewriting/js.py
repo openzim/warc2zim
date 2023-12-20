@@ -144,7 +144,7 @@ def createJSRules() -> List[TransformationRule]:
     ]
 
 
-class JSRewriter:
+class JsRewriter:
     def __init__(
         self,
         url_rewriter: Callable[[str], str],

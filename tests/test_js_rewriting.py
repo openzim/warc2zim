@@ -1,5 +1,5 @@
 import pytest
-from warc2zim.content_rewriting import JSRewriter
+from warc2zim.content_rewriting import JsRewriter
 from warc2zim.url_rewriting import ArticleUrlRewriter
 from textwrap import dedent
 from .utils import TestContent
@@ -25,7 +25,7 @@ def rewrite_this_js_content(request):
 
 def test_this_js_rewrite(rewrite_this_js_content):
     assert (
-        JSRewriter(lambda x: x).rewrite(rewrite_this_js_content.input)
+        JsRewriter(lambda x: x).rewrite(rewrite_this_js_content.input)
         == rewrite_this_js_content.expected
     )
 
@@ -94,7 +94,7 @@ def rewrite_wrapped_content(request):
 
 def test_wrapped_rewrite(rewrite_wrapped_content):
     assert (
-        JSRewriter(lambda x: x).rewrite(rewrite_wrapped_content.input)
+        JsRewriter(lambda x: x).rewrite(rewrite_wrapped_content.input)
         == rewrite_wrapped_content.expected
     )
 
@@ -201,7 +201,7 @@ def rewrite_import_content(request):
 def test_import_rewrite(rewrite_import_content):
     url_rewriter = ArticleUrlRewriter(rewrite_import_content.article_url)
     assert (
-        JSRewriter(url_rewriter).rewrite(rewrite_import_content.input)
+        JsRewriter(url_rewriter).rewrite(rewrite_import_content.input)
         == rewrite_import_content.expected
     )
 
@@ -252,5 +252,5 @@ def no_rewrite_js_content(request):
 
 def test_no_rewrite(no_rewrite_js_content):
     assert (
-        JSRewriter(lambda x: x).rewrite(no_rewrite_js_content) == no_rewrite_js_content
+        JsRewriter(lambda x: x).rewrite(no_rewrite_js_content) == no_rewrite_js_content
     )

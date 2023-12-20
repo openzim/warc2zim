@@ -18,7 +18,7 @@ from warcio.recordloader import ArcWarcRecord
 
 from warc2zim.utils import get_record_url, get_record_mime_type
 from warc2zim.url_rewriting import ArticleUrlRewriter
-from warc2zim.content_rewriting import HtmlRewriter, CSSRewriter, JSRewriter
+from warc2zim.content_rewriting import HtmlRewriter, CssRewriter, JsRewriter
 
 # Shared logger
 logger = logging.getLogger("warc2zim.items")
@@ -65,9 +65,9 @@ class WARCPayloadItem(StaticItem):
                 orig_url_str, head_insert, css_insert
             ).rewrite(self.content)
         elif self.mimetype.startswith("text/css"):
-            self.content = CSSRewriter(orig_url_str).rewrite(self.content)
+            self.content = CssRewriter(orig_url_str).rewrite(self.content)
         elif "javascript" in self.mimetype:
-            self.content = JSRewriter(url_rewriter).rewrite(self.content.decode())
+            self.content = JsRewriter(url_rewriter).rewrite(self.content.decode())
 
     def get_hints(self):
         is_front = self.mimetype.startswith("text/html")

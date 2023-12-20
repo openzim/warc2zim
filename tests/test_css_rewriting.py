@@ -1,5 +1,5 @@
 import pytest
-from warc2zim.content_rewriting import CSSRewriter
+from warc2zim.content_rewriting import CssRewriter
 from textwrap import dedent
 
 
@@ -18,7 +18,7 @@ def no_rewrite_content(request):
 
 def test_no_rewrite(no_rewrite_content):
     assert (
-        CSSRewriter("kiwix.org").rewrite(no_rewrite_content)
+        CssRewriter("kiwix.org").rewrite(no_rewrite_content)
         == no_rewrite_content.decode()
     )
 
@@ -65,4 +65,4 @@ p, input {
     }"""
     expected = dedent(expected)
 
-    assert CSSRewriter("kiwix.org/article").rewrite(content) == expected
+    assert CssRewriter("kiwix.org/article").rewrite(content) == expected

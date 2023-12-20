@@ -10,7 +10,7 @@ from warc2zim.url_rewriting import ArticleUrlRewriter
 from typing import Optional, Iterable, Union
 
 
-class CSSRewriter:
+class CssRewriter:
     def __init__(self, css_url: str):
         self.url_rewriter = ArticleUrlRewriter(css_url)
 

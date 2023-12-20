@@ -3,8 +3,8 @@ from html.parser import HTMLParser
 import io
 from collections import namedtuple
 from warc2zim.url_rewriting import ArticleUrlRewriter
-from warc2zim.content_rewriting.css import CSSRewriter
-from warc2zim.content_rewriting.js import JSRewriter
+from warc2zim.content_rewriting.css import CssRewriter
+from warc2zim.content_rewriting.js import JsRewriter
 from warc2zim.utils import to_string
 from typing import Callable, Optional, List, Tuple, Union
 
@@ -14,7 +14,7 @@ AttrsList = List[Tuple[str, Optional[str]]]
 def process_attr(
     attr: Tuple[str, Optional[str]],
     url_rewriter: Callable[[str], str],
-    css_rewriter: CSSRewriter,
+    css_rewriter: CssRewriter,
 ) -> Tuple[str, Optional[str]]:
     if attr[0] in ("href", "src"):
         return (attr[0], url_rewriter(attr[1]))
@@ -40,7 +40,7 @@ def format_attr(name: str, value: Optional[str]) -> str:
 
 
 def transform_attrs(
-    attrs: AttrsList, url_rewriter: Callable[[str], str], css_rewriter: CSSRewriter
+    attrs: AttrsList, url_rewriter: Callable[[str], str], css_rewriter: CssRewriter
 ) -> str:
     processed_attrs = (process_attr(attr, url_rewriter, css_rewriter) for attr in attrs)
     return " ".join(format_attr(*attr) for attr in processed_attrs)
@@ -53,7 +53,7 @@ class HtmlRewriter(HTMLParser):
     def __init__(self, article_url: str, pre_head_insert: str, post_head_insert: str):
         super().__init__()
         self.url_rewriter = ArticleUrlRewriter(article_url)
-        self.css_rewriter = CSSRewriter(article_url)
+        self.css_rewriter = CssRewriter(article_url)
         self.title = None
         self.output = None
         # This works only for tag without children.
@@ -110,7 +110,7 @@ class HtmlRewriter(HTMLParser):
             data = self.css_rewriter.rewrite(data)
         elif self._active_tag == "script":
             if data.strip():
-                data = JSRewriter(self.url_rewriter).rewrite(data)
+                data = JsRewriter(self.url_rewriter).rewrite(data)
         self.send(data)
 
     def handle_comment(self, data: str):
