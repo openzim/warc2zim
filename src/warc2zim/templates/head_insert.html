@@ -69,7 +69,7 @@
     return path;
   };
 
-  const createUrlRewriteFunction = function(
+  const getWombatInfo = function(
     current_url, // The current (real) url we are on
     orig_host, // The host of the original url
     orig_scheme, // The scheme of the original url
@@ -137,75 +137,76 @@
 
       return final_url.toString();
     };
-    return urlRewriteFunction;
+
+    wbinfo = {};
+    wbinfo.rewrite_function = urlRewriteFunction;
+
+    // Seems to be used only to send message to. We don't care ?
+    wbinfo.top_url = current_url;
+
+    // Seems to be used to generate url for blobUrl returned by SW.
+    // We don't care (?)
+    wbinfo.url = orig_url;
+
+    // Use to timestamp message send to top frame. Don't care
+    wbinfo.timestamp = "";
+
+    // Use to send message to top frame and in default rewrite url fonction. Don't care
+    wbinfo.request_ts = "";
+
+    // The url only which we are served.
+    wbinfo.prefix = prefix;
+
+    // THe default mod to use.
+    wbinfo.mod = "";
+
+    // Use to detect if we are framed (and send message to top frame ?)
+    wbinfo.is_framed = false;
+
+    // ??
+    wbinfo.is_live = false;
+
+    // Never used ?
+    wbinfo.coll = "";
+
+    // Set wombat if is proxy mode (we are not)
+    wbinfo.proxy_magic = "";
+
+    // This is the prefix on which we have stored our static files (needed by wombat).
+    // Must not conflict with other url served.
+    // Will be used by wombat to not rewrite back the url
+    wbinfo.static_prefix = prefix + "_zim_static/";
+
+    wbinfo.wombat_ts = "";
+
+    // A delay is sec to aplly to all js time (`Date.now()`, ...)
+    wbinfo.wombat_sec = 0;
+
+    // The scheme of the original url
+    wbinfo.wombat_scheme = orig_scheme;
+
+    // The host of the original url
+    wbinfo.wombat_host = orig_host;
+
+    // Extra options ?
+    wbinfo.wombat_opts = {};
+
+    // ?
+    wbinfo.enable_auto_fetch = true;
+    wbinfo.convert_post_to_get = true;
+    wbinfo.target_frame = "___wb_replay_top_frame";
+    wbinfo.isSW = true;
+
+    return wbinfo;
   }
 
-  wbinfo = {};
-  wbinfo.rewrite_function = createUrlRewriteFunction(
+  const wbinfo = getWombatInfo(
     current_url,
     "{{ orig_host }}",
     "{{ orig_scheme }}",
     "{{ orig_url }}",
     current_url.substring(0, current_url.length - ("{{ path }}".length))
-  );
-  // Seems to be used only to send message to. We don't care ?
-  wbinfo.top_url = current_url;
-
-  // Seems to be used to generate url for blobUrl returned by SW.
-  // We don't care (?)
-  wbinfo.url = "{{ orig_url }}";
-
-  // Use to timestamp message send to top frame. Don't care
-  wbinfo.timestamp = "";
-
-  // Use to send message to top frame and in default rewrite url fonction. Don't care
-  wbinfo.request_ts = "";
-
-  // The url only which we are served.
-  wbinfo.prefix = current_url.substring(
-    0,
-    current_url.length - ("{{ path }}".length),
-  );
-
-  // THe default mod to use.
-  wbinfo.mod = "";
-
-  // Use to detect if we are framed (and send message to top frame ?)
-  wbinfo.is_framed = false;
-
-  // ??
-  wbinfo.is_live = false;
-
-  // Never used ?
-  wbinfo.coll = "";
-
-  // Set wombat if is proxy mode (we are not)
-  wbinfo.proxy_magic = "";
-
-  // This is the prefix on which we have stored our static files (needed by wombat).
-  // Must not conflict with other url served.
-  // Will be used by wombat to not rewrite back the url
-  wbinfo.static_prefix = wbinfo.prefix + "_zim_static/";
-
-  wbinfo.wombat_ts = "";
-
-  // A delay is sec to aplly to all js time (`Date.now()`, ...)
-  wbinfo.wombat_sec = 0;
-
-  // The scheme of the original url
-  wbinfo.wombat_scheme = "{{ orig_scheme }}";
-
-  // The host of the original url
-  wbinfo.wombat_host = "{{ orig_host }}";
-
-  // Extra options ?
-  wbinfo.wombat_opts = {};
-
-  // ?
-  wbinfo.enable_auto_fetch = true;
-  wbinfo.convert_post_to_get = true;
-  wbinfo.target_frame = "___wb_replay_top_frame";
-  wbinfo.isSW = true;
+  )
 
   var initWombat = function () {
     if (window && window._WBWombatInit) {
