@@ -89,7 +89,11 @@ class HtmlRewriter(HTMLParser):
         self.send(f"<{tag}")
         if attrs:
             self.send(" ")
-        self.send(transform_attrs(attrs, self.url_rewriter, self.css_rewriter))
+        if tag == "a":
+            url_rewriter = lambda url: self.url_rewriter(url, False)
+        else:
+            url_rewriter = self.url_rewriter
+        self.send(transform_attrs(attrs, url_rewriter, self.css_rewriter))
 
         if auto_close:
             self.send(" />")
