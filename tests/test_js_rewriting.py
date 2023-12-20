@@ -199,7 +199,7 @@ def rewrite_import_content(request):
 
 
 def test_import_rewrite(rewrite_import_content):
-    url_rewriter = ArticleUrlRewriter(rewrite_import_content.article_url)
+    url_rewriter = ArticleUrlRewriter(rewrite_import_content.article_url, set())
     assert (
         JsRewriter(url_rewriter).rewrite(rewrite_import_content.input)
         == rewrite_import_content.expected

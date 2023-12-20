@@ -48,7 +48,7 @@ class WARCPayloadItem(StaticItem):
             return
 
         orig_url_str = get_record_url(record)
-        url_rewriter = ArticleUrlRewriter(orig_url_str)
+        url_rewriter = ArticleUrlRewriter(orig_url_str, set())
 
         if self.mimetype.startswith("text/html"):
             orig_url = urlsplit(orig_url_str)

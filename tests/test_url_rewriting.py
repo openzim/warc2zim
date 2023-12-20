@@ -12,7 +12,7 @@ from urllib.parse import urljoin
     ]
 )
 def rewriter(request):
-    yield ArticleUrlRewriter(request.param)
+    yield ArticleUrlRewriter(request.param, set(["kiwix.org/bar/foo"]))
 
 
 def test_relative_url(rewriter):
@@ -76,3 +76,18 @@ def test_absolute_url(rewriter):
 def test_no_rewrite_blob_data(rewriter):
     for url in ["data:0548datacontent", "blob:exemple.com/url"]:
         assert rewriter(url) == url
+
+
+def test_no_rewrite_external_link(rewriter):
+    for rewrite_all_url in [True, False]:
+        # We always rewrite "internal" urls
+        assert "kiwix.org" not in rewriter("https://kiwix.org/bar/foo")
+
+    # External urls are only rewriten if 'rewrite_all_url' is True
+    assert "kiwix.org" not in rewriter(
+        "https://kiwix.org/external/link", rewrite_all_url=True
+    )
+    assert (
+        rewriter("https://kiwix.org/external/link", rewrite_all_url=False)
+        == "https://kiwix.org/external/link"
+    )
