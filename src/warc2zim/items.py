@@ -19,6 +19,7 @@ from warcio.recordloader import ArcWarcRecord
 from warc2zim.utils import get_record_url, get_record_mime_type
 from warc2zim.url_rewriting import ArticleUrlRewriter
 from warc2zim.content_rewriting import HtmlRewriter, CssRewriter, JsRewriter
+from typing import Set
 
 # Shared logger
 logger = logging.getLogger("warc2zim.items")
@@ -30,7 +31,12 @@ class WARCPayloadItem(StaticItem):
     """
 
     def __init__(
-        self, path: str, record: ArcWarcRecord, head_template: str, css_insert: str
+        self,
+        path: str,
+        record: ArcWarcRecord,
+        head_template: str,
+        css_insert: str,
+        known_urls: Set[str],
     ):
         super().__init__()
         self.record = record
@@ -48,7 +54,7 @@ class WARCPayloadItem(StaticItem):
             return
 
         orig_url_str = get_record_url(record)
-        url_rewriter = ArticleUrlRewriter(orig_url_str, set())
+        url_rewriter = ArticleUrlRewriter(orig_url_str, known_urls)
 
         if self.mimetype.startswith("text/html"):
             orig_url = urlsplit(orig_url_str)

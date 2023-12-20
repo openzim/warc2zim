@@ -488,7 +488,11 @@ class Converter:
                 return
 
             payload_item = WARCPayloadItem(
-                normalized_url, record, self.head_template, self.css_insert
+                normalized_url,
+                record,
+                self.head_template,
+                self.css_insert,
+                self.existing_entries,
             )
 
             if len(payload_item.content) != 0:
