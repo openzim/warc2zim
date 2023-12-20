@@ -69,70 +69,85 @@
     return path;
   };
 
-  const urlRewriteFunction = function(url, useRel, mod, doc) {
-    if (!url) return url;
+  const createUrlRewriteFunction = function(
+    current_url, // The current (real) url we are on
+    orig_host, // The host of the original url
+    orig_scheme, // The scheme of the original url
+    orig_url, // The original url
+    prefix, // The (absolute) prefix to add to all our urls (from where we are served)
+  ) {
+    const urlRewriteFunction = function(url, useRel, mod, doc) {
+      if (!url) return url;
 
-    url = url.toString();
+      url = url.toString();
 
-    if (url.startsWith(wbinfo.wombat_host)) return url;
+      if (url.startsWith(orig_host)) return url;
 
-    for (const prefix of [
-      "#",
-      "about:",
-      "data:",
-      "blob:",
-      "mailto:",
-      "javascript:",
-      "{",
-      "*",
-    ]) {
-      if (url.startsWith(prefix)) {
-        return url;
+      for (const prefix of [
+        "#",
+        "about:",
+        "data:",
+        "blob:",
+        "mailto:",
+        "javascript:",
+        "{",
+        "*",
+      ]) {
+        if (url.startsWith(prefix)) {
+          return url;
+        }
       }
-    }
 
-    var absolute_url;
-    if (url.startsWith("//")) {
-      absolute_url = "{{ orig_scheme }}" + url;
-    } else if (url.startsWith("/")) {
-      // We have a absolute path without host.
-      // So it is a absolute path relative to the original host.
-      absolute_url = new URL(url, "{{ orig_url }}").toString();
-    } else {
-      // Relative path or full url.
-      // Let's build relative to our current url (`URL` will take care of relative vs full url)
-      absolute_url = new URL(url, window.location.href).toString();
-    }
+      var absolute_url;
+      if (url.startsWith("//")) {
+        absolute_url = orig_scheme + url;
+      } else if (url.startsWith("/")) {
+        // We have a absolute path without host.
+        // So it is a absolute path relative to the original host.
+        absolute_url = new URL(url, orig_url).toString();
+      } else {
+        // Relative path or full url.
+        // Let's build relative to our current url (`URL` will take care of relative vs full url)
+        absolute_url = new URL(url, current_url).toString();
+      }
 
-    var entry_path;
-    if (absolute_url.startsWith(wbinfo.prefix)) {
-      // The absolute_url start with our prefix.
-      // It means that `url` was a relative or already processed url.
-      // We can simply remove our prefix to found our entry's path.
-      entry_path = absolute_url.substring(wbinfo.prefix.length);
-    } else {
-      // Remove potential scheme.
-      entry_path = absolute_url.replace(/^\w+:?\/\//i, "");
-    }
+      var entry_path;
+      if (absolute_url.startsWith(prefix)) {
+        // The absolute_url start with our prefix.
+        // It means that `url` was a relative or already processed url.
+        // We can simply remove our prefix to found our entry's path.
+        entry_path = absolute_url.substring(prefix.length);
+      } else {
+        // Remove potential scheme.
+        entry_path = absolute_url.replace(/^\w+:?\/\//i, "");
+      }
 
-    // Now we have a entry's path "as seen by the website".
-    // We need to reduce it to what we have stored in the zim file.
-    const reduced_path = reduce(entry_path);
+      // Now we have a entry's path "as seen by the website".
+      // We need to reduce it to what we have stored in the zim file.
+      const reduced_path = reduce(entry_path);
 
-    var final_url = wbinfo.prefix + reduced_path;
+      var final_url = prefix + reduced_path;
 
-    final_url = new URL(final_url);
-    if (final_url.search) {
-      final_url.pathname =
-        final_url.pathname + encodeURIComponent(final_url.search);
-      final_url.search = "";
-    }
+      final_url = new URL(final_url);
+      if (final_url.search) {
+        final_url.pathname =
+          final_url.pathname + encodeURIComponent(final_url.search);
+        final_url.search = "";
+      }
 
-    return final_url.toString();
-  };
+      return final_url.toString();
+    };
+    return urlRewriteFunction;
+  }
 
   wbinfo = {};
-  wbinfo.rewrite_function = urlRewriteFunction;
+  wbinfo.rewrite_function = createUrlRewriteFunction(
+    current_url,
+    "{{ orig_host }}",
+    "{{ orig_scheme }}",
+    "{{ orig_url }}",
+    current_url.substring(0, current_url.length - ("{{ path }}".length))
+  );
   // Seems to be used only to send message to. We don't care ?
   wbinfo.top_url = current_url;
 
