@@ -53,10 +53,10 @@ class WARCPayloadItem(StaticItem):
         if self.mimetype.startswith("text/html"):
             orig_url = urlsplit(orig_url_str)
 
-            wombat_path = url_rewriter.from_normalized("_zim_static/wombat.js")
+            rel_static_prefix = url_rewriter.from_normalized("_zim_static/")
             head_insert = head_template.render(
                 path=path,
-                wombat_path=wombat_path,
+                static_prefix=rel_static_prefix,
                 orig_url=orig_url_str,
                 orig_scheme=orig_url.scheme,
                 orig_host=orig_url.netloc,
