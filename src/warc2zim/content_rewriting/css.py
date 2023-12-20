@@ -7,12 +7,12 @@ from tinycss2 import (
 from tinycss2.serializer import serialize_url
 from tinycss2.ast import Node as TCSS2Node
 from warc2zim.url_rewriting import ArticleUrlRewriter
-from typing import Optional, Iterable, Union
+from typing import Optional, Iterable, Union, Callable
 
 
 class CssRewriter:
-    def __init__(self, css_url: str):
-        self.url_rewriter = ArticleUrlRewriter(css_url)
+    def __init__(self, url_rewriter: Callable[[str], str]):
+        self.url_rewriter = url_rewriter
 
     def rewrite(self, content: Union[str, bytes]) -> str:
         if isinstance(content, bytes):

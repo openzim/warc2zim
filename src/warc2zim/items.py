@@ -62,10 +62,10 @@ class WARCPayloadItem(StaticItem):
                 orig_host=orig_url.netloc,
             )
             self.title, self.content = HtmlRewriter(
-                orig_url_str, head_insert, css_insert
+                url_rewriter, head_insert, css_insert
             ).rewrite(self.content)
         elif self.mimetype.startswith("text/css"):
-            self.content = CssRewriter(orig_url_str).rewrite(self.content)
+            self.content = CssRewriter(url_rewriter).rewrite(self.content)
         elif "javascript" in self.mimetype:
             self.content = JsRewriter(url_rewriter).rewrite(self.content.decode())
 
