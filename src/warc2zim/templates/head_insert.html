@@ -2,6 +2,7 @@
 {% set urlsplit = url | urlsplit %}
 
 <!-- WB Insert -->
+<script src="{{ static_prefix }}wombat.js"></script>
 <script src="{{ static_prefix }}wombat_setup.js"></script>
 <script>
   // Get the current url we are serving from.
@@ -19,17 +20,11 @@
     "{{ orig_scheme }}",
     "{{ orig_url }}",
     current_url.substring(0, current_url.length - ("{{ path }}".length))
-  )
+  );
 
-  var initWombat = function () {
-    if (window && window._WBWombatInit) {
-      window._WBWombatInit(wbinfo);
-    }
-  };
-</script>
-<script src="{{ static_prefix }}wombat.js"></script>
-<script>
-  initWombat();
+  if (window && window._WBWombatInit) {
+    window._WBWombatInit(wbinfo);
+  }
 </script>
 {% endautoescape %}
 
