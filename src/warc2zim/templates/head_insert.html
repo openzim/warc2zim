@@ -69,8 +69,7 @@
     return path;
   };
 
-  wbinfo = {};
-  wbinfo.rewrite_function = function (url, useRel, mod, doc) {
+  const urlRewriteFunction = function(url, useRel, mod, doc) {
     if (!url) return url;
 
     url = url.toString();
@@ -132,6 +131,8 @@
     return final_url.toString();
   };
 
+  wbinfo = {};
+  wbinfo.rewrite_function = urlRewriteFunction;
   // Seems to be used only to send message to. We don't care ?
   wbinfo.top_url = current_url;
 
