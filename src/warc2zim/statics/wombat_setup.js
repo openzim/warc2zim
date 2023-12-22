@@ -1,12 +1,3 @@
-// Get the current url we are serving from.
-// We cannot know it at zim creation as it depends of our server.
-const current_url = (function () {
-  var href = new URL(window.location.href);
-  href.hash = "";
-
-  return href.toString();
-})();
-
 // Reduce "complex" url to our simplyfied ones.
 // ! MUST be in sync with the python code (at zim creation time)
 let reduce = function (path) {
