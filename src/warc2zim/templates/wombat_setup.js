@@ -4,51 +4,15 @@
 
 const getWombatInfo = (function () {
   // Reduce "complex" url to our simplyfied ones.
-  // ! MUST be in sync with the python code (at zim creation time)
-  let reduce = function (path) {
+  const reducePath = function (path) {
     const fuzzy_rules = [
-      {
+      {% for rule in FUZZY_RULES %}{
         match: new RegExp(
-          ".*googlevideo.com/(videoplayback\\?).*((?<=[?&])id=[^&]+).*",
+          "{{ rule['pattern'].replace('\\', '\\\\') }}"
         ),
-        replace: "youtube.fuzzy.replayweb.page/$1$2",
+        replace: "{{ rule['replace']|py2jsregex }}",
       },
-      {
-        match: new RegExp(
-          "(?:www\\.)?youtube(?:-nocookie)?\\.com/(get_video_info\\?).*(video_id=[^&]+).*",
-        ),
-        replace: "youtube.fuzzy.replayweb.page/$1$2",
-      },
-      {
-        match: new RegExp("(\\.[^?]+\\?)[\\d]+$"),
-        replace: "$1",
-      },
-      {
-        match: new RegExp(
-          "(?:www\\.)?youtube(?:-nocookie)?\\.com\\/(youtubei/[^?]+).*(videoId[^&]+).*",
-        ),
-        replace: "youtube.fuzzy.replayweb.page/$1?$2",
-      },
-      {
-        match: new RegExp(
-          "(?:www\\.)?youtube(?:-nocookie)?\\.com/embed/([^?]+).*",
-        ),
-        replace: "youtube.fuzzy.replayweb.page/embed/$1",
-      },
-      {
-        match: new RegExp("youtube.fuzzy.replayweb.page/embed/([^?&]+).*"),
-        replace: "youtube.fuzzy.replayweb.page/embed/$1",
-      },
-      {
-        match: new RegExp(
-          ".*(?:gcs-vimeo|vod|vod-progressive)\\.akamaized\\.net.*?/([\\d/]+.mp4)$",
-        ),
-        replace: "vimeo-cdn.fuzzy.replayweb.page/$1",
-      },
-      {
-        match: new RegExp(".*player.vimeo.com/(video/[\\d]+)\\?.*"),
-        replace: "vimeo.fuzzy.replayweb.page/$1",
-      },
+      {% endfor %}
     ];
 
     for (const rule of fuzzy_rules) {
@@ -115,7 +79,7 @@ const getWombatInfo = (function () {
 
       // Now we have a entry's path "as seen by the website".
       // We need to reduce it to what we have stored in the zim file.
-      const reduced_path = reduce(entry_path);
+      const reduced_path = reducePath(entry_path);
 
       var final_url = prefix + reduced_path;
 

@@ -58,46 +58,47 @@ logger = logging.getLogger("warc2zim.url_rewriting")
 
 FUZZY_RULES = [
     {
-        "match": re.compile(
-            # r"//.*googlevideo.com/(videoplayback\?).*(id=[^&]+).*([&]itag=[^&]+).*"
-            r".*googlevideo.com/(videoplayback\?).*((?<=[?&])id=[^&]+).*"
-        ),
+        "pattern": r".*googlevideo.com/(videoplayback\?).*((?<=[?&])id=[^&]+).*",
         "replace": r"youtube.fuzzy.replayweb.page/\1\2",
     },
     {
-        "match": re.compile(
-            r"(?:www\.)?youtube(?:-nocookie)?\.com/(get_video_info\?)"
-            r".*(video_id=[^&]+).*"
-        ),
+        "pattern": r"(?:www\.)?youtube(?:-nocookie)?\.com/(get_video_info\?).*(video_id=[^&]+).*",
         "replace": r"youtube.fuzzy.replayweb.page/\1\2",
     },
-    {"match": re.compile(r"([^?]+\?)[\d]+$"), "replace": r"\1"},
+    {"pattern": r"([^?]+\?)[\d]+$", "replace": r"\1"},
     {
-        "match": re.compile(
-            r"(?:www\.)?youtube(?:-nocookie)?\.com\/(youtubei\/[^?]+).*(videoId[^&]+).*"
-        ),
+        "pattern": r"(?:www\.)?youtube(?:-nocookie)?\.com\/(youtubei\/[^?]+).*(videoId[^&]+).*",
         "replace": r"youtube.fuzzy.replayweb.page/\1?\2",
     },
     {
-        "match": re.compile(r"(?:www\.)?youtube(?:-nocookie)?\.com/embed/([^?]+).*"),
+        "pattern": r"(?:www\.)?youtube(?:-nocookie)?\.com/embed/([^?]+).*",
+        "replace": r"youtube.fuzzy.replayweb.page/embed/\1",
+    },
+    # This is an extra rule for JS rewriting only.
+    # Youtube replayer may add thing to an already rewrited url. We have to clean it again
+    {
+        "pattern": r"youtube.fuzzy.replayweb.page/embed/([^?&]+).*",
         "replace": r"youtube.fuzzy.replayweb.page/embed/\1",
     },
     {
-        "match": re.compile(
-            r".*(?:gcs-vimeo|vod|vod-progressive)\.akamaized\.net.*?/([\d/]+.mp4)$"
-        ),
+        "pattern": r".*(?:gcs-vimeo|vod|vod-progressive)\.akamaized\.net.*?/([\d/]+.mp4)$",
         "replace": r"vimeo-cdn.fuzzy.replayweb.page/\1",
     },
     {
-        "match": re.compile(r".*player.vimeo.com/(video/[\d]+)\?.*"),
+        "pattern": r".*player.vimeo.com/(video/[\d]+)\?.*",
         "replace": r"vimeo.fuzzy.replayweb.page/\1",
     },
+]
+
+COMPILED_FUZZY_RULES = [
+    {"match": re.compile(rule["pattern"]), "replace": rule["replace"]}
+    for rule in FUZZY_RULES
 ]
 
 
 def reduce(path: str) -> str:
     """Reduce a path"""
-    for rule in FUZZY_RULES:
+    for rule in COMPILED_FUZZY_RULES:
         if match := rule["match"].match(path):
             return match.expand(rule["replace"])
     return path
