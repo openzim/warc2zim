@@ -492,7 +492,7 @@ class Converter:
                 record,
                 self.head_template,
                 self.css_insert,
-                self.existing_entries,
+                self.warc_urls,
             )
 
             if len(payload_item.content) != 0:
