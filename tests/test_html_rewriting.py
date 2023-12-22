@@ -146,9 +146,7 @@ def rewrite_url(request):
 def test_rewrite(rewrite_url):
     assert (
         HtmlRewriter(
-            ArticleUrlRewriter(
-                rewrite_url.article_url, set(["exemple.com/a/long/path"])
-            ),
+            ArticleUrlRewriter(rewrite_url.article_url, {"exemple.com/a/long/path"}),
             "",
             "",
         )
@@ -172,9 +170,7 @@ def test_extract_title():
 
 
 def test_rewrite_attributes():
-    rewriter = HtmlRewriter(
-        ArticleUrlRewriter("kiwix.org/", set(["kiwix.org/foo"])), "", ""
-    )
+    rewriter = HtmlRewriter(ArticleUrlRewriter("kiwix.org/", {"kiwix.org/foo"}), "", "")
 
     assert (
         rewriter.rewrite("<a href='https://kiwix.org/foo'>A link</a>").content
