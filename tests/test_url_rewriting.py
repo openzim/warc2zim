@@ -12,7 +12,7 @@ from urllib.parse import urljoin
     ]
 )
 def rewriter(request):
-    yield ArticleUrlRewriter(request.param, set(["kiwix.org/bar/foo"]))
+    yield ArticleUrlRewriter(request.param, {"kiwix.org/bar/foo"})
 
 
 def test_relative_url(rewriter):

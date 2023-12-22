@@ -136,7 +136,7 @@ def normalize(url: str | bytes) -> str:
     return path
 
 
-def remove_anchor(url: str) -> str:
+def get_without_fragment(url: str) -> str:
     parsed = urlsplit(url)
     return urlunsplit(parsed._replace(fragment=""))
 
@@ -165,7 +165,7 @@ class ArticleUrlRewriter:
 
         normalized_url = normalize(absolute_url)
 
-        if rewrite_all_url or remove_anchor(normalized_url) in self.known_urls:
+        if rewrite_all_url or get_without_fragment(normalized_url) in self.known_urls:
             return self.from_normalized(normalized_url)
         else:
             print(f"WARNING {normalized_url} ({url}) not in archive.")
