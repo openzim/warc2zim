@@ -238,7 +238,9 @@ class TestWarc2Zim(object):
 
         assert all_articles == {
             # entries from WARC
-            "example.com/": "Example Domain"
+            "example.com/": "Example Domain",
+            "_zim_static/__wb_module_decl.js": "_zim_static/__wb_module_decl.js",
+            "_zim_static/wombat.js": "_zim_static/wombat.js",
         }
 
         zim_fh = Archive(zim_output)
