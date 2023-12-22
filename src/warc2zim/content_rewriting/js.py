@@ -219,6 +219,9 @@ def create_js_rules() -> List[TransformationRule]:
     ]
 
 
+REWRITE_JS_RULES = create_js_rules()
+
+
 class JsRewriter:
     """
     JsRewriter is in charge of rewriting the js code stored in our zim file.
@@ -289,7 +292,7 @@ class JsRewriter:
         if not opts.get("isModule"):
             opts["isModule"] = self._detect_is_module(text)
 
-        rules = create_js_rules()
+        rules = REWRITE_JS_RULES[:]
 
         if opts["isModule"]:
             rules.append(self._get_esm_import_rule())
