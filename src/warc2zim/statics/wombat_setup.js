@@ -3,89 +3,89 @@
 // and returns a configuration dictionnary to pass to wombat.
 
 const getWombatInfo = (function () {
-// Reduce "complex" url to our simplyfied ones.
-// ! MUST be in sync with the python code (at zim creation time)
-let reduce = function (path) {
-  const fuzzy_rules = [
-    {
-      match: new RegExp(
-        ".*googlevideo.com/(videoplayback\\?).*((?<=[?&])id=[^&]+).*",
-      ),
-      replace: "youtube.fuzzy.replayweb.page/$1$2",
-    },
-    {
-      match: new RegExp(
-        "(?:www\\.)?youtube(?:-nocookie)?\\.com/(get_video_info\\?).*(video_id=[^&]+).*",
-      ),
-      replace: "youtube.fuzzy.replayweb.page/$1$2",
-    },
-    {
-      match: new RegExp("(\\.[^?]+\\?)[\\d]+$"),
-      replace: "$1",
-    },
-    {
-      match: new RegExp(
-        "(?:www\\.)?youtube(?:-nocookie)?\\.com\\/(youtubei/[^?]+).*(videoId[^&]+).*",
-      ),
-      replace: "youtube.fuzzy.replayweb.page/$1?$2",
-    },
-    {
-      match: new RegExp(
-        "(?:www\\.)?youtube(?:-nocookie)?\\.com/embed/([^?]+).*",
-      ),
-      replace: "youtube.fuzzy.replayweb.page/embed/$1",
-    },
-    {
-      match: new RegExp("youtube.fuzzy.replayweb.page/embed/([^?&]+).*"),
-      replace: "youtube.fuzzy.replayweb.page/embed/$1",
-    },
-    {
-      match: new RegExp(
-        ".*(?:gcs-vimeo|vod|vod-progressive)\\.akamaized\\.net.*?/([\\d/]+.mp4)$",
-      ),
-      replace: "vimeo-cdn.fuzzy.replayweb.page/$1",
-    },
-    {
-      match: new RegExp(".*player.vimeo.com/(video/[\\d]+)\\?.*"),
-      replace: "vimeo.fuzzy.replayweb.page/$1",
-    },
-  ];
+  // Reduce "complex" url to our simplyfied ones.
+  // ! MUST be in sync with the python code (at zim creation time)
+  let reduce = function (path) {
+    const fuzzy_rules = [
+      {
+        match: new RegExp(
+          ".*googlevideo.com/(videoplayback\\?).*((?<=[?&])id=[^&]+).*",
+        ),
+        replace: "youtube.fuzzy.replayweb.page/$1$2",
+      },
+      {
+        match: new RegExp(
+          "(?:www\\.)?youtube(?:-nocookie)?\\.com/(get_video_info\\?).*(video_id=[^&]+).*",
+        ),
+        replace: "youtube.fuzzy.replayweb.page/$1$2",
+      },
+      {
+        match: new RegExp("(\\.[^?]+\\?)[\\d]+$"),
+        replace: "$1",
+      },
+      {
+        match: new RegExp(
+          "(?:www\\.)?youtube(?:-nocookie)?\\.com\\/(youtubei/[^?]+).*(videoId[^&]+).*",
+        ),
+        replace: "youtube.fuzzy.replayweb.page/$1?$2",
+      },
+      {
+        match: new RegExp(
+          "(?:www\\.)?youtube(?:-nocookie)?\\.com/embed/([^?]+).*",
+        ),
+        replace: "youtube.fuzzy.replayweb.page/embed/$1",
+      },
+      {
+        match: new RegExp("youtube.fuzzy.replayweb.page/embed/([^?&]+).*"),
+        replace: "youtube.fuzzy.replayweb.page/embed/$1",
+      },
+      {
+        match: new RegExp(
+          ".*(?:gcs-vimeo|vod|vod-progressive)\\.akamaized\\.net.*?/([\\d/]+.mp4)$",
+        ),
+        replace: "vimeo-cdn.fuzzy.replayweb.page/$1",
+      },
+      {
+        match: new RegExp(".*player.vimeo.com/(video/[\\d]+)\\?.*"),
+        replace: "vimeo.fuzzy.replayweb.page/$1",
+      },
+    ];
 
-  for (const rule of fuzzy_rules) {
-    const new_path = path.replace(rule.match, rule.replace);
-    if (new_path != path) {
-      return new_path;
+    for (const rule of fuzzy_rules) {
+      const new_path = path.replace(rule.match, rule.replace);
+      if (new_path != path) {
+        return new_path;
+      }
     }
-  }
-  return path;
-};
+    return path;
+  };
 
-const getWombatInfo = function (
-  current_url, // The current (real) url we are on
-  orig_host, // The host of the original url
-  orig_scheme, // The scheme of the original url
-  orig_url, // The original url
-  prefix, // The (absolute) prefix to add to all our urls (from where we are served)
-) {
-  const urlRewriteFunction = function (url, useRel, mod, doc) {
-    if (!url) return url;
+  return function (
+    current_url, // The current (real) url we are on
+    orig_host, // The host of the original url
+    orig_scheme, // The scheme of the original url
+    orig_url, // The original url
+    prefix, // The (absolute) prefix to add to all our urls (from where we are served)
+  ) {
+    const urlRewriteFunction = function (url, useRel, mod, doc) {
+      if (!url) return url;
 
-    url = url.toString();
+      url = url.toString();
 
-    if (url.startsWith(orig_host)) return url;
+      if (url.startsWith(orig_host)) return url;
 
-    for (const prefix of [
-      "#",
-      "about:",
-      "data:",
-      "blob:",
-      "mailto:",
-      "javascript:",
-      "{",
-      "*",
-    ]) {
-      if (url.startsWith(prefix)) {
-        return url;
+      for (const prefix of [
+        "#",
+        "about:",
+        "data:",
+        "blob:",
+        "mailto:",
+        "javascript:",
+        "{",
+        "*",
+      ]) {
+        if (url.startsWith(prefix)) {
+          return url;
         }
       }
 
@@ -192,6 +192,4 @@ const getWombatInfo = function (
 
     return wbinfo;
   };
-
-  return getWombatInfo;
 })();
