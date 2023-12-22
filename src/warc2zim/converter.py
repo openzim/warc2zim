@@ -132,7 +132,7 @@ class Converter:
 
         self.indexed_urls = set({})
         self.revisits = {}
-        self.existing_entries = set({})
+        self.warc_urls = set({})
 
         # progress file handling
         self.stats_filename = (
@@ -304,7 +304,7 @@ class Converter:
             url = get_record_url(record)
             normalized_url = normalize(url)
 
-            self.existing_entries.add(normalized_url)
+            self.warc_urls.add(normalized_url)
 
             if main_page_found:
                 continue
