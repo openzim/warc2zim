@@ -34,7 +34,7 @@ from zimscraperlib.i18n import setlocale, get_language_details, Locale
 from zimscraperlib.image.convertion import convert_image
 from zimscraperlib.image.transformation import resize_image
 from zimscraperlib.zim.creator import Creator
-from zimscraperlib.zim.items import URLItem
+from zimscraperlib.zim.items import URLItem, StaticItem
 
 from bs4 import BeautifulSoup
 
@@ -42,7 +42,7 @@ from jinja2 import Environment, PackageLoader
 
 from cdxj_indexer import iter_file_or_dir, buffering_record_iter
 
-from warc2zim.url_rewriting import normalize
+from warc2zim.url_rewriting import normalize, FUZZY_RULES
 from warc2zim.items import WARCPayloadItem, StaticArticle
 from warc2zim.utils import (
     get_version,
@@ -76,6 +76,8 @@ ALIAS_EXC_STR = re.compile(
     r"^Impossible to alias(.+)" r"(.+) doesn't exist.",
     re.MULTILINE | re.DOTALL,
 )
+
+PY2JS_RULE_RX = re.compile(r"\\(\d)", re.ASCII)
 
 
 class Converter:
@@ -150,6 +152,8 @@ class Converter:
 
         env.filters["urlsplit"] = urlsplit
         env.filters["tobool"] = lambda val: "true" if val else "false"
+
+        env.filters["py2jsregex"] = lambda py_reg: PY2JS_RULE_RX.sub(r"$\1", py_reg)
 
         try:
             env.install_gettext_translations(Locale.translation)
@@ -256,6 +260,17 @@ class Converter:
 
         for filename in pkg_resources.resource_listdir("warc2zim", "statics"):
             self.creator.add_item(StaticArticle(self.env, filename, self.main_url))
+
+        # Add wombat_setup.js
+        wombat_setup_template = self.env.get_template("wombat_setup.js")
+        wombat_setup_content = wombat_setup_template.render(FUZZY_RULES=FUZZY_RULES)
+        self.creator.add_item(
+            StaticItem(
+                path="_zim_static/wombat_setup.js",
+                content=wombat_setup_content,
+                mimetype="text/javascript",
+            )
+        )
 
         for record in self.iter_all_warc_records():
             self.add_items_for_warc_record(record)

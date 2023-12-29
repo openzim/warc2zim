@@ -2,6 +2,8 @@
 {% set urlsplit = url | urlsplit %}
 
 <!-- WB Insert -->
+<script src="{{ static_prefix }}wombat.js"></script>
+<script src="{{ static_prefix }}wombat_setup.js"></script>
 <script>
   // Get the current url we are serving from.
   // We cannot know it at zim creation as it depends of our server.
@@ -12,194 +14,17 @@
     return href.toString();
   })();
 
-  // Reduce "complex" url to our simplyfied ones.
-  // ! MUST be in sync with the python code (at zim creation time)
-  let reduce = function (path) {
-    const fuzzy_rules = [
-      {
-        match: new RegExp(
-          ".*googlevideo.com/(videoplayback\\?).*((?<=[?&])id=[^&]+).*",
-        ),
-        replace: "youtube.fuzzy.replayweb.page/$1$2",
-      },
-      {
-        match: new RegExp(
-          "(?:www\\.)?youtube(?:-nocookie)?\\.com/(get_video_info\\?).*(video_id=[^&]+).*",
-        ),
-        replace: "youtube.fuzzy.replayweb.page/$1$2",
-      },
-      {
-        match: new RegExp("(\\.[^?]+\\?)[\\d]+$"),
-        replace: "$1",
-      },
-      {
-        match: new RegExp(
-          "(?:www\\.)?youtube(?:-nocookie)?\\.com\\/(youtubei/[^?]+).*(videoId[^&]+).*",
-        ),
-        replace: "youtube.fuzzy.replayweb.page/$1?$2",
-      },
-      {
-        match: new RegExp(
-          "(?:www\\.)?youtube(?:-nocookie)?\\.com/embed/([^?]+).*",
-        ),
-        replace: "youtube.fuzzy.replayweb.page/embed/$1",
-      },
-      {
-        match: new RegExp("youtube.fuzzy.replayweb.page/embed/([^?&]+).*"),
-        replace: "youtube.fuzzy.replayweb.page/embed/$1",
-      },
-      {
-        match: new RegExp(
-          ".*(?:gcs-vimeo|vod|vod-progressive)\\.akamaized\\.net.*?/([\\d/]+.mp4)$",
-        ),
-        replace: "vimeo-cdn.fuzzy.replayweb.page/$1",
-      },
-      {
-        match: new RegExp(".*player.vimeo.com/(video/[\\d]+)\\?.*"),
-        replace: "vimeo.fuzzy.replayweb.page/$1",
-      },
-    ];
-
-    for (const rule of fuzzy_rules) {
-      const new_path = path.replace(rule.match, rule.replace);
-      if (new_path != path) {
-        return new_path;
-      }
-    }
-    return path;
-  };
-
-  wbinfo = {};
-  wbinfo.rewrite_function = function (url, useRel, mod, doc) {
-    if (!url) return url;
-
-    url = url.toString();
-
-    if (url.startsWith(wbinfo.wombat_host)) return url;
-
-    for (const prefix of [
-      "#",
-      "about:",
-      "data:",
-      "blob:",
-      "mailto:",
-      "javascript:",
-      "{",
-      "*",
-    ]) {
-      if (url.startsWith(prefix)) {
-        return url;
-      }
-    }
-
-    var absolute_url;
-    if (url.startsWith("//")) {
-      absolute_url = "{{ orig_scheme }}" + url;
-    } else if (url.startsWith("/")) {
-      // We have a absolute path without host.
-      // So it is a absolute path relative to the original host.
-      absolute_url = new URL(url, "{{ orig_url }}").toString();
-    } else {
-      // Relative path or full url.
-      // Let's build relative to our current url (`URL` will take care of relative vs full url)
-      absolute_url = new URL(url, window.location.href).toString();
-    }
-
-    var entry_path;
-    if (absolute_url.startsWith(wbinfo.prefix)) {
-      // The absolute_url start with our prefix.
-      // It means that `url` was a relative or already processed url.
-      // We can simply remove our prefix to found our entry's path.
-      entry_path = absolute_url.substring(wbinfo.prefix.length);
-    } else {
-      // Remove potential scheme.
-      entry_path = absolute_url.replace(/^\w+:?\/\//i, "");
-    }
-
-    // Now we have a entry's path "as seen by the website".
-    // We need to reduce it to what we have stored in the zim file.
-    const reduced_path = reduce(entry_path);
-
-    var final_url = wbinfo.prefix + reduced_path;
-
-    final_url = new URL(final_url);
-    if (final_url.search) {
-      final_url.pathname =
-        final_url.pathname + encodeURIComponent(final_url.search);
-      final_url.search = "";
-    }
-
-    return final_url.toString();
-  };
-
-  // Seems to be used only to send message to. We don't care ?
-  wbinfo.top_url = current_url;
-
-  // Seems to be used to generate url for blobUrl returned by SW.
-  // We don't care (?)
-  wbinfo.url = "{{ orig_url }}";
-
-  // Use to timestamp message send to top frame. Don't care
-  wbinfo.timestamp = "";
-
-  // Use to send message to top frame and in default rewrite url fonction. Don't care
-  wbinfo.request_ts = "";
-
-  // The url only which we are served.
-  wbinfo.prefix = current_url.substring(
-    0,
-    current_url.length - ("{{ path }}".length),
+  const wbinfo = getWombatInfo(
+    current_url,
+    "{{ orig_host }}",
+    "{{ orig_scheme }}",
+    "{{ orig_url }}",
+    current_url.substring(0, current_url.length - ("{{ path }}".length))
   );
 
-  // THe default mod to use.
-  wbinfo.mod = "";
-
-  // Use to detect if we are framed (and send message to top frame ?)
-  wbinfo.is_framed = false;
-
-  // ??
-  wbinfo.is_live = false;
-
-  // Never used ?
-  wbinfo.coll = "";
-
-  // Set wombat if is proxy mode (we are not)
-  wbinfo.proxy_magic = "";
-
-  // This is the prefix on which we have stored our static files (needed by wombat).
-  // Must not conflict with other url served.
-  // Will be used by wombat to not rewrite back the url
-  wbinfo.static_prefix = wbinfo.prefix + "_zim_static/";
-
-  wbinfo.wombat_ts = "";
-
-  // A delay is sec to aplly to all js time (`Date.now()`, ...)
-  wbinfo.wombat_sec = 0;
-
-  // The scheme of the original url
-  wbinfo.wombat_scheme = "{{ orig_scheme }}";
-
-  // The host of the original url
-  wbinfo.wombat_host = "{{ orig_host }}";
-
-  // Extra options ?
-  wbinfo.wombat_opts = {};
-
-  // ?
-  wbinfo.enable_auto_fetch = true;
-  wbinfo.convert_post_to_get = true;
-  wbinfo.target_frame = "___wb_replay_top_frame";
-  wbinfo.isSW = true;
-
-  var initWombat = function () {
-    if (window && window._WBWombatInit) {
-      window._WBWombatInit(wbinfo);
-    }
-  };
-</script>
-<script src="{{ wombat_path }}"></script>
-<script>
-  initWombat();
+  if (window && window._WBWombatInit) {
+    window._WBWombatInit(wbinfo);
+  }
 </script>
 {% endautoescape %}
 
