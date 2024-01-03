@@ -136,17 +136,23 @@ def normalize(url: str | bytes) -> str:
     return path
 
 
+def get_without_fragment(url: str) -> str:
+    parsed = urlsplit(url)
+    return urlunsplit(parsed._replace(fragment=""))
+
+
 class ArticleUrlRewriter:
     """Rewrite urls in article."""
 
-    def __init__(self, article_url: str):
+    def __init__(self, article_url: str, known_urls: Set[str]):
         self.article_url = article_url
+        self.known_urls = known_urls
         self.base_path = f"/{urlsplit(normalize(article_url)).path}"
         if self.base_path[-1] != "/":
             # We want a directory
             self.base_path = posixpath.dirname(self.base_path)
 
-    def __call__(self, url: str) -> str:
+    def __call__(self, url: str, rewrite_all_url: bool = True) -> str:
         """Rewrite a url contained in a article.
 
         The url is "fully" rewrited to point to a normalized entry path
@@ -158,7 +164,13 @@ class ArticleUrlRewriter:
         absolute_url = urljoin(self.article_url, url)
 
         normalized_url = normalize(absolute_url)
-        return self.from_normalized(normalized_url)
+
+        if rewrite_all_url or get_without_fragment(normalized_url) in self.known_urls:
+            return self.from_normalized(normalized_url)
+        else:
+            print(f"WARNING {normalized_url} ({url}) not in archive.")
+            # The url doesn't point to a known entry
+            return url
 
     def from_normalized(self, normalized_url_str: str) -> str:
         normalized_url = urlsplit(f"/{normalized_url_str}")

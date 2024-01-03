@@ -1,4 +1,5 @@
 import pytest
+from warc2zim.url_rewriting import ArticleUrlRewriter
 from warc2zim.content_rewriting import CssRewriter
 from textwrap import dedent
 
@@ -18,7 +19,7 @@ def no_rewrite_content(request):
 
 def test_no_rewrite(no_rewrite_content):
     assert (
-        CssRewriter("kiwix.org").rewrite(no_rewrite_content)
+        CssRewriter(ArticleUrlRewriter("kiwix.org", set())).rewrite(no_rewrite_content)
         == no_rewrite_content.decode()
     )
 
@@ -65,4 +66,7 @@ p, input {
     }"""
     expected = dedent(expected)
 
-    assert CssRewriter("kiwix.org/article").rewrite(content) == expected
+    assert (
+        CssRewriter(ArticleUrlRewriter("kiwix.org/article", set())).rewrite(content)
+        == expected
+    )

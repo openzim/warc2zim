@@ -2,6 +2,7 @@ from textwrap import dedent
 
 import pytest
 
+from warc2zim.url_rewriting import ArticleUrlRewriter
 from warc2zim.content_rewriting import HtmlRewriter
 from .utils import TestContent
 
@@ -29,7 +30,7 @@ def no_rewrite_content(request):
 
 def test_no_rewrite(no_rewrite_content):
     assert (
-        HtmlRewriter(no_rewrite_content.article_url, "", "")
+        HtmlRewriter(ArticleUrlRewriter(no_rewrite_content.article_url, set()), "", "")
         .rewrite(no_rewrite_content.input)
         .content
         == no_rewrite_content.expected
@@ -58,7 +59,7 @@ def escaped_content(request):
 
 def test_escaped_content(escaped_content):
     transformed = (
-        HtmlRewriter(escaped_content.article_url, "", "")
+        HtmlRewriter(ArticleUrlRewriter(escaped_content.article_url, set()), "", "")
         .rewrite(escaped_content.input)
         .content
     )
@@ -144,7 +145,13 @@ def rewrite_url(request):
 
 def test_rewrite(rewrite_url):
     assert (
-        HtmlRewriter(rewrite_url.article_url, "", "").rewrite(rewrite_url.input).content
+        HtmlRewriter(
+            ArticleUrlRewriter(rewrite_url.article_url, {"exemple.com/a/long/path"}),
+            "",
+            "",
+        )
+        .rewrite(rewrite_url.input)
+        .content
         == rewrite_url.expected
     )
 
@@ -163,7 +170,7 @@ def test_extract_title():
 
 
 def test_rewrite_attributes():
-    rewriter = HtmlRewriter("kiwix.org/", "", "")
+    rewriter = HtmlRewriter(ArticleUrlRewriter("kiwix.org/", {"kiwix.org/foo"}), "", "")
 
     assert (
         rewriter.rewrite("<a href='https://kiwix.org/foo'>A link</a>").content
@@ -185,7 +192,7 @@ def test_rewrite_attributes():
 
 def test_rewrite_css():
     output = (
-        HtmlRewriter("", "", "")
+        HtmlRewriter(ArticleUrlRewriter("", set()), "", "")
         .rewrite(
             "<style>p { /* A comment with a http://link.org/ */ background: url('some/image.png') ; }</style>",
         )
@@ -207,15 +214,16 @@ def test_head_insert():
 
     content = dedent(content)
 
-    assert HtmlRewriter("foo", "", "").rewrite(content).content == content
+    url_rewriter = ArticleUrlRewriter("foo", set())
+    assert HtmlRewriter(url_rewriter, "", "").rewrite(content).content == content
 
-    assert HtmlRewriter("foo", "PRE_HEAD_INSERT", "").rewrite(
+    assert HtmlRewriter(url_rewriter, "PRE_HEAD_INSERT", "").rewrite(
         content
     ).content == content.replace("<head>", "<head>PRE_HEAD_INSERT")
-    assert HtmlRewriter("foo", "", "POST_HEAD_INSERT").rewrite(
+    assert HtmlRewriter(url_rewriter, "", "POST_HEAD_INSERT").rewrite(
         content
     ).content == content.replace("</head>", "POST_HEAD_INSERT</head>")
-    assert HtmlRewriter("foo", "PRE_HEAD_INSERT", "POST_HEAD_INSERT").rewrite(
+    assert HtmlRewriter(url_rewriter, "PRE_HEAD_INSERT", "POST_HEAD_INSERT").rewrite(
         content
     ).content == content.replace("<head>", "<head>PRE_HEAD_INSERT").replace(
         "</head>", "POST_HEAD_INSERT</head>"

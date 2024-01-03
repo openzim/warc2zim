@@ -132,6 +132,7 @@ class Converter:
 
         self.indexed_urls = set({})
         self.revisits = {}
+        self.warc_urls = set({})
 
         # progress file handling
         self.stats_filename = (
@@ -206,7 +207,7 @@ class Converter:
             )
             return 100
 
-        self.find_main_page_metadata()
+        self.gather_information_from_warc()
         self.title = self.title or "Untitled"
         if len(self.title) > 30:
             self.title = f"{self.title[0:29]}…"
@@ -297,16 +298,23 @@ class Converter:
 
         yield from iter_warc_records(self.inputs)
 
-    def find_main_page_metadata(self):
-        for record in self.iter_all_warc_records():
+    def gather_information_from_warc(self):
+        main_page_found = False
+        for record in iter_warc_records(self.inputs):
+            url = get_record_url(record)
+            normalized_url = normalize(url)
+
+            self.warc_urls.add(normalized_url)
+
+            if main_page_found:
+                continue
+
             if record.rec_type == "revisit":
                 continue
 
             # if no main_url, use first 'text/html' record as the main page by default
             # not guaranteed to always work
             mime = get_record_mime_type(record)
-
-            url = record.rec_headers["WARC-Target-URI"]
 
             if (
                 not self.main_url
@@ -317,9 +325,9 @@ class Converter:
                     or record.http_headers.get_statuscode() == "200"
                 )
             ):
-                self.main_url = normalize(url)
+                self.main_url = normalized_url
 
-            if urldefrag(self.main_url).url != normalize(url):
+            if urldefrag(self.main_url).url != normalized_url:
                 continue
 
             # if we get here, found record for the main page
@@ -331,7 +339,8 @@ class Converter:
                     "Main page is not an HTML Page, mime type is: {0} "
                     "- Skipping Favicon and Language detection".format(mime)
                 )
-                return
+                main_page_found = True
+                continue
 
             record.buffered_stream.seek(0)
             content = record.buffered_stream.read()
@@ -344,11 +353,12 @@ class Converter:
             logger.debug("Title: {0}".format(self.title))
             logger.debug("Language: {0}".format(self.language))
             logger.debug("Favicon: {0}".format(self.favicon_url))
-            return
+            main_page_found = True
 
-        raise KeyError(
-            f"Unable to find WARC record for main page: {self.main_url}, aborting"
-        )
+        if not main_page_found:
+            raise KeyError(
+                f"Unable to find WARC record for main page: {self.main_url}, aborting"
+            )
 
     def find_icon_and_language(self, content):
         soup = BeautifulSoup(content, "html.parser")
@@ -478,7 +488,11 @@ class Converter:
                 return
 
             payload_item = WARCPayloadItem(
-                normalized_url, record, self.head_template, self.css_insert
+                normalized_url,
+                record,
+                self.head_template,
+                self.css_insert,
+                self.warc_urls,
             )
 
             if len(payload_item.content) != 0:
