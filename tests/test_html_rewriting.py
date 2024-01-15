@@ -19,6 +19,7 @@ from .utils import TestContent
         TestContent(
             '<p style="background: url(some/image.png);">A url (relative) in a inline style</p>'
         ),
+        TestContent("<p style></p>"),
         TestContent(
             '<style>p { /* A comment with a http://link.org/ */ background: url("some/image.png") ; }</style>'
         ),
