@@ -14,6 +14,19 @@ def read(*names, **kwargs):
         return fh.read()
 
 
+WOMBAT_SOURCE_URL = "https://cdn.jsdelivr.net/npm/@webrecorder/wombat@3.7.0/dist/"
+
+
+def download_wombat(name):
+    print("Downloading " + WOMBAT_SOURCE_URL + name)
+    with urllib.request.urlopen(WOMBAT_SOURCE_URL + name) as response:  # nosec
+        with open(root_dir.joinpath("src", "warc2zim", "statics", name), "wb") as fh:
+            fh.write(response.read())
+
+
+download_wombat("wombat.js")
+
+
 def get_package_data():
     pkgs = ["templates/*", "statics/*"]
 
