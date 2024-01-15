@@ -27,7 +27,7 @@ def process_attr(
             new_value = " ".join([new_url, *other])
             new_value_list.append(new_value)
         return (attr[0], ", ".join(new_value_list))
-    if attr[0] == "style":
+    if attr[0] == "style" and attr[1]:
         return (attr[0], css_rewriter.rewrite_inline(attr[1]))
     return attr
 
