@@ -1,25 +1,25 @@
-from html import escape
-from html.parser import HTMLParser
 import io
 from collections import namedtuple
-from warc2zim.url_rewriting import ArticleUrlRewriter
+from collections.abc import Callable
+from html import escape
+from html.parser import HTMLParser
+
 from warc2zim.content_rewriting.css import CssRewriter
 from warc2zim.content_rewriting.js import JsRewriter
 from warc2zim.utils import to_string
-from typing import Callable, Optional, List, Tuple, Union
 
-AttrsList = List[Tuple[str, Optional[str]]]
+AttrsList = list[tuple[str, str | None]]
 
 
 def process_attr(
-    attr: Tuple[str, Optional[str]],
+    attr: tuple[str, str | None],
     url_rewriter: Callable[[str], str],
     css_rewriter: CssRewriter,
-) -> Tuple[str, Optional[str]]:
+) -> tuple[str, str | None]:
     if attr[0] in ("href", "src"):
-        return (attr[0], url_rewriter(attr[1]))
+        return (attr[0], url_rewriter(attr[1]))  # pyright: ignore
     if attr[0] == "srcset":
-        value_list = attr[1].split(",")
+        value_list = attr[1].split(",")  # pyright: ignore
         new_value_list = []
         for value in value_list:
             url, *other = value.strip().split(" ", maxsplit=1)
@@ -32,7 +32,7 @@ def process_attr(
     return attr
 
 
-def format_attr(name: str, value: Optional[str]) -> str:
+def format_attr(name: str, value: str | None) -> str:
     if value is None:
         return name
     html_escaped_value = escape(value, quote=True)
@@ -54,7 +54,7 @@ class HtmlRewriter(HTMLParser):
         self,
         url_rewriter: Callable[[str], str],
         pre_head_insert: str,
-        post_head_insert: str,
+        post_head_insert: str | None,
     ):
         super().__init__()
         self.url_rewriter = url_rewriter
@@ -67,8 +67,9 @@ class HtmlRewriter(HTMLParser):
         self.pre_head_insert = pre_head_insert
         self.post_head_insert = post_head_insert
 
-    def rewrite(self, content: Union[str, bytes]) -> RewritenHtml:
-        assert self.output == None
+    def rewrite(self, content: str | bytes) -> RewritenHtml:
+        if self.output is not None:
+            raise Exception("ouput should not already be set")  # pragma: no cover
         self.output = io.StringIO()
 
         content = to_string(content)
@@ -81,16 +82,18 @@ class HtmlRewriter(HTMLParser):
         return RewritenHtml(self.title or "", output)
 
     def send(self, value: str):
-        self.output.write(value)
+        self.output.write(value)  # pyright: ignore
 
-    def handle_starttag(self, tag: str, attrs: AttrsList, auto_close: bool = False):
+    def handle_starttag(self, tag: str, attrs: AttrsList, *, auto_close: bool = False):
         self._active_tag = tag
 
         self.send(f"<{tag}")
         if attrs:
             self.send(" ")
         if tag == "a":
-            url_rewriter = lambda url: self.url_rewriter(url, False)
+            url_rewriter = lambda url: self.url_rewriter(  # noqa: E731
+                url, False  # pyright: ignore
+            )
         else:
             url_rewriter = self.url_rewriter
         self.send(transform_attrs(attrs, url_rewriter, self.css_rewriter))

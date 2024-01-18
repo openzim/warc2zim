@@ -1,7 +1,9 @@
-import pytest
-from warc2zim.url_rewriting import ArticleUrlRewriter
-from warc2zim.content_rewriting import CssRewriter
 from textwrap import dedent
+
+import pytest
+
+from warc2zim.content_rewriting.css import CssRewriter
+from warc2zim.url_rewriting import ArticleUrlRewriter
 
 
 @pytest.fixture(
@@ -36,7 +38,7 @@ p, input {
 }
 
 @font-face {
-    src: url(https://fonts.gstatic.com/s/quicksand/v31/6xKtdSZaM9iE8KbpRA_hJFQNcOM.woff2) format('woff2');
+    src: url(https://f.gst.com/s/qa/v31/6xKtdSZaE8KbpRA_hJFQNcOM.woff2) format('woff2');
 }
 
 @media only screen and (max-width: 40em) {
@@ -56,7 +58,7 @@ p, input {
     }
 
     @font-face {
-        src: url(../fonts.gstatic.com/s/quicksand/v31/6xKtdSZaM9iE8KbpRA_hJFQNcOM.woff2) format("woff2");
+        src: url(../f.gst.com/s/qa/v31/6xKtdSZaE8KbpRA_hJFQNcOM.woff2) format("woff2");
     }
 
     @media only screen and (max-width: 40em) {

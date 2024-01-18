@@ -1,7 +1,8 @@
 import re
-from typing import Any, Callable, Optional, Iterable, Tuple, Mapping, List
+from collections.abc import Callable, Iterable, Mapping
+from typing import Any
 
-TransformationRule = Tuple[re.Pattern, Callable[[re.Match], str]]
+TransformationRule = tuple[re.Pattern, Callable[[re.Match], str]]
 
 # Regex used to check if we ar import or exporting things in the string
 # ie : If we are a module
@@ -41,40 +42,44 @@ GLOBALS_RX = re.compile(
 )
 
 
-def create_js_rules() -> List[TransformationRule]:
+def create_js_rules() -> list[TransformationRule]:
     """
     This function create all the transformation rules.
 
     A transformation rule is a tuple (Regex, rewrite_function).
-    If the regex match in the rewritten script, the corresponding match object will be passed
-    to rewrite_function.
-    The rewrite_function must all take a `opts` dictionnary which will be the opts passed to the
-    `JsRewriter.rewrite` function.
+    If the regex match in the rewritten script, the corresponding match object will be
+    passed to rewrite_function.
+    The rewrite_function must all take a `opts` dictionnary which will be the opts
+    passed to the `JsRewriter.rewrite` function.
     This is mostly as if we were calling `re.sub(regex, rewrite_function, script_text)`.
 
     The regex will be combined and will match any non overlaping text.
     So rule to match will be applyed, potentially preventing futher rules to match.
     """
 
-    # This will replace `this` in code. The `_____WB$wombat$check$this$function_____` will "see"
-    # with wombat and may return a "wrapper" around `this`
+    # This will replace `this` in code. The `_____WB$wombat$check$this$function_____`
+    # will "see" with wombat and may return a "wrapper" around `this`
     this_rw = "_____WB$wombat$check$this$function_____(this)"
 
-    # This will replace `location = `. This will "see" with wombat and set what have to be set.
-    check_loc = "((self.__WB_check_loc && self.__WB_check_loc(location, arguments)) || {}).href = "
+    # This will replace `location = `. This will "see" with wombat and set what have to
+    # be set.
+    check_loc = (
+        "((self.__WB_check_loc && self.__WB_check_loc(location, arguments)) || "
+        "{}).href = "
+    )
 
     # This will replace `eval(...)`.
     eval_str = (
-        "WB_wombat_runEval2((_______eval_arg, isGlobal) => { var ge = eval; return isGlobal ? "
-        "ge(_______eval_arg) : "
+        "WB_wombat_runEval2((_______eval_arg, isGlobal) => { var ge = eval; return "
+        "isGlobal ? ge(_______eval_arg) : "
         "eval(_______eval_arg); }).eval(this, (function() { return arguments })(),"
     )
 
     def m2str(function):
         """
         Call a rewrite_function with a string instead of a match object.
-        A lot of rewrite function don't need the match object as they are working directly
-        on text. This decorator can be used on rewrite_function taking a str.
+        A lot of rewrite function don't need the match object as they are working
+        directly on text. This decorator can be used on rewrite_function taking a str.
         """
 
         def wrapper(m_object, _opts):
@@ -95,7 +100,7 @@ def create_js_rules() -> List[TransformationRule]:
 
     def replace_prefix_from(prefix, match):
         """
-        Create a rewrite_function which replace evering this before `match` which `prefix`.
+        Returns a function which replaces everything before `match` with `prefix`.
         """
 
         @m2str
@@ -165,8 +170,8 @@ def create_js_rules() -> List[TransformationRule]:
         """
         Create a rewrite_function replacing `src` by `target` in the matching str.
 
-        This "replace" function is intended to be use to replace in `import ...` as it adds
-        a `import.meta.url` if we are in a module.
+        This "replace" function is intended to be use to replace in `import ...` as it
+        adds a `import.meta.url` if we are in a module.
         """
 
         def f(m_object, opts):
@@ -208,15 +213,15 @@ def create_js_rules() -> List[TransformationRule]:
             replace_this(),
         ),
         # ignore `async import`.
-        # As the rule will match first, it will prevent next rule matching `import` to be apply
-        # to `async import`.
+        # As the rule will match first, it will prevent next rule matching `import` to
+        # be apply to `async import`.
         (re.compile(r"async\s+import\s*\("), m2str(lambda x: x)),
         # esm dynamic import, if found, mark as module
         (
             re.compile(r"[^$.]\bimport\s*\("),
             replace_import("import", "____wb_rewrite_import__"),
         ),
-    ]
+    ]  # pyright: ignore
 
 
 REWRITE_JS_RULES = create_js_rules()
@@ -226,38 +231,40 @@ class JsRewriter:
     """
     JsRewriter is in charge of rewriting the js code stored in our zim file.
 
-    The main "input" is a list of rules, each rule being a tuple (regex, rewriting_function).
-    We want to apply each rule to the content. But doing it blindly is counter-productive.
-    It would means that we have to do N replacements (N == number of rules).
+    The main "input" is a list of rules, each rule being a tuple (regex,
+    rewriting_function). We want to apply each rule to the content. But doing it blindly
+    is counter-productive. It would means that we have to do N replacements (N == number
+    of rules).
     To avoid that, we create one unique regex (`compiled_rule`) equivalent to
     `(regex0|regex1|regex2|...)` and we do only one replacement with this regex.
-    When we have a match, we do N regex search to know which rules is corresponding and we apply
-    the asosociated rewriting_function.
+    When we have a match, we do N regex search to know which rules is corresponding
+    and we apply the associated rewriting_function.
     """
 
     def __init__(
         self,
         url_rewriter: Callable[[str], str],
-        extra_rules: Optional[Iterable[TransformationRule]] = None,
+        extra_rules: Iterable[TransformationRule] | None = None,
     ):
         self.extra_rules = extra_rules or []
         self.first_buff = self._init_local_declaration(GLOBAL_OVERRIDES)
-        self.last_buff = "\n\n}"
+        self.last_buff = "\n}"
         self.url_rewriter = url_rewriter
 
     def _init_local_declaration(self, local_decls: Iterable[str]) -> str:
         """
         Create the prefix text to add at beginning of script.
 
-        This will be added to script only if the script is using of the declaration in local_decls.
+        This will be added to script only if the script is using of the declaration in
+        local_decls.
         """
         assign_func = "_____WB$wombat$assign$function_____"
         buffer = (
             f"var {assign_func} = function(name) "
             "{return (self._wb_wombat && self._wb_wombat.local_init && "
             "self._wb_wombat.local_init(name)) || self[name]; };\n"
-            "if (!self.__WB_pmw) { self.__WB_pmw = function(obj) { this.__WB_source = obj; "
-            "return this; } }\n{\n"
+            "if (!self.__WB_pmw) { self.__WB_pmw = function(obj) "
+            "{ this.__WB_source = obj; return this; } }\n{\n"
         )
         for decl in local_decls:
             buffer += f"""let {decl} = {assign_func}("{decl}");\n"""
@@ -284,7 +291,7 @@ class JsRewriter:
             return True
         return False
 
-    def rewrite(self, text: str, opts: Mapping[str, Any] = None) -> str:
+    def rewrite(self, text: str, opts: dict[str, Any] | None = None) -> str:
         """
         Rewrite the js code in `text`.
         """
@@ -318,13 +325,16 @@ class JsRewriter:
         def rewrite_import():
             def func(m_object, _opts):
                 def sub_funct(match):
-                    return f"{match.group(1)}{self.url_rewriter(match.group(2))}{match.group(3)}"
+                    return (
+                        f"{match.group(1)}{self.url_rewriter(match.group(2))}"
+                        f"{match.group(3)}"
+                    )
 
                 return IMPORT_HTTP_RX.sub(sub_funct, m_object[0])
 
             return func
 
-        return (IMPORT_MATCH_RX, rewrite_import())
+        return (IMPORT_MATCH_RX, rewrite_import())  # pyright: ignore
 
     def _compile_rules(self, rules: Iterable[TransformationRule]) -> re.Pattern:
         """
@@ -337,7 +347,7 @@ class JsRewriter:
         self,
         text: str,
         compiled_rules: re.Pattern,
-        rules: List[TransformationRule],
+        rules: list[TransformationRule],
         opts: Mapping[str, Any],
     ) -> str:
         """
@@ -352,7 +362,7 @@ class JsRewriter:
                 if not m_object.group(i):
                     # THis is not the ith rules which match
                     continue
-                result = rule[1](m_object, opts)
+                result = rule[1](m_object, opts)  # pyright: ignore
                 return result
 
         return compiled_rules.sub(replace, text)

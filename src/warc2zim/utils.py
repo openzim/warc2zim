@@ -1,15 +1,15 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # vim: ai ts=4 sts=4 et sw=4 nu
 
 from __future__ import annotations
 
-import pkg_resources
 from bs4 import BeautifulSoup
+
+from warc2zim.__about__ import __version__
 
 
 def get_version():
-    return pkg_resources.get_distribution("warc2zim").version
+    return __version__
 
 
 def get_record_url(record):
@@ -36,14 +36,14 @@ def get_record_mime_type(record):
 def parse_title(content):
     try:
         soup = BeautifulSoup(content, "html.parser")
-        return soup.title.text or ""
+        return soup.title.text or ""  # pyright: ignore
     except Exception:
         return ""
 
 
-def to_string(input: str | bytes) -> str:
+def to_string(input_: str | bytes) -> str:
     try:
-        input = input.decode("utf-8-sig")
+        input_ = input_.decode("utf-8-sig")  # pyright: ignore
     except AttributeError:
         pass
-    return input
+    return input_  # pyright: ignore
