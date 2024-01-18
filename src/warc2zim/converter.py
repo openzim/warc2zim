@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # vim: ai ts=4 sts=4 et sw=4 nu
 
 """ warc2zim conversion utility
@@ -13,46 +12,47 @@ If the WARC contains multiple entries for the same URL, only the first entry is 
 and later entries are ignored. A warning is printed as well.
 """
 
-import os
-import json
-import pathlib
-import logging
-import tempfile
 import datetime
-import re
 import io
+import json
+import logging
+import os
+import pathlib
+import re
+import tempfile
 import time
-from urllib.parse import urlsplit, urljoin, urlunsplit, urldefrag
+from pathlib import Path
+from urllib.parse import urldefrag, urljoin, urlsplit, urlunsplit
 
 import pkg_resources
 import requests
+
+# from zimscraperlib import getLogger
+from bs4 import BeautifulSoup
+from cdxj_indexer import buffering_record_iter, iter_file_or_dir
+from jinja2 import Environment, PackageLoader
 from warcio import ArchiveIterator, StatusAndHeaders
 from warcio.recordbuilder import RecordBuilder
-from zimscraperlib.constants import DEFAULT_DEV_ZIM_METADATA
+from zimscraperlib.constants import (
+    DEFAULT_DEV_ZIM_METADATA,
+    RECOMMENDED_MAX_TITLE_LENGTH,
+)
 from zimscraperlib.download import stream_file
-from zimscraperlib.i18n import setlocale, get_language_details, Locale
+from zimscraperlib.i18n import get_language_details
 from zimscraperlib.image.convertion import convert_image
 from zimscraperlib.image.transformation import resize_image
 from zimscraperlib.zim.creator import Creator
-from zimscraperlib.zim.items import URLItem, StaticItem
+from zimscraperlib.zim.items import StaticItem
 
-from bs4 import BeautifulSoup
-
-from jinja2 import Environment, PackageLoader
-
-from cdxj_indexer import iter_file_or_dir, buffering_record_iter
-
-from warc2zim.url_rewriting import normalize, FUZZY_RULES
-from warc2zim.items import WARCPayloadItem, StaticArticle
+from warc2zim.constants import logger
+from warc2zim.items import StaticArticle, WARCPayloadItem
+from warc2zim.url_rewriting import FUZZY_RULES, normalize
 from warc2zim.utils import (
-    get_version,
-    get_record_url,
     get_record_mime_type,
+    get_record_url,
+    get_version,
     parse_title,
 )
-
-# Shared logger
-logger = logging.getLogger("warc2zim.converter")
 
 # HTML mime types
 HTML_TYPES = ("text/html", "application/xhtml", "application/xhtml+xml")
@@ -73,7 +73,7 @@ DUPLICATE_EXC_STR = re.compile(
 )
 
 ALIAS_EXC_STR = re.compile(
-    r"^Impossible to alias(.+)" r"(.+) doesn't exist.",
+    r"^Impossible to alias(.+)(.+) doesn't exist.",
     re.MULTILINE | re.DOTALL,
 )
 
@@ -82,11 +82,10 @@ PY2JS_RULE_RX = re.compile(r"\\(\d)", re.ASCII)
 
 class Converter:
     def __init__(self, args):
-        logging.basicConfig(format="[%(levelname)s] %(message)s")
         if args.verbose:
-            logger.setLevel(logging.DEBUG)
-        else:
-            logger.setLevel(logging.INFO)
+            # set log level in all configured handlers
+            for handler in logger.handlers:
+                handler.setLevel(logging.DEBUG)
 
         main_url = args.url
         # ensure trailing slash is added if missing
@@ -119,7 +118,7 @@ class Converter:
                 name=self.name, period="{period}"
             )
         self.zim_file = self.zim_file.format(period=time.strftime("%Y-%m"))
-        self.full_filename = os.path.join(self.output, self.zim_file)
+        self.full_filename = Path(os.path.join(self.output, self.zim_file))
 
         # ensure output file is writable
         with tempfile.NamedTemporaryFile(dir=self.output, delete=True) as fh:
@@ -147,22 +146,13 @@ class Converter:
         # autoescape=False to allow injecting html entities from translated text
         env = Environment(
             loader=PackageLoader("warc2zim", "templates"),
-            extensions=["jinja2.ext.i18n"],
-            autoescape=False,
+            autoescape=False,  # noqa: S701
         )
 
         env.filters["urlsplit"] = urlsplit
         env.filters["tobool"] = lambda val: "true" if val else "false"
 
         env.filters["py2jsregex"] = lambda py_reg: PY2JS_RULE_RX.sub(r"$\1", py_reg)
-
-        try:
-            env.install_gettext_translations(Locale.translation)
-        except OSError:
-            logger.warning(
-                "No translations table found for language: {0}".format(self.language)
-            )
-            env.install_null_translations()
 
         return env
 
@@ -209,24 +199,18 @@ class Converter:
 
         self.gather_information_from_warc()
         self.title = self.title or "Untitled"
-        if len(self.title) > 30:
+        if len(self.title) > RECOMMENDED_MAX_TITLE_LENGTH:
             self.title = f"{self.title[0:29]}…"
         self.retrieve_illustration()
         self.convert_illustration()
 
-        # make sure Language metadata is ISO-639-3 and setup translations
+        # make sure Language metadata is ISO-639-3
         try:
             lang_data = get_language_details(self.language)
             self.language = lang_data["iso-639-3"]
         except Exception:
             logger.error(f"Invalid language setting `{self.language}`. Using `eng`.")
             self.language = "eng"
-
-        # try to set locale to language. Might fail (missing locale)
-        try:
-            setlocale(pathlib.Path(__file__).parent, lang_data.get("iso-639-1"))
-        except Exception:
-            ...
 
         self.env = self.init_env()
 
@@ -252,24 +236,24 @@ class Converter:
             LongDescription=self.long_description,
             Creator=self.creator_metadata,
             Publisher=self.publisher,
-            Date=datetime.date.today(),
+            Date=datetime.date.today(),  # noqa: DTZ011
             Illustration_48x48_at_1=self.illustration,
             Tags=";".join(self.tags),
-            Source=self.source,
+            Source=self.source,  # pyright: ignore
             Scraper=f"warc2zim {get_version()}",
         ).start()
 
         for filename in pkg_resources.resource_listdir("warc2zim", "statics"):
-            self.creator.add_item(StaticArticle(self.env, filename, self.main_url))
+            self.creator.add_item(StaticArticle(filename, self.main_url))
 
         # Add wombat_setup.js
         wombat_setup_template = self.env.get_template("wombat_setup.js")
         wombat_setup_content = wombat_setup_template.render(FUZZY_RULES=FUZZY_RULES)
         self.creator.add_item(
             StaticItem(
-                path="_zim_static/wombat_setup.js",
-                content=wombat_setup_content,
-                mimetype="text/javascript",
+                path="_zim_static/wombat_setup.js",  # pyright: ignore
+                content=wombat_setup_content,  # pyright: ignore
+                mimetype="text/javascript",  # pyright: ignore
             )
         )
 
@@ -336,23 +320,23 @@ class Converter:
             # but print warning
             if mime not in HTML_TYPES:
                 logger.warning(
-                    "Main page is not an HTML Page, mime type is: {0} "
-                    "- Skipping Favicon and Language detection".format(mime)
+                    f"Main page is not an HTML Page, mime type is: {mime} "
+                    "- Skipping Favicon and Language detection"
                 )
                 main_page_found = True
                 continue
 
-            record.buffered_stream.seek(0)
-            content = record.buffered_stream.read()
+            record.buffered_stream.seek(0)  # pyright: ignore
+            content = record.buffered_stream.read()  # pyright: ignore
 
             if not self.title:
                 self.title = parse_title(content)
 
             self.find_icon_and_language(content)
 
-            logger.debug("Title: {0}".format(self.title))
-            logger.debug("Language: {0}".format(self.language))
-            logger.debug("Favicon: {0}".format(self.favicon_url))
+            logger.debug(f"Title: {self.title}")
+            logger.debug(f"Language: {self.language}")
+            logger.debug(f"Favicon: {self.favicon_url}")
             main_page_found = True
 
         if not main_page_found:
@@ -369,8 +353,10 @@ class Converter:
             if not icon:
                 icon = soup.find("link", rel="icon")
 
-            if icon and icon.attrs.get("href"):
-                self.favicon_url = urljoin(self.main_url, icon.attrs["href"])
+            if icon and icon.attrs.get("href"):  # pyright: ignore
+                self.favicon_url = urljoin(
+                    self.main_url, icon.attrs["href"]  # pyright: ignore
+                )
             else:
                 self.favicon_url = urljoin(self.main_url, "/favicon.ico")
 
@@ -378,7 +364,7 @@ class Converter:
             # HTML5 Standard
             lang_elem = soup.find("html", attrs={"lang": True})
             if lang_elem:
-                self.language = lang_elem.attrs["lang"]
+                self.language = lang_elem.attrs["lang"]  # pyright: ignore
                 return
 
             # W3C recommendation
@@ -386,13 +372,13 @@ class Converter:
                 "meta", {"http-equiv": "content-language", "content": True}
             )
             if lang_elem:
-                self.language = lang_elem.attrs["content"]
+                self.language = lang_elem.attrs["content"]  # pyright: ignore
                 return
 
             # SEO Recommendations
             lang_elem = soup.find("meta", {"name": "language", "content": True})
             if lang_elem:
-                self.language = lang_elem.attrs["content"]
+                self.language = lang_elem.attrs["content"]  # pyright: ignore
                 return
 
     def retrieve_illustration(self):
@@ -418,8 +404,8 @@ class Converter:
                     ]
                     return
                 if hasattr(record, "buffered_stream"):
-                    record.buffered_stream.seek(0)
-                    self.illustration = record.buffered_stream.read()
+                    record.buffered_stream.seek(0)  # pyright: ignore
+                    self.illustration = record.buffered_stream.read()  # pyright: ignore
                 else:
                     self.illustration = record.content_stream().read()
                 return
@@ -428,7 +414,9 @@ class Converter:
         try:
             dst = io.BytesIO()
             if not stream_file(self.favicon_url, byte_stream=dst)[0]:
-                raise IOError("No bytes received downloading favicon")
+                raise OSError(
+                    "No bytes received downloading favicon"
+                )  # pragma: no cover
             self.illustration = dst.getvalue()
         except Exception as exc:
             logger.warning(f"Unable to retrieve favicon. Using fallback: {exc}")
@@ -441,9 +429,9 @@ class Converter:
         src = io.BytesIO(self.illustration)
         dst = io.BytesIO()
         try:
-            convert_image(src, dst, fmt="PNG")
+            convert_image(src, dst, fmt="PNG")  # pyright: ignore
             resize_image(dst, width=48, height=48, method="cover")
-        except Exception as exc:
+        except Exception as exc:  # pragma: no cover
             logger.warning(f"Failed to convert or resize favicon: {exc}")
             self.illustration = DEFAULT_DEV_ZIM_METADATA["Illustration_48x48_at_1"]
         else:
@@ -470,7 +458,7 @@ class Converter:
             return
 
         if normalized_url in self.indexed_urls:
-            logger.debug("Skipping duplicate {0}, already added to ZIM".format(url))
+            logger.debug(f"Skipping duplicate {url}, already added to ZIM")
             return
 
         # if include_domains is set, only include urls from those domains
@@ -479,7 +467,7 @@ class Converter:
             if not any(
                 parts.netloc.endswith(domain) for domain in self.include_domains
             ):
-                logger.debug("Skipping url {0}, outside included domains".format(url))
+                logger.debug(f"Skipping url {url}, outside included domains")
                 return
 
         if record.rec_type != "revisit":
@@ -509,7 +497,7 @@ class Converter:
         elif (
             record.rec_headers["WARC-Refers-To-Target-URI"] != url
             and normalized_url not in self.revisits
-        ):
+        ):  # pragma: no branch
             self.revisits[normalized_url] = normalize(
                 record.rec_headers["WARC-Refers-To-Target-URI"]
             )
@@ -520,5 +508,5 @@ def iter_warc_records(inputs):
     for filename in iter_file_or_dir(inputs):
         with open(filename, "rb") as fh:
             for record in buffering_record_iter(ArchiveIterator(fh), post_append=True):
-                if record.rec_type in ("resource", "response", "revisit"):
+                if record and record.rec_type in ("resource", "response", "revisit"):
                     yield record

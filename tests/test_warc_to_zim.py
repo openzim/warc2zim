@@ -1,24 +1,19 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # vim: ai ts=4 sts=4 et sw=4 nu
 
-import os
-import time
 import json
+import os
 import re
-from io import BytesIO
+import time
 
 import pytest
 import requests
-
-from warcio import ArchiveIterator
-from jinja2 import Environment, PackageLoader
 from zimscraperlib.zim import Archive
 
-from warc2zim.url_rewriting import normalize
 from warc2zim.converter import iter_warc_records
-from warc2zim.utils import get_record_url
 from warc2zim.main import main
+from warc2zim.url_rewriting import normalize
+from warc2zim.utils import get_record_url
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
 
@@ -83,7 +78,7 @@ def fuzzycheck(request):
 
 
 # ============================================================================
-class TestWarc2Zim(object):
+class TestWarc2Zim:
     def list_articles(self, zimfile):
         zim_fh = Archive(zimfile)
         for x in range(zim_fh.entry_count):
@@ -104,13 +99,6 @@ class TestWarc2Zim(object):
     def verify_warc_and_zim(self, warcfile, zimfile):
         assert os.path.isfile(warcfile)
         assert os.path.isfile(zimfile)
-
-        # autoescape=False to allow injecting html entities from translated text
-        env = Environment(
-            # loader=PackageLoader("warc2zim", "templates"),
-            extensions=["jinja2.ext.i18n"],
-            autoescape=False,
-        )
 
         # [TOFIX]
         head_insert = b""
@@ -139,7 +127,6 @@ class TestWarc2Zim(object):
 
             # parse headers as record, ensure headers match
             url_no_scheme = url.split("//", 2)[1]
-            print(url_no_scheme)
 
             if "www.youtube.com/embed" in url_no_scheme:
                 # We know that those url are rewritten in zim. Don't check for them.
@@ -161,16 +148,17 @@ class TestWarc2Zim(object):
                 # But difficult to test as we don't have it
                 assert payload
             else:
-                payload_content = payload.content.tobytes()
+                payload_content = payload.content.tobytes()  # pyright: ignore
 
-                # if HTML, still need to account for the head insert, otherwise should have exact match
-                if payload.mimetype.startswith("text/html"):
+                # if HTML, still need to account for the head insert, otherwise should
+                # have exact match
+                if payload.mimetype.startswith("text/html"):  # pyright: ignore
                     assert head_insert in payload_content
 
             warc_urls.add(url)
 
     def test_normalize(self):
-        assert normalize(None) == None
+        assert normalize(None) is None  # pyright: ignore
         assert normalize("") == ""
         assert normalize("https://exemple.com") == "exemple.com"
         assert normalize("https://exemple.com/") == "exemple.com/"
@@ -285,7 +273,7 @@ class TestWarc2Zim(object):
         zimfile = filename + "_" + time.strftime("%Y-%m") + ".zim"
 
         if "--progress-file" in cmdline:
-            with open(tmp_path / "progress.json", "r") as fh:
+            with open(tmp_path / "progress.json") as fh:
                 progress = json.load(fh)
                 assert (
                     progress["written"] > 0
@@ -428,12 +416,13 @@ class TestWarc2Zim(object):
         zim_output = tmp_path / zim_output
 
         for entry in fuzzycheck["entries"]:
-            # This should be item and get_article_raw is eq to getItem and it will fail if it is not a item
+            # This should be item and get_article_raw is eq to getItem and it will fail
+            # if it is not a item
             self.get_article_raw(zim_output, entry)
 
     def test_error_bad_main_page(self, tmp_path):
         zim_output_not_created = "zim-out-not-created.zim"
-        with pytest.raises(Exception) as e:
+        with pytest.raises(Exception):  # noqa: B017
             main(
                 [
                     "-v",
@@ -453,7 +442,7 @@ class TestWarc2Zim(object):
         # error, name required
         with pytest.raises(SystemExit) as e:
             main([])
-            assert e.code == 2
+            assert e.code == 2  # pyright: ignore
 
         # error, no such output directory
         with pytest.raises(Exception) as e:
@@ -486,7 +475,7 @@ class TestWarc2Zim(object):
         zim_output = tmp_path / zim_output
 
         res = self.get_article(zim_output, "example.com/")
-        assert "warc2zim.kiwix.app/custom.css".encode("utf-8") in res
+        assert b"warc2zim.kiwix.app/custom.css" in res
 
         res = self.get_article(zim_output, "warc2zim.kiwix.app/custom.css")
         assert custom_css == res
@@ -513,7 +502,7 @@ class TestWarc2Zim(object):
         zim_output = tmp_path / zim_output
 
         res = self.get_article(zim_output, "example.com/")
-        assert "warc2zim.kiwix.app/custom.css".encode("utf-8") in res
+        assert b"warc2zim.kiwix.app/custom.css" in res
 
         res = self.get_article(zim_output, "warc2zim.kiwix.app/custom.css")
-        assert res == requests.get(url).content
+        assert res == requests.get(url, timeout=10).content

@@ -1,8 +1,9 @@
 import pytest
-from warc2zim.content_rewriting import JsRewriter
+
+from warc2zim.content_rewriting.js import JsRewriter
 from warc2zim.url_rewriting import ArticleUrlRewriter
-from textwrap import dedent
-from .utils import TestContent
+
+from .utils import ContentForTests
 
 
 @pytest.fixture(
@@ -17,7 +18,7 @@ from .utils import TestContent
 )
 def rewrite_this_js_content(request):
     content = request.param
-    yield TestContent(
+    yield ContentForTests(
         content,
         content.replace("this", "_____WB$wombat$check$this$function_____(this)"),
     )
@@ -25,55 +26,65 @@ def rewrite_this_js_content(request):
 
 def test_this_js_rewrite(rewrite_this_js_content):
     assert (
-        JsRewriter(lambda x: x).rewrite(rewrite_this_js_content.input)
+        JsRewriter(lambda x: x).rewrite(rewrite_this_js_content.input_)
         == rewrite_this_js_content.expected
     )
 
 
-class WrappedTestContent(TestContent):
+class WrappedTestContent(ContentForTests):
     @staticmethod
-    def wrapScript(text: str) -> str:
+    def wrap_script(text: str) -> str:
         """
         A small wrapper to help generate the expected content.
-        JsRewriter must add this local definition around all js code (when we access on of the local varibles)
+
+        JsRewriter must add this local definition around all js code (when we access on
+        of the local varibles)
         """
-        return f"""var _____WB$wombat$assign$function_____ = function(name) {{return (self._wb_wombat && self._wb_wombat.local_init && self._wb_wombat.local_init(name)) || self[name]; }};
-if (!self.__WB_pmw) {{ self.__WB_pmw = function(obj) {{ this.__WB_source = obj; return this; }} }}
-{{
-let window = _____WB$wombat$assign$function_____("window");
-let globalThis = _____WB$wombat$assign$function_____("globalThis");
-let self = _____WB$wombat$assign$function_____("self");
-let document = _____WB$wombat$assign$function_____("document");
-let location = _____WB$wombat$assign$function_____("location");
-let top = _____WB$wombat$assign$function_____("top");
-let parent = _____WB$wombat$assign$function_____("parent");
-let frames = _____WB$wombat$assign$function_____("frames");
-let opener = _____WB$wombat$assign$function_____("opener");
-let arguments;
-
-{text}
-
-}}"""
+        return (
+            "var _____WB$wombat$assign$function_____ = function(name) {return (self."
+            "_wb_wombat && self._wb_wombat.local_init && self._wb_wombat.local_init"
+            "(name)) || self[name]; };\n"
+            "if (!self.__WB_pmw) { self.__WB_pmw = function(obj) { this.__WB_source ="
+            " obj; return this; } }\n"
+            "{\n"
+            'let window = _____WB$wombat$assign$function_____("window");\n'
+            'let globalThis = _____WB$wombat$assign$function_____("globalThis");\n'
+            'let self = _____WB$wombat$assign$function_____("self");\n'
+            'let document = _____WB$wombat$assign$function_____("document");\n'
+            'let location = _____WB$wombat$assign$function_____("location");\n'
+            'let top = _____WB$wombat$assign$function_____("top");\n'
+            'let parent = _____WB$wombat$assign$function_____("parent");\n'
+            'let frames = _____WB$wombat$assign$function_____("frames");\n'
+            'let opener = _____WB$wombat$assign$function_____("opener");\n'
+            "let arguments;\n"
+            "\n"
+            f"{text}"
+            "\n"
+            "}"
+        )
 
     def __post_init__(self):
         super().__post_init__()
-        self.expected = self.wrapScript(self.expected)
+        self.expected = self.wrap_script(self.expected)
 
 
 @pytest.fixture(
     params=[
         WrappedTestContent(
             "location = http://example.com/",
-            "location = ((self.__WB_check_loc && self.__WB_check_loc(location, arguments)) || {}).href = http://example.com/",
+            "location = ((self.__WB_check_loc && self.__WB_check_loc(location, argument"
+            "s)) || {}).href = http://example.com/",
         ),
         WrappedTestContent(
             " location = http://example.com/2",
-            " location = ((self.__WB_check_loc && self.__WB_check_loc(location, arguments)) || {}).href = http://example.com/2",
+            " location = ((self.__WB_check_loc && self.__WB_check_loc(location, argumen"
+            "ts)) || {}).href = http://example.com/2",
         ),
         WrappedTestContent("func(location = 0)", "func(location = 0)"),
         WrappedTestContent(
             " location = http://example.com/2",
-            " location = ((self.__WB_check_loc && self.__WB_check_loc(location, arguments)) || {}).href = http://example.com/2",
+            " location = ((self.__WB_check_loc && self.__WB_check_loc(location, argumen"
+            "ts)) || {}).href = http://example.com/2",
         ),
         WrappedTestContent("window.eval(a)", "window.eval(a)"),
         WrappedTestContent("x = window.eval; x(a);", "x = window.eval; x(a);"),
@@ -94,27 +105,33 @@ def rewrite_wrapped_content(request):
 
 def test_wrapped_rewrite(rewrite_wrapped_content):
     assert (
-        JsRewriter(lambda x: x).rewrite(rewrite_wrapped_content.input)
+        JsRewriter(lambda x: x).rewrite(rewrite_wrapped_content.input_)
         == rewrite_wrapped_content.expected
     )
 
 
-class ImportTestContent(TestContent):
+class ImportTestContent(ContentForTests):
     @staticmethod
-    # We want to import js stored in zim file as `_zim_static/__wb_module_decl.js` from `https://exemple.com/some/path/`
-    # so path is `../../../_zim_static/__wb_module_decl.js`
-    def wrapImport(text: str) -> str:
+    # We want to import js stored in zim file as `_zim_static/__wb_module_decl.js` from
+    # `https://exemple.com/some/path/` so path is
+    # `../../../_zim_static/__wb_module_decl.js`
+    def wrap_import(text: str) -> str:
         """
         A small wrapper to help us generate the expected content for modules.
-        JsRewriter must add this import line at beginning of module codes (when code contains `import` or `export`)
+
+        JsRewriter must add this import line at beginning of module codes (when code
+        contains `import` or `export`)
         """
-        return f"""import {{ window, globalThis, self, document, location, top, parent, frames, opener }} from "../../../_zim_static/__wb_module_decl.js";
-{text}"""
+        return (
+            "import { window, globalThis, self, document, location, top, parent, "
+            'frames, opener } from "../../../_zim_static/__wb_module_decl.js";\n'
+            f"{text}"
+        )
 
     def __post_init__(self):
         super().__post_init__()
         self.article_url = "https://exemple.com/some/path/"
-        self.expected = self.wrapImport(self.expected)
+        self.expected = self.wrap_import(self.expected)
 
 
 @pytest.fixture(
@@ -179,8 +196,10 @@ B = await ____wb_rewrite_import__(import.meta.url, somefile);
 """,
         ),
         ImportTestContent(
-            'import"import.js";import{A, B, C} from"test.js";(function() => { frames[0].href = "/abc"; })',
-            'import"import.js";import{A, B, C} from"test.js";(function() => { frames[0].href = "/abc"; })',
+            'import"import.js";import{A, B, C} from"test.js";(function() => { frames[0]'
+            '.href = "/abc"; })',
+            'import"import.js";import{A, B, C} from"test.js";(function() => { frames[0]'
+            '.href = "/abc"; })',
         ),
         ImportTestContent(
             """a = location
@@ -201,7 +220,7 @@ def rewrite_import_content(request):
 def test_import_rewrite(rewrite_import_content):
     url_rewriter = ArticleUrlRewriter(rewrite_import_content.article_url, set())
     assert (
-        JsRewriter(url_rewriter).rewrite(rewrite_import_content.input)
+        JsRewriter(url_rewriter).rewrite(rewrite_import_content.input_)
         == rewrite_import_content.expected
     )
 

@@ -1,20 +1,22 @@
+# pyright: reportGeneralTypeIssues=false, reportAttributeAccessIssue=false
+
+from collections.abc import Callable, Iterable
+
 from tinycss2 import (
+    parse_declaration_list,
     parse_stylesheet,
     parse_stylesheet_bytes,
-    parse_declaration_list,
     serialize,
 )
-from tinycss2.serializer import serialize_url
 from tinycss2.ast import Node as TCSS2Node
-from warc2zim.url_rewriting import ArticleUrlRewriter
-from typing import Optional, Iterable, Union, Callable
+from tinycss2.serializer import serialize_url
 
 
 class CssRewriter:
     def __init__(self, url_rewriter: Callable[[str], str]):
         self.url_rewriter = url_rewriter
 
-    def rewrite(self, content: Union[str, bytes]) -> str:
+    def rewrite(self, content: str | bytes) -> str:
         if isinstance(content, bytes):
             rules = parse_stylesheet_bytes(content)[0]
         else:
