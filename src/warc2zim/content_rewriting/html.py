@@ -16,10 +16,13 @@ def process_attr(
     url_rewriter: Callable[[str], str],
     css_rewriter: CssRewriter,
 ) -> tuple[str, str | None]:
+    if not attr[1]:
+        return attr
+
     if attr[0] in ("href", "src"):
-        return (attr[0], url_rewriter(attr[1]))  # pyright: ignore
+        return (attr[0], url_rewriter(attr[1]))
     if attr[0] == "srcset":
-        value_list = attr[1].split(",")  # pyright: ignore
+        value_list = attr[1].split(",")
         new_value_list = []
         for value in value_list:
             url, *other = value.strip().split(" ", maxsplit=1)
@@ -27,7 +30,7 @@ def process_attr(
             new_value = " ".join([new_url, *other])
             new_value_list.append(new_value)
         return (attr[0], ", ".join(new_value_list))
-    if attr[0] == "style" and attr[1]:
+    if attr[0] == "style":
         return (attr[0], css_rewriter.rewrite_inline(attr[1]))
     return attr
 

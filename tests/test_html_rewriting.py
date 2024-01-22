@@ -27,6 +27,8 @@ from .utils import ContentForTests
             '<style>p { /* A comment with a http://link.org/ */ background: url("some/'
             'image.png") ; }</style>'
         ),
+        ContentForTests("<a href></a>"),
+        ContentForTests("<img src />"),
     ]
 )
 def no_rewrite_content(request):
