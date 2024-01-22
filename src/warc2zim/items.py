@@ -6,9 +6,9 @@
 This module contains the differents Item we may want to add to a Zim archive.
 """
 
+from pathlib import Path
 from urllib.parse import urlsplit
 
-import pkg_resources
 from jinja2.environment import Template
 from libzim.writer import Hint  # pyright: ignore
 from warcio.recordloader import ArcWarcRecord
@@ -78,7 +78,7 @@ class WARCPayloadItem(StaticItem):
 
 
 class StaticArticle(StaticItem):
-    def __init__(self, filename, main_url, **kwargs):
+    def __init__(self, filename: Path, main_url, **kwargs):
         super().__init__(**kwargs)
         self.filename = filename
         self.main_url = main_url
@@ -86,12 +86,10 @@ class StaticArticle(StaticItem):
         self.mime = get_mime_for_name(filename)
         self.mime = self.mime or "application/octet-stream"
 
-        self.content = pkg_resources.resource_string(
-            "warc2zim", "statics/" + filename
-        ).decode("utf-8")
+        self.content = filename.read_text("utf-8")
 
     def get_path(self):
-        return "_zim_static/" + self.filename
+        return "_zim_static/" + self.filename.name
 
     def get_mimetype(self):
         return self.mime

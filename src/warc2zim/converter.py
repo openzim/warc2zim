@@ -13,6 +13,7 @@ and later entries are ignored. A warning is printed as well.
 """
 
 import datetime
+import importlib.resources
 import io
 import json
 import logging
@@ -24,7 +25,6 @@ import time
 from pathlib import Path
 from urllib.parse import urldefrag, urljoin, urlsplit, urlunsplit
 
-import pkg_resources
 import requests
 
 # from zimscraperlib import getLogger
@@ -243,8 +243,9 @@ class Converter:
             Scraper=f"warc2zim {get_version()}",
         ).start()
 
-        for filename in pkg_resources.resource_listdir("warc2zim", "statics"):
-            self.creator.add_item(StaticArticle(filename, self.main_url))
+        for filename in importlib.resources.files("warc2zim.statics").iterdir():
+            with importlib.resources.as_file(filename) as file:
+                self.creator.add_item(StaticArticle(file, self.main_url))
 
         # Add wombat_setup.js
         wombat_setup_template = self.env.get_template("wombat_setup.js")
