@@ -24,8 +24,8 @@ from .utils import ContentForTests
         ),
         ContentForTests("<p style></p>"),
         ContentForTests(
-            '<style>p { /* A comment with a http://link.org/ */ background: url("some/'
-            'image.png") ; }</style>'
+            "<style>p { /* A comment with a http://link.org/ */ "
+            'background: url("some/image.png") ; }</style>'
         ),
         ContentForTests("<a href></a>"),
         ContentForTests("<img src />"),
@@ -49,14 +49,14 @@ def test_no_rewrite(no_rewrite_content):
         ContentForTests(
             "<p style='background: url(\"some/image.png\")'>A link in a inline style"
             "</p>",
-            '<p style="background: url(&quot;some/image.png&quot;);">A link in a inline'
-            " style</p>",
+            '<p style="background: url(&quot;some/image.png&quot;);">'
+            "A link in a inline style</p>",
         ),
         ContentForTests(
-            "<p style=\"background: url('some/image.png')\">A link in a inline style"
-            "</p>",
-            '<p style="background: url(&quot;some/image.png&quot;);">A link in a inline'
-            " style</p>",
+            "<p style=\"background: url('some/image.png')\">"
+            "A link in a inline style</p>",
+            '<p style="background: url(&quot;some/image.png&quot;);">'
+            "A link in a inline style</p>",
         ),
         ContentForTests(
             "<ul style='list-style: \">\"'>",
@@ -198,8 +198,8 @@ def test_rewrite_attributes():
 
     assert (
         rewriter.rewrite(
-            "<img srcset='https://kiwix.org/img-480w.jpg 480w, https://kiwix.org/img-"
-            "800w.jpg 800w'></img>"
+            "<img srcset='https://kiwix.org/img-480w.jpg 480w, "
+            "https://kiwix.org/img-800w.jpg 800w'></img>"
         ).content
         == '<img srcset="img-480w.jpg 480w, img-800w.jpg 800w"></img>'
     )
@@ -209,15 +209,14 @@ def test_rewrite_css():
     output = (
         HtmlRewriter(ArticleUrlRewriter("", set()), "", "")
         .rewrite(
-            "<style>p { /* A comment with a http://link.org/ */ background: url('some/"
-            "image.png') ; }</style>",
+            "<style>p { /* A comment with a http://link.org/ */ "
+            "background: url('some/image.png') ; }</style>",
         )
         .content
     )
     assert (
-        output
-        == '<style>p { /* A comment with a http://link.org/ */ background: url("some/'
-        'image.png") ; }</style>'
+        output == "<style>p { /* A comment with a http://link.org/ */ "
+        'background: url("some/image.png") ; }</style>'
     )
 
 

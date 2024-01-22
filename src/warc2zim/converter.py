@@ -17,7 +17,6 @@ import importlib.resources
 import io
 import json
 import logging
-import os
 import pathlib
 import re
 import tempfile
@@ -110,7 +109,7 @@ class Converter:
         self.illustration = b""
         self.main_url = normalize(main_url)
 
-        self.output = args.output
+        self.output = Path(args.output)
         self.zim_file = args.zim_file
 
         if not self.zim_file:
@@ -118,7 +117,7 @@ class Converter:
                 name=self.name, period="{period}"
             )
         self.zim_file = self.zim_file.format(period=time.strftime("%Y-%m"))
-        self.full_filename = Path(os.path.join(self.output, self.zim_file))
+        self.full_filename = self.output / self.zim_file
 
         # ensure output file is writable
         with tempfile.NamedTemporaryFile(dir=self.output, delete=True) as fh:
