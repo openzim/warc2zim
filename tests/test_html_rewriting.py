@@ -178,7 +178,9 @@ def test_extract_title():
     </html>"""
 
     assert (
-        HtmlRewriter(lambda _: "kiwix.org", "", "").rewrite(content).title
+        HtmlRewriter(lambda _: "kiwix.org", "", "")  # pyright: ignore
+        .rewrite(content)
+        .title
         == "Page title"
     )
 
