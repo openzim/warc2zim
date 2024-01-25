@@ -115,7 +115,7 @@ def reduce(path: str) -> str:
     return path
 
 
-def normalize(url: str | bytes) -> str:
+def normalize(url: str | bytes | None) -> str:
     """Normalize a properly contructed url to a path to use as a entry's key.
 
     >>> normalize("http://exemple.com/path/to/article?foo=bar")
