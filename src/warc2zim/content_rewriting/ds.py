@@ -17,6 +17,7 @@ from warc2zim.content_rewriting.js import (
     add_prefix,
     m2str,
 )
+from warc2zim.content_rewriting.rx_replacer import add_suffix, replace_all
 
 
 @dataclass
@@ -29,22 +30,6 @@ def add_around(prefix: str, suffix: str) -> TransformationAction:
     @m2str
     def f(x) -> str:
         return prefix + x + suffix
-
-    return f
-
-
-def replace_all(text: str) -> TransformationAction:
-    @m2str
-    def f(_x) -> str:
-        return text
-
-    return f
-
-
-def add_suffix_all(suffix) -> TransformationAction:
-    @m2str
-    def f(x) -> str:
-        return x + suffix
 
     return f
 
@@ -196,19 +181,19 @@ RULES = [
             ),
             (
                 re.compile(r"yt\.setConfig.*PLAYER_CONFIG.*args\":\s*{"),
-                add_suffix_all(' "dash": "0", dashmpd: "", '),
+                add_suffix(' "dash": "0", dashmpd: "", '),
             ),
             (
                 re.compile(r"(?:\"player\":|ytplayer\.config).*\"args\":\s*{"),
-                add_suffix_all('"dash":"0","dashmpd":"",'),
+                add_suffix('"dash":"0","dashmpd":"",'),
             ),
             (
                 re.compile(r"yt\.setConfig.*PLAYER_VARS.*?{"),
-                add_suffix_all('"dash":"0","dashmpd":"",'),
+                add_suffix('"dash":"0","dashmpd":"",'),
             ),
             (
                 re.compile(r"ytplayer.config={args:\s*{"),
-                add_suffix_all('"dash":"0","dashmpd":"",'),
+                add_suffix('"dash":"0","dashmpd":"",'),
             ),
             (re.compile(r"\"0\"\s*?==\s*?\w+\.dash&&", re.M), replace_all("1&&")),
         ],

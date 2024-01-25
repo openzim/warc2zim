@@ -31,6 +31,18 @@ def add_prefix(prefix: str) -> TransformationAction:
     return f
 
 
+def add_suffix(suffix: str) -> TransformationAction:
+    """
+    Create a rewrite_function which add the `suffix` to the matching str.
+    """
+
+    @m2str
+    def f(x):
+        return x + suffix
+
+    return f
+
+
 def replace_prefix_from(prefix: str, match: str) -> TransformationAction:
     """
     Returns a function which replaces everything before `match` with `prefix`.
@@ -54,6 +66,18 @@ def replace(src, target) -> TransformationAction:
     @m2str
     def f(x):
         return x.replace(src, target)
+
+    return f
+
+
+def replace_all(text: str) -> TransformationAction:
+    """
+    Create a rewrite_function which replace the whole match with text.
+    """
+
+    @m2str
+    def f(_x):
+        return text
 
     return f
 
