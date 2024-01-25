@@ -10,7 +10,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from jinja2.environment import Template
-from libzim.writer import Hint  # pyright: ignore
+from libzim.writer import Hint  # pyright: ignore[reportMissingImports]
 from warcio.recordloader import ArcWarcRecord
 from zimscraperlib.types import get_mime_for_name
 from zimscraperlib.zim.items import StaticItem
