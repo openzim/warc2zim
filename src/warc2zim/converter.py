@@ -86,7 +86,7 @@ class Converter:
             for handler in logger.handlers:
                 handler.setLevel(logging.DEBUG)
 
-        main_url = args.url
+        main_url: str = args.url
         # ensure trailing slash is added if missing
         parts = urlsplit(main_url)
         if parts.path == "":
@@ -104,7 +104,7 @@ class Converter:
         self.creator_metadata = args.creator
         self.publisher = args.publisher
         self.tags = DEFAULT_TAGS + (args.tags or [])
-        self.source = args.source or main_url
+        self.source: str = args.source or main_url
         self.scraper = "warc2zim " + get_version()
         self.illustration = b""
         self.main_url = normalize(main_url)
@@ -238,7 +238,7 @@ class Converter:
             Date=datetime.date.today(),  # noqa: DTZ011
             Illustration_48x48_at_1=self.illustration,
             Tags=";".join(self.tags),
-            Source=self.source,  # pyright: ignore
+            Source=self.source,
             Scraper=f"warc2zim {get_version()}",
         ).start()
 
