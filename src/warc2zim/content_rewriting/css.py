@@ -1,6 +1,6 @@
 # pyright: reportGeneralTypeIssues=false, reportAttributeAccessIssue=false
 
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 
 from tinycss2 import (
     parse_declaration_list,
@@ -11,9 +11,11 @@ from tinycss2 import (
 from tinycss2.ast import Node as TCSS2Node
 from tinycss2.serializer import serialize_url
 
+from warc2zim.content_rewriting import UrlRewriterProto
+
 
 class CssRewriter:
-    def __init__(self, url_rewriter: Callable[[str], str]):
+    def __init__(self, url_rewriter: UrlRewriterProto):
         self.url_rewriter = url_rewriter
 
     def rewrite(self, content: str | bytes) -> str:

@@ -1,16 +1,15 @@
 import io
 from collections import namedtuple
-from collections.abc import Callable
 from html import escape
 from html.parser import HTMLParser
 
+from warc2zim.content_rewriting import UrlRewriterProto
 from warc2zim.content_rewriting.css import CssRewriter
 from warc2zim.content_rewriting.js import JsRewriter
 from warc2zim.url_rewriting import ArticleUrlRewriter
 from warc2zim.utils import to_string
 
 AttrsList = list[tuple[str, str | None]]
-UrlRewriterProto = Callable[[str], str]
 
 
 def process_attr(
@@ -96,7 +95,9 @@ class HtmlRewriter(HTMLParser):
         if attrs:
             self.send(" ")
         if tag == "a":
-            url_rewriter = lambda url: self.url_rewriter(url, False)  # noqa: E731
+            url_rewriter = lambda url: self.url_rewriter(  # noqa: E731
+                url, rewrite_all_url=False
+            )
         else:
             url_rewriter = self.url_rewriter
         self.send(transform_attrs(attrs, url_rewriter, self.css_rewriter))
