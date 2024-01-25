@@ -61,7 +61,7 @@ HTML_TYPES = ("text/html", "application/xhtml", "application/xhtml+xml")
 HEAD_INSERT_FILE = "head_insert.html"
 
 # Default ZIM metadata tags
-DEFAULT_TAGS = ["_ftindex:yes", "_category:other", "_sw:yes"]
+DEFAULT_TAGS = ["_ftindex:yes", "_category:other"]
 
 CUSTOM_CSS_URL = "https://warc2zim.kiwix.app/custom.css"
 

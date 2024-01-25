@@ -266,7 +266,7 @@ class TestWarc2Zim(object):
         assert self.get_metadata(zim_output, "Description") == b"test zim"
         assert (
             self.get_metadata(zim_output, "Tags")
-            == b"_ftindex:yes;_category:other;_sw:yes;some;foo;bar"
+            == b"_ftindex:yes;_category:other;some;foo;bar"
         )
         assert self.get_metadata(zim_output, "Title") == b"Some Title"
 
@@ -374,10 +374,7 @@ class TestWarc2Zim(object):
         assert self.get_metadata(zim_output, "Illustration_48x48@1")
 
         # test default tags added
-        assert (
-            self.get_metadata(zim_output, "Tags")
-            == b"_ftindex:yes;_category:other;_sw:yes"
-        )
+        assert self.get_metadata(zim_output, "Tags") == b"_ftindex:yes;_category:other"
 
     def test_all_warcs_root_dir(self, tmp_path):
         zim_output = "test-all.zim"
