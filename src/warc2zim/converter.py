@@ -47,7 +47,7 @@ from warc2zim.constants import logger
 from warc2zim.items import StaticArticle, WARCPayloadItem
 from warc2zim.url_rewriting import FUZZY_RULES, normalize
 from warc2zim.utils import (
-    get_arc_warc_record_content,
+    get_record_content,
     get_record_mime_type,
     get_record_url,
     get_version,
@@ -327,7 +327,7 @@ class Converter:
                 main_page_found = True
                 continue
 
-            content = get_arc_warc_record_content(record)
+            content = get_record_content(record)
 
             if not self.title:
                 self.title = parse_title(content)
@@ -417,7 +417,7 @@ class Converter:
                         "Illustration_48x48_at_1"
                     ]
                     return
-                self.illustration = get_arc_warc_record_content(record)
+                self.illustration = get_record_content(record)
 
         # favicon_url not in WARC ; downloading
         try:

@@ -20,7 +20,7 @@ from warc2zim.content_rewriting.html import HtmlRewriter
 from warc2zim.content_rewriting.js import JsRewriter
 from warc2zim.url_rewriting import ArticleUrlRewriter
 from warc2zim.utils import (
-    get_arc_warc_record_content,
+    get_record_content,
     get_record_mime_type,
     get_record_url,
 )
@@ -44,7 +44,7 @@ class WARCPayloadItem(StaticItem):
         self.path = path
         self.mimetype = get_record_mime_type(record)
         self.title = ""
-        self.content = get_arc_warc_record_content(record)
+        self.content = get_record_content(record)
 
         if getattr(record, "method", "GET") == "POST":
             return

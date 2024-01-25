@@ -52,7 +52,7 @@ def to_string(input_: str | bytes) -> str:
     return input_  # pyright: ignore[reportGeneralTypeIssues, reportReturnType]
 
 
-def get_arc_warc_record_content(record: ArcWarcRecord):
+def get_record_content(record: ArcWarcRecord):
     if hasattr(record, "buffered_stream"):
         stream = (
             record.buffered_stream  # pyright: ignore [reportGeneralTypeIssues, reportAttributeAccessIssue]
