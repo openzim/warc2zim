@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from bs4 import BeautifulSoup
+from warcio.recordloader import ArcWarcRecord
 
 from warc2zim.__about__ import __version__
 
@@ -49,3 +50,14 @@ def to_string(input_: str | bytes) -> str:
     except AttributeError:
         pass
     return input_  # pyright: ignore[reportGeneralTypeIssues, reportReturnType]
+
+
+def get_record_content(record: ArcWarcRecord):
+    if hasattr(record, "buffered_stream"):
+        stream = (
+            record.buffered_stream  # pyright: ignore [reportGeneralTypeIssues, reportAttributeAccessIssue]
+        )
+        stream.seek(0)
+        return stream.read()
+    else:
+        return record.content_stream().read()

@@ -19,7 +19,11 @@ from warc2zim.content_rewriting.css import CssRewriter
 from warc2zim.content_rewriting.html import HtmlRewriter
 from warc2zim.content_rewriting.js import JsRewriter
 from warc2zim.url_rewriting import ArticleUrlRewriter
-from warc2zim.utils import get_record_mime_type, get_record_url
+from warc2zim.utils import (
+    get_record_content,
+    get_record_mime_type,
+    get_record_url,
+)
 
 
 class WARCPayloadItem(StaticItem):
@@ -40,12 +44,7 @@ class WARCPayloadItem(StaticItem):
         self.path = path
         self.mimetype = get_record_mime_type(record)
         self.title = ""
-
-        if hasattr(self.record, "buffered_stream"):
-            self.record.buffered_stream.seek(0)  # pyright: ignore
-            self.content = self.record.buffered_stream.read()  # pyright: ignore
-        else:
-            self.content = self.record.content_stream().read()
+        self.content = get_record_content(record)
 
         if getattr(record, "method", "GET") == "POST":
             return

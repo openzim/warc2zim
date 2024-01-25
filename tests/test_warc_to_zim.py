@@ -148,11 +148,13 @@ class TestWarc2Zim:
                 # But difficult to test as we don't have it
                 assert payload
             else:
-                payload_content = payload.content.tobytes()  # pyright: ignore
+                # We must have a payload
+                assert payload
+                payload_content = payload.content.tobytes()
 
                 # if HTML, still need to account for the head insert, otherwise should
                 # have exact match
-                if payload.mimetype.startswith("text/html"):  # pyright: ignore
+                if payload.mimetype.startswith("text/html"):
                     assert head_insert in payload_content
 
             warc_urls.add(url)
