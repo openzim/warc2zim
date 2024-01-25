@@ -1,8 +1,9 @@
 import re
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable
 from typing import Any
 
-TransformationRule = tuple[re.Pattern, Callable[[re.Match], str]]
+TransformationAction = Callable[[re.Match, dict], str]
+TransformationRule = tuple[re.Pattern, TransformationAction]
 
 # Regex used to check if we ar import or exporting things in the string
 # ie : If we are a module
@@ -75,19 +76,19 @@ def create_js_rules() -> list[TransformationRule]:
         "eval(_______eval_arg); }).eval(this, (function() { return arguments })(),"
     )
 
-    def m2str(function):
+    def m2str(function) -> TransformationAction:
         """
         Call a rewrite_function with a string instead of a match object.
         A lot of rewrite function don't need the match object as they are working
         directly on text. This decorator can be used on rewrite_function taking a str.
         """
 
-        def wrapper(m_object, _opts):
+        def wrapper(m_object: re.Match, _opts: dict) -> str:
             return function(m_object[0])
 
         return wrapper
 
-    def add_prefix(prefix):
+    def add_prefix(prefix: str) -> TransformationAction:
         """
         Create a rewrite_function which add the `prefix` to the matching str.
         """
@@ -98,13 +99,13 @@ def create_js_rules() -> list[TransformationRule]:
 
         return f
 
-    def replace_prefix_from(prefix, match):
+    def replace_prefix_from(prefix: str, match: str) -> TransformationAction:
         """
         Returns a function which replaces everything before `match` with `prefix`.
         """
 
         @m2str
-        def f(x):
+        def f(x) -> str:
             match_index = x.index(match)
             if match_index == 0:
                 return prefix
@@ -112,7 +113,7 @@ def create_js_rules() -> list[TransformationRule]:
 
         return f
 
-    def add_suffix(suffix):
+    def add_suffix(suffix) -> TransformationAction:
         """
         Create a rewrite_function which add a `suffix` to the match str.
         The suffix is added only if the match is not preceded by `.` or `$`.
@@ -126,7 +127,7 @@ def create_js_rules() -> list[TransformationRule]:
 
         return f
 
-    def replace_this():
+    def replace_this() -> TransformationAction:
         """
         Create a rewrite_function replacing "this" by `this_rw` in the matching str.
         """
@@ -137,7 +138,7 @@ def create_js_rules() -> list[TransformationRule]:
 
         return f
 
-    def replace(src, target):
+    def replace(src, target) -> TransformationAction:
         """
         Create a rewrite_function replacing `src` by `target` in the matching str.
         """
@@ -148,7 +149,7 @@ def create_js_rules() -> list[TransformationRule]:
 
         return f
 
-    def replace_this_non_prop():
+    def replace_this_non_prop() -> TransformationAction:
         """
         Create a rewrite_function replacing "this" by `this_rw`.
 
@@ -166,7 +167,7 @@ def create_js_rules() -> list[TransformationRule]:
 
         return f
 
-    def replace_import(src, target):
+    def replace_import(src, target) -> TransformationAction:
         """
         Create a rewrite_function replacing `src` by `target` in the matching str.
 
@@ -221,7 +222,7 @@ def create_js_rules() -> list[TransformationRule]:
             re.compile(r"[^$.]\bimport\s*\("),
             replace_import("import", "____wb_rewrite_import__"),
         ),
-    ]  # pyright: ignore
+    ]
 
 
 REWRITE_JS_RULES = create_js_rules()
@@ -334,7 +335,7 @@ class JsRewriter:
 
             return func
 
-        return (IMPORT_MATCH_RX, rewrite_import())  # pyright: ignore
+        return (IMPORT_MATCH_RX, rewrite_import())
 
     def _compile_rules(self, rules: Iterable[TransformationRule]) -> re.Pattern:
         """
@@ -348,7 +349,7 @@ class JsRewriter:
         text: str,
         compiled_rules: re.Pattern,
         rules: list[TransformationRule],
-        opts: Mapping[str, Any],
+        opts: dict[str, Any],
     ) -> str:
         """
         Apply the unique `compiled_rules` pattern and replace the content.
@@ -362,7 +363,7 @@ class JsRewriter:
                 if not m_object.group(i):
                     # THis is not the ith rules which match
                     continue
-                result = rule[1](m_object, opts)  # pyright: ignore
+                result = rule[1](m_object, opts)
                 return result
 
         return compiled_rules.sub(replace, text)
