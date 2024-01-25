@@ -2,6 +2,8 @@ import re
 from collections.abc import Callable, Iterable
 from typing import Any
 
+from warc2zim.content_rewriting import UrlRewriterProto
+
 TransformationAction = Callable[[re.Match, dict], str]
 TransformationRule = tuple[re.Pattern, TransformationAction]
 
@@ -244,7 +246,7 @@ class JsRewriter:
 
     def __init__(
         self,
-        url_rewriter: Callable[[str], str],
+        url_rewriter: UrlRewriterProto,
         extra_rules: Iterable[TransformationRule] | None = None,
     ):
         self.extra_rules = extra_rules or []

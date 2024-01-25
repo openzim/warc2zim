@@ -88,7 +88,9 @@ def test_no_rewrite_blob_data(rewriter):
 def test_no_rewrite_external_link(rewriter):
     for rewrite_all_url in [True, False]:
         # We always rewrite "internal" urls
-        assert "kiwix.org" not in rewriter("https://kiwix.org/bar/foo", rewrite_all_url)
+        assert "kiwix.org" not in rewriter(
+            "https://kiwix.org/bar/foo", rewrite_all_url=rewrite_all_url
+        )
 
     # External urls are only rewriten if 'rewrite_all_url' is True
     assert "kiwix.org" not in rewriter(

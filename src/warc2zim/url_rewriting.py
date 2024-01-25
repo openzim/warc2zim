@@ -164,9 +164,7 @@ class ArticleUrlRewriter:
             # We want a directory
             self.base_path = posixpath.dirname(self.base_path)
 
-    def __call__(
-        self, url: str, rewrite_all_url: bool = True  # noqa: FBT001, FBT002
-    ) -> str:
+    def __call__(self, url: str, *, rewrite_all_url: bool = True) -> str:
         """Rewrite a url contained in a article.
 
         The url is "fully" rewrited to point to a normalized entry path
