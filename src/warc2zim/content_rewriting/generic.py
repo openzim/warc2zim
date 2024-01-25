@@ -4,8 +4,8 @@ from jinja2.environment import Template
 from warcio.recordloader import ArcWarcRecord
 
 from warc2zim.content_rewriting.css import CssRewriter
+from warc2zim.content_rewriting.ds import build_domain_specific_rewriter
 from warc2zim.content_rewriting.html import HtmlRewriter
-from warc2zim.content_rewriting.js import JsRewriter
 from warc2zim.url_rewriting import ArticleUrlRewriter
 from warc2zim.utils import get_record_content, get_record_mime_type, get_record_url
 
@@ -30,6 +30,8 @@ class Rewriter:
     def rewrite(
         self, head_template: Template, css_insert: str | None
     ) -> tuple[str, str | bytes]:
+        opts = {}
+
         if self.rewrite_mode == "html":
             return self.rewrite_html(head_template, css_insert)
 
@@ -37,7 +39,7 @@ class Rewriter:
             return self.rewrite_css()
 
         if self.rewrite_mode == "javascript":
-            return self.rewrite_js()
+            return self.rewrite_js(opts)
 
         return ("", self.content)
 
@@ -74,5 +76,9 @@ class Rewriter:
     def rewrite_css(self):
         return ("", CssRewriter(self.url_rewriter).rewrite(self.content))
 
-    def rewrite_js(self):
-        return ("", JsRewriter(self.url_rewriter).rewrite(self.content.decode()))
+    def rewrite_js(self, opts):
+        rewriter = build_domain_specific_rewriter(self.path, self.url_rewriter)
+        return (
+            "",
+            rewriter.rewrite(self.content.decode(), opts),
+        )
