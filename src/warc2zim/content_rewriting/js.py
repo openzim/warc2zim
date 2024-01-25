@@ -1,11 +1,17 @@
 import re
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from typing import Any
 
 from warc2zim.content_rewriting import UrlRewriterProto
-
-TransformationAction = Callable[[re.Match, dict], str]
-TransformationRule = tuple[re.Pattern, TransformationAction]
+from warc2zim.content_rewriting.rx_replacer import (
+    RxRewriter,
+    TransformationAction,
+    TransformationRule,
+    add_prefix,
+    m2str,
+    replace,
+    replace_prefix_from,
+)
 
 # Regex used to check if we ar import or exporting things in the string
 # ie : If we are a module
@@ -49,46 +55,6 @@ GLOBALS_RX = re.compile(
 this_rw = "_____WB$wombat$check$this$function_____(this)"
 
 
-def m2str(function) -> TransformationAction:
-    """
-    Call a rewrite_function with a string instead of a match object.
-    A lot of rewrite function don't need the match object as they are working
-    directly on text. This decorator can be used on rewrite_function taking a str.
-    """
-
-    def wrapper(m_object: re.Match, _opts: dict) -> str:
-        return function(m_object[0])
-
-    return wrapper
-
-
-def add_prefix(prefix: str) -> TransformationAction:
-    """
-    Create a rewrite_function which add the `prefix` to the matching str.
-    """
-
-    @m2str
-    def f(x):
-        return prefix + x
-
-    return f
-
-
-def replace_prefix_from(prefix: str, match: str) -> TransformationAction:
-    """
-    Returns a function which replaces everything before `match` with `prefix`.
-    """
-
-    @m2str
-    def f(x) -> str:
-        match_index = x.index(match)
-        if match_index == 0:
-            return prefix
-        return x[:match_index] + prefix
-
-    return f
-
-
 def add_suffix(suffix) -> TransformationAction:
     """
     Create a rewrite_function which add a `suffix` to the match str.
@@ -108,24 +74,7 @@ def replace_this() -> TransformationAction:
     """
     Create a rewrite_function replacing "this" by `this_rw` in the matching str.
     """
-
-    @m2str
-    def f(x):
-        return x.replace("this", this_rw)
-
-    return f
-
-
-def replace(src, target) -> TransformationAction:
-    """
-    Create a rewrite_function replacing `src` by `target` in the matching str.
-    """
-
-    @m2str
-    def f(x):
-        return x.replace(src, target)
-
-    return f
+    return replace("this", this_rw)
 
 
 def replace_this_non_prop() -> TransformationAction:
@@ -238,18 +187,9 @@ def create_js_rules() -> list[TransformationRule]:
 REWRITE_JS_RULES = create_js_rules()
 
 
-class JsRewriter:
+class JsRewriter(RxRewriter):
     """
     JsRewriter is in charge of rewriting the js code stored in our zim file.
-
-    The main "input" is a list of rules, each rule being a tuple (regex,
-    rewriting_function). We want to apply each rule to the content. But doing it blindly
-    is counter-productive. It would means that we have to do N replacements (N == number
-    of rules).
-    To avoid that, we create one unique regex (`compiled_rule`) equivalent to
-    `(regex0|regex1|regex2|...)` and we do only one replacement with this regex.
-    When we have a match, we do N regex search to know which rules is corresponding
-    and we apply the associated rewriting_function.
     """
 
     def __init__(
@@ -257,6 +197,7 @@ class JsRewriter:
         url_rewriter: UrlRewriterProto,
         extra_rules: Iterable[TransformationRule] | None = None,
     ):
+        super().__init__(None)
         self.extra_rules = extra_rules or []
         self.first_buff = self._init_local_declaration(GLOBAL_OVERRIDES)
         self.last_buff = "\n}"
@@ -317,9 +258,9 @@ class JsRewriter:
 
         rules += self.extra_rules
 
-        compiled_rules = self._compile_rules(rules)
+        self._compile_rules(rules)
 
-        new_text = self.rewrite_content(text, compiled_rules, rules, opts)
+        new_text = self.rewrite_content(text, opts)
 
         if opts["isModule"]:
             return self._get_module_decl(GLOBAL_OVERRIDES) + new_text
@@ -346,34 +287,3 @@ class JsRewriter:
             return func
 
         return (IMPORT_MATCH_RX, rewrite_import())
-
-    def _compile_rules(self, rules: Iterable[TransformationRule]) -> re.Pattern:
-        """
-        Compile all the regex of the rules into only one `compiled_rules` pattern
-        """
-        rx_buff = "|".join(f"({rule[0].pattern})" for rule in rules)
-        return re.compile(f"(?:{rx_buff})", re.M)
-
-    def rewrite_content(
-        self,
-        text: str,
-        compiled_rules: re.Pattern,
-        rules: list[TransformationRule],
-        opts: dict[str, Any],
-    ) -> str:
-        """
-        Apply the unique `compiled_rules` pattern and replace the content.
-        """
-
-        def replace(m_object):
-            """
-            This method search for the specific rule which have matched and apply it.
-            """
-            for i, rule in enumerate(rules, 1):
-                if not m_object.group(i):
-                    # THis is not the ith rules which match
-                    continue
-                result = rule[1](m_object, opts)
-                return result
-
-        return compiled_rules.sub(replace, text)
