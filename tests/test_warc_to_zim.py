@@ -422,7 +422,11 @@ class TestWarc2Zim:
 
     def test_error_bad_main_page(self, tmp_path):
         zim_output_not_created = "zim-out-not-created.zim"
-        with pytest.raises(Exception):  # noqa: B017
+        with pytest.raises(
+            KeyError,
+            match="Unable to find WARC record for main page: no-such-url.example.com/,"
+            " aborting",
+        ):
             main(
                 [
                     "-v",
