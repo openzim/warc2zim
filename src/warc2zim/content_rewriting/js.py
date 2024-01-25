@@ -55,7 +55,7 @@ GLOBALS_RX = re.compile(
 this_rw = "_____WB$wombat$check$this$function_____(this)"
 
 
-def add_suffix(suffix) -> TransformationAction:
+def add_suffix_non_prop(suffix) -> TransformationAction:
     """
     Create a rewrite_function which add a `suffix` to the match str.
     The suffix is added only if the match is not preceded by `.` or `$`.
@@ -151,7 +151,7 @@ def create_js_rules() -> list[TransformationRule]:
         # rewriting `location = ` to custom expression `(...).href =` assignement
         (
             re.compile(r"[^$.]?\s?\blocation\b\s*[=]\s*(?![\s\d=])"),
-            add_suffix(check_loc),
+            add_suffix_non_prop(check_loc),
         ),
         # rewriting `return this`
         (re.compile(r"\breturn\s+this\b\s*(?![\s\w.$])"), replace_this()),
