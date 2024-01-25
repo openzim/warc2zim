@@ -7,7 +7,6 @@ This module contains the differents Item we may want to add to a Zim archive.
 """
 
 from pathlib import Path
-from urllib.parse import urlsplit
 
 from jinja2.environment import Template
 from libzim.writer import Hint  # pyright: ignore[reportMissingImports]
@@ -15,15 +14,8 @@ from warcio.recordloader import ArcWarcRecord
 from zimscraperlib.types import get_mime_for_name
 from zimscraperlib.zim.items import StaticItem
 
-from warc2zim.content_rewriting.css import CssRewriter
-from warc2zim.content_rewriting.html import HtmlRewriter
-from warc2zim.content_rewriting.js import JsRewriter
-from warc2zim.url_rewriting import ArticleUrlRewriter
-from warc2zim.utils import (
-    get_record_content,
-    get_record_mime_type,
-    get_record_url,
-)
+from warc2zim.content_rewriting.generic import Rewriter
+from warc2zim.utils import get_record_mime_type
 
 
 class WARCPayloadItem(StaticItem):
@@ -40,36 +32,12 @@ class WARCPayloadItem(StaticItem):
         known_urls: set[str],
     ):
         super().__init__()
-        self.record = record
+
         self.path = path
         self.mimetype = get_record_mime_type(record)
-        self.title = ""
-        self.content = get_record_content(record)
-
-        if getattr(record, "method", "GET") == "POST":
-            return
-
-        orig_url_str = get_record_url(record)
-        url_rewriter = ArticleUrlRewriter(orig_url_str, known_urls)
-
-        if self.mimetype.startswith("text/html"):
-            orig_url = urlsplit(orig_url_str)
-
-            rel_static_prefix = url_rewriter.from_normalized("_zim_static/")
-            head_insert = head_template.render(
-                path=path,
-                static_prefix=rel_static_prefix,
-                orig_url=orig_url_str,
-                orig_scheme=orig_url.scheme,
-                orig_host=orig_url.netloc,
-            )
-            self.title, self.content = HtmlRewriter(
-                url_rewriter, head_insert, css_insert
-            ).rewrite(self.content)
-        elif self.mimetype.startswith("text/css"):
-            self.content = CssRewriter(url_rewriter).rewrite(self.content)
-        elif "javascript" in self.mimetype:
-            self.content = JsRewriter(url_rewriter).rewrite(self.content.decode())
+        (self.title, self.content) = Rewriter(path, record, known_urls).rewrite(
+            head_template, css_insert
+        )
 
     def get_hints(self):
         is_front = self.mimetype.startswith("text/html")
