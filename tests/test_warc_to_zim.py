@@ -443,7 +443,7 @@ class TestWarc2Zim:
         # error, name required
         with pytest.raises(SystemExit) as e:
             main([])
-            assert e.code == 2  # pyright: ignore
+        assert e.value.code == 2
 
         # error, no such output directory
         with pytest.raises(Exception) as e:
