@@ -6,14 +6,16 @@ from html.parser import HTMLParser
 
 from warc2zim.content_rewriting.css import CssRewriter
 from warc2zim.content_rewriting.js import JsRewriter
+from warc2zim.url_rewriting import ArticleUrlRewriter
 from warc2zim.utils import to_string
 
 AttrsList = list[tuple[str, str | None]]
+UrlRewriterProto = Callable[[str], str]
 
 
 def process_attr(
     attr: tuple[str, str | None],
-    url_rewriter: Callable[[str], str],
+    url_rewriter: UrlRewriterProto,
     css_rewriter: CssRewriter,
 ) -> tuple[str, str | None]:
     if attr[0] in ("href", "src") and attr[1]:
@@ -40,7 +42,7 @@ def format_attr(name: str, value: str | None) -> str:
 
 
 def transform_attrs(
-    attrs: AttrsList, url_rewriter: Callable[[str], str], css_rewriter: CssRewriter
+    attrs: AttrsList, url_rewriter: UrlRewriterProto, css_rewriter: CssRewriter
 ) -> str:
     processed_attrs = (process_attr(attr, url_rewriter, css_rewriter) for attr in attrs)
     return " ".join(format_attr(*attr) for attr in processed_attrs)
@@ -52,7 +54,7 @@ RewritenHtml = namedtuple("RewritenHmtl", ["title", "content"])
 class HtmlRewriter(HTMLParser):
     def __init__(
         self,
-        url_rewriter: Callable[[str], str],
+        url_rewriter: ArticleUrlRewriter,
         pre_head_insert: str,
         post_head_insert: str | None,
     ):
@@ -91,9 +93,7 @@ class HtmlRewriter(HTMLParser):
         if attrs:
             self.send(" ")
         if tag == "a":
-            url_rewriter = lambda url: self.url_rewriter(  # noqa: E731
-                url, False  # pyright: ignore
-            )
+            url_rewriter = lambda url: self.url_rewriter(url, False)  # noqa: E731
         else:
             url_rewriter = self.url_rewriter
         self.send(transform_attrs(attrs, url_rewriter, self.css_rewriter))
