@@ -128,7 +128,7 @@ def normalize(url: str | bytes) -> str:
     """
 
     if not url:
-        return url  # pyright: ignore
+        return url  # pyright: ignore[reportGeneralTypeIssues, reportReturnType]
 
     url = to_string(url)
 

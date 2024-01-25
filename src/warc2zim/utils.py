@@ -36,14 +36,16 @@ def get_record_mime_type(record):
 def parse_title(content):
     try:
         soup = BeautifulSoup(content, "html.parser")
-        return soup.title.text or ""  # pyright: ignore
+        return soup.title.text or ""  # pyright: ignore[reportOptionalMemberAccess]
     except Exception:
         return ""
 
 
 def to_string(input_: str | bytes) -> str:
     try:
-        input_ = input_.decode("utf-8-sig")  # pyright: ignore
+        input_ = input_.decode(  # pyright: ignore[reportGeneralTypeIssues, reportAttributeAccessIssue]
+            "utf-8-sig"
+        )
     except AttributeError:
         pass
-    return input_  # pyright: ignore
+    return input_  # pyright: ignore[reportGeneralTypeIssues, reportReturnType]

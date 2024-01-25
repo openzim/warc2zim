@@ -86,7 +86,7 @@ class HtmlRewriter(HTMLParser):
         return RewritenHtml(self.title or "", output)
 
     def send(self, value: str):
-        self.output.write(value)  # pyright: ignore
+        self.output.write(value)  # pyright: ignore[reportOptionalMemberAccess]
 
     def handle_starttag(self, tag: str, attrs: AttrsList, *, auto_close: bool = False):
         self._active_tag = tag

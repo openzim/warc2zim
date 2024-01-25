@@ -251,9 +251,9 @@ class Converter:
         wombat_setup_content = wombat_setup_template.render(FUZZY_RULES=FUZZY_RULES)
         self.creator.add_item(
             StaticItem(
-                path="_zim_static/wombat_setup.js",  # pyright: ignore
-                content=wombat_setup_content,  # pyright: ignore
-                mimetype="text/javascript",  # pyright: ignore
+                path="_zim_static/wombat_setup.js",  # pyright: ignore [reportArgumentType, reportGeneralTypeIssues]
+                content=wombat_setup_content,  # pyright: ignore [reportArgumentType, reportGeneralTypeIssues]
+                mimetype="text/javascript",  # pyright: ignore [reportArgumentType, reportGeneralTypeIssues]
             )
         )
 
@@ -353,9 +353,17 @@ class Converter:
             if not icon:
                 icon = soup.find("link", rel="icon")
 
-            if icon and icon.attrs.get("href"):  # pyright: ignore
+            if (
+                icon
+                and icon.attrs.get(  # pyright: ignore[reportGeneralTypeIssues, reportAttributeAccessIssue]
+                    "href"
+                )
+            ):
                 self.favicon_url = urljoin(
-                    self.main_url, icon.attrs["href"]  # pyright: ignore
+                    self.main_url,
+                    icon.attrs[  # pyright: ignore[reportGeneralTypeIssues ,reportAttributeAccessIssue]
+                        "href"
+                    ],
                 )
             else:
                 self.favicon_url = urljoin(self.main_url, "/favicon.ico")
@@ -364,7 +372,9 @@ class Converter:
             # HTML5 Standard
             lang_elem = soup.find("html", attrs={"lang": True})
             if lang_elem:
-                self.language = lang_elem.attrs["lang"]  # pyright: ignore
+                self.language = lang_elem.attrs[  # pyright: ignore[reportGeneralTypeIssues ,reportAttributeAccessIssue]
+                    "lang"
+                ]
                 return
 
             # W3C recommendation
@@ -372,13 +382,17 @@ class Converter:
                 "meta", {"http-equiv": "content-language", "content": True}
             )
             if lang_elem:
-                self.language = lang_elem.attrs["content"]  # pyright: ignore
+                self.language = lang_elem.attrs[  # pyright: ignore[reportGeneralTypeIssues ,reportAttributeAccessIssue]
+                    "content"
+                ]
                 return
 
             # SEO Recommendations
             lang_elem = soup.find("meta", {"name": "language", "content": True})
             if lang_elem:
-                self.language = lang_elem.attrs["content"]  # pyright: ignore
+                self.language = lang_elem.attrs[  # pyright: ignore[reportGeneralTypeIssues ,reportAttributeAccessIssue]
+                    "content"
+                ]
                 return
 
     def retrieve_illustration(self):
@@ -429,7 +443,11 @@ class Converter:
         src = io.BytesIO(self.illustration)
         dst = io.BytesIO()
         try:
-            convert_image(src, dst, fmt="PNG")  # pyright: ignore
+            convert_image(
+                src,  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
+                dst,  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
+                fmt="PNG",  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
+            )
             resize_image(dst, width=48, height=48, method="cover")
         except Exception as exc:  # pragma: no cover
             logger.warning(f"Failed to convert or resize favicon: {exc}")
