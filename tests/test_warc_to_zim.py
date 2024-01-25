@@ -160,7 +160,7 @@ class TestWarc2Zim:
             warc_urls.add(url)
 
     def test_normalize(self):
-        assert normalize(None) is None  # pyright: ignore
+        assert normalize(None) is None
         assert normalize("") == ""
         assert normalize("https://exemple.com") == "exemple.com"
         assert normalize("https://exemple.com/") == "exemple.com/"
