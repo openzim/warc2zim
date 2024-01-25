@@ -446,7 +446,9 @@ class TestWarc2Zim:
         assert e.value.code == 2
 
         # error, no such output directory
-        with pytest.raises(Exception) as e:
+        with pytest.raises(
+            FileNotFoundError, match="No such file or directory.*/no-such-dir"
+        ):
             main(["--name", "test", "--output", "/no-such-dir"])
 
         # success, special error code for no output files
