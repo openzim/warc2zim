@@ -19,16 +19,24 @@ def m2str(function) -> TransformationAction:
     return wrapper
 
 
+def add_around(prefix: str, suffix: str) -> TransformationAction:
+    """
+    Create a rewrite_function which add a `prefix` and a `suffix` around the match.
+    """
+
+    @m2str
+    def f(x):
+        return prefix + x + suffix
+
+    return f
+
+
 def add_prefix(prefix: str) -> TransformationAction:
     """
     Create a rewrite_function which add the `prefix` to the matching str.
     """
 
-    @m2str
-    def f(x):
-        return prefix + x
-
-    return f
+    return add_around(prefix, "")
 
 
 def add_suffix(suffix: str) -> TransformationAction:
@@ -36,11 +44,7 @@ def add_suffix(suffix: str) -> TransformationAction:
     Create a rewrite_function which add the `suffix` to the matching str.
     """
 
-    @m2str
-    def f(x):
-        return x + suffix
-
-    return f
+    return add_around("", suffix)
 
 
 def replace_prefix_from(prefix: str, match: str) -> TransformationAction:

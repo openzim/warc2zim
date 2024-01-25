@@ -17,21 +17,13 @@ from warc2zim.content_rewriting.js import (
     add_prefix,
     m2str,
 )
-from warc2zim.content_rewriting.rx_replacer import add_suffix, replace_all
+from warc2zim.content_rewriting.rx_replacer import add_around, add_suffix, replace_all
 
 
 @dataclass
 class SpecificRules:
     contains: list[str]
     rx_rules: list[TransformationRule]
-
-
-def add_around(prefix: str, suffix: str) -> TransformationAction:
-    @m2str
-    def f(x) -> str:
-        return prefix + x + suffix
-
-    return f
 
 
 MAX_BITRATE = 5000000
