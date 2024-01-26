@@ -1,6 +1,8 @@
-import pytest
-from warc2zim.url_rewriting import ArticleUrlRewriter
 from urllib.parse import urljoin
+
+import pytest
+
+from warc2zim.url_rewriting import ArticleUrlRewriter
 
 
 @pytest.fixture(
@@ -37,24 +39,28 @@ def test_absolute_path_url(rewriter):
         rewriten = rewriter(url)
         # Must produce a relative link.
         assert not rewriten.startswith("/")
-        # Relative link must be resolved to a absolute url in the same domain than article_url.
+        # Relative link must be resolved to a absolute url in the same domain than
+        # article_url.
         assert urljoin(rewriter.article_url, rewriten) == "https://kiwix.org" + url
 
 
 def test_absolute_scheme_url(rewriter):
-    # We will serve our content from serving.com (moving kiwix.org as the first part of the path).
+    # We will serve our content from serving.com (moving kiwix.org as the first part of
+    # the path).
     serving_address = rewriter.article_url.replace("kiwix.org", "serving.com/kiwix.org")
 
     for url in ["//exemple.com/foo", "//exemple.com/foo/bar", "//kiwix.org/baz"]:
         rewriten = rewriter(url)
         # Must produce a relative link.
         assert not rewriten.startswith("/")
-        # Relative link must be resolved to a absolute url in the serving domain with a path containing article_url's host.
+        # Relative link must be resolved to a absolute url in the serving domain with a
+        # path containing article_url's host.
         assert urljoin(serving_address, rewriten) == "https://serving.com" + url[1:]
 
 
 def test_absolute_url(rewriter):
-    # We will serve our content from serving.com (moving kiwix.org as the first part of the path).
+    # We will serve our content from serving.com (moving kiwix.org as the first part of
+    # the path).
     serving_address = rewriter.article_url.replace("kiwix.org", "serving.com/kiwix.org")
 
     for url in [
@@ -65,7 +71,8 @@ def test_absolute_url(rewriter):
         rewriten = rewriter(url)
         # Must produce a relative link
         assert not rewriten.startswith("/")
-        # Relative link must be resolved to a absolute url in the serving domain with a path containing article_url's host.
+        # Relative link must be resolved to a absolute url in the serving domain with a
+        # path containing article_url's host.
         # We don't care about scheme, always use what we are serving from.
         assert (
             urljoin(serving_address, rewriten)
@@ -81,7 +88,9 @@ def test_no_rewrite_blob_data(rewriter):
 def test_no_rewrite_external_link(rewriter):
     for rewrite_all_url in [True, False]:
         # We always rewrite "internal" urls
-        assert "kiwix.org" not in rewriter("https://kiwix.org/bar/foo")
+        assert "kiwix.org" not in rewriter(
+            "https://kiwix.org/bar/foo", rewrite_all_url=rewrite_all_url
+        )
 
     # External urls are only rewriten if 'rewrite_all_url' is True
     assert "kiwix.org" not in rewriter(

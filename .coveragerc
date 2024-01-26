@@ -1,6 +1,0 @@
-[run]
-source = codecov
-branch = True
-omit =
-    */tests/*
-

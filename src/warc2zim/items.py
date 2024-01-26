@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # vim: ai ts=4 sts=4 et sw=4 nu
 
 """ warc2zim's item classes
@@ -7,22 +6,24 @@
 This module contains the differents Item we may want to add to a Zim archive.
 """
 
-import logging
-import pkg_resources
+from pathlib import Path
 from urllib.parse import urlsplit
-from libzim.writer import Hint
+
+from jinja2.environment import Template
+from libzim.writer import Hint  # pyright: ignore[reportMissingImports]
+from warcio.recordloader import ArcWarcRecord
 from zimscraperlib.types import get_mime_for_name
 from zimscraperlib.zim.items import StaticItem
 
-from warcio.recordloader import ArcWarcRecord
-
-from warc2zim.utils import get_record_url, get_record_mime_type
+from warc2zim.content_rewriting.css import CssRewriter
+from warc2zim.content_rewriting.html import HtmlRewriter
+from warc2zim.content_rewriting.js import JsRewriter
 from warc2zim.url_rewriting import ArticleUrlRewriter
-from warc2zim.content_rewriting import HtmlRewriter, CssRewriter, JsRewriter
-from typing import Set
-
-# Shared logger
-logger = logging.getLogger("warc2zim.items")
+from warc2zim.utils import (
+    get_record_content,
+    get_record_mime_type,
+    get_record_url,
+)
 
 
 class WARCPayloadItem(StaticItem):
@@ -34,21 +35,16 @@ class WARCPayloadItem(StaticItem):
         self,
         path: str,
         record: ArcWarcRecord,
-        head_template: str,
-        css_insert: str,
-        known_urls: Set[str],
+        head_template: Template,
+        css_insert: str | None,
+        known_urls: set[str],
     ):
         super().__init__()
         self.record = record
         self.path = path
         self.mimetype = get_record_mime_type(record)
         self.title = ""
-
-        if hasattr(self.record, "buffered_stream"):
-            self.record.buffered_stream.seek(0)
-            self.content = self.record.buffered_stream.read()
-        else:
-            self.content = self.record.content_stream().read()
+        self.content = get_record_content(record)
 
         if getattr(record, "method", "GET") == "POST":
             return
@@ -81,7 +77,7 @@ class WARCPayloadItem(StaticItem):
 
 
 class StaticArticle(StaticItem):
-    def __init__(self, env, filename, main_url, **kwargs):
+    def __init__(self, filename: Path, main_url, **kwargs):
         super().__init__(**kwargs)
         self.filename = filename
         self.main_url = main_url
@@ -89,12 +85,10 @@ class StaticArticle(StaticItem):
         self.mime = get_mime_for_name(filename)
         self.mime = self.mime or "application/octet-stream"
 
-        self.content = pkg_resources.resource_string(
-            "warc2zim", "statics/" + filename
-        ).decode("utf-8")
+        self.content = filename.read_text("utf-8")
 
     def get_path(self):
-        return "_zim_static/" + self.filename
+        return "_zim_static/" + self.filename.name
 
     def get_mimetype(self):
         return self.mime

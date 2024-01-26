@@ -1,19 +1,14 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # vim: ai ts=4 sts=4 et sw=4 nu
 
 import sys
-import logging
 from argparse import ArgumentParser
 
 from warc2zim.converter import Converter
 from warc2zim.utils import get_version
 
-# Shared logger
-logger = logging.getLogger("warc2zim")
 
-
-def main(args=None):
+def main(raw_args=None):
     parser = ArgumentParser(description="Create ZIM files from WARC files")
 
     parser.add_argument("-V", "--version", action="version", version=get_version())
@@ -84,10 +79,10 @@ def main(args=None):
         default="",
     )
 
-    r = parser.parse_args(args=args)
-    converter = Converter(r)
+    args = parser.parse_args(args=raw_args)
+    converter = Converter(args)
     return converter.run()
 
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     sys.exit(main())

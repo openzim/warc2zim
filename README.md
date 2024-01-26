@@ -1,8 +1,11 @@
 # warc2zim
-[![](https://img.shields.io/pypi/v/warc2zim.svg)](https://pypi.python.org/pypi/warc2zim)
-![CI](https://github.com/openzim/warc2zim/workflows/CI/badge.svg)
-[![codecov](https://codecov.io/gh/openzim/warc2zim/branch/main/graph/badge.svg)](https://codecov.io/gh/openzim/warc2zim)
+
 [![CodeFactor](https://www.codefactor.io/repository/github/openzim/warc2zim/badge)](https://www.codefactor.io/repository/github/openzim/warc2zim)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![codecov](https://codecov.io/gh/openzim/warc2zim/branch/main/graph/badge.svg)](https://codecov.io/gh/openzim/warc2zim)
+[![PyPI - Package version](https://img.shields.io/pypi/v/warc2zim.svg)](https://pypi.org/project/warc2zim)
+[![PyPI - Supported Python versions](https://img.shields.io/pypi/pyversions/warc2zim.svg)](https://pypi.org/project/warc2zim)
+
 
 warc2zim provides a way to convert WARC files to ZIM, storing the WARC payload and WARC+HTTP headers separately.
 
@@ -39,7 +42,7 @@ deactivate  # unloads virtualenv from shell
 
 By default, all URLs found in the WARC files are included unless the `--include-domains`/ `-i` flag is set.
 
-To filter URLs that may be out of scope (eg. ads, social media trackers), use the `--include-domains`/ `-i` flag to specify each domain you want to include. 
+To filter URLs that may be out of scope (eg. ads, social media trackers), use the `--include-domains`/ `-i` flag to specify each domain you want to include.
 
 Other URLs will be filtered and not pushed to the ZIM.
 
@@ -95,17 +98,21 @@ will always be ignored.
 
 All other WARC records are skipped.
 
-## i18n
+## Contributing
 
-`warc2zim` has very minimal non-content text but still uses gettext through [babel](http://babel.pocoo.org/en/latest/setup.html) to internationalize.
+First, clone this repository.
 
-To add a new locale (`fr` in this example, use only ISO-639-1):
+If you do not already have it on your system, install hatch to build the software and manage virtual environments (you might be interested by our detailed [Developer Setup](https://github.com/openzim/_python-bootstrap/wiki/Developer-Setup) as well).
 
-1. init for your locale: `python setup.py init_catalog -l fr`
-2. make sure the POT is up to date `python setup.py extract_messages`
-3. update your locale's catalog `python setup.py update_catalog`
-3. translate the PO file ([poedit](https://poedit.net/) is your friend)
-4. compile updated translation `python setup.py compile_catalog`
+```bash
+pip3 install hatch
+```
+
+Start a hatch shell: this will install software including dependencies in an isolated virtual environment.
+
+```bash
+hatch shell
+```
 
 ## License
 

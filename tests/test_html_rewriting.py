@@ -2,27 +2,33 @@ from textwrap import dedent
 
 import pytest
 
+from warc2zim.content_rewriting.html import HtmlRewriter
 from warc2zim.url_rewriting import ArticleUrlRewriter
-from warc2zim.content_rewriting import HtmlRewriter
-from .utils import TestContent
+
+from .utils import ContentForTests
 
 
 @pytest.fixture(
     params=[
-        TestContent("A simple string without url"),
-        TestContent(
-            "<html><body><p>This is a sentence with a http://exemple.com/path link</p></body></html>"
+        ContentForTests("A simple string without url"),
+        ContentForTests(
+            "<html><body><p>This is a sentence with a http://exemple.com/path link</p>"
+            "</body></html>"
         ),
-        TestContent(
+        ContentForTests(
             '<a data-source="http://exemple.com/path">A link we should not rewrite</a>'
         ),
-        TestContent(
-            '<p style="background: url(some/image.png);">A url (relative) in a inline style</p>'
+        ContentForTests(
+            '<p style="background: url(some/image.png);">A url (relative) in a inline '
+            "style</p>"
         ),
-        TestContent("<p style></p>"),
-        TestContent(
-            '<style>p { /* A comment with a http://link.org/ */ background: url("some/image.png") ; }</style>'
+        ContentForTests("<p style></p>"),
+        ContentForTests(
+            "<style>p { /* A comment with a http://link.org/ */ "
+            'background: url("some/image.png") ; }</style>'
         ),
+        ContentForTests("<a href></a>"),
+        ContentForTests("<img src />"),
     ]
 )
 def no_rewrite_content(request):
@@ -32,7 +38,7 @@ def no_rewrite_content(request):
 def test_no_rewrite(no_rewrite_content):
     assert (
         HtmlRewriter(ArticleUrlRewriter(no_rewrite_content.article_url, set()), "", "")
-        .rewrite(no_rewrite_content.input)
+        .rewrite(no_rewrite_content.input_)
         .content
         == no_rewrite_content.expected
     )
@@ -40,15 +46,19 @@ def test_no_rewrite(no_rewrite_content):
 
 @pytest.fixture(
     params=[
-        TestContent(
-            "<p style='background: url(\"some/image.png\")'>A link in a inline style</p>",
-            '<p style="background: url(&quot;some/image.png&quot;);">A link in a inline style</p>',
+        ContentForTests(
+            "<p style='background: url(\"some/image.png\")'>A link in a inline style"
+            "</p>",
+            '<p style="background: url(&quot;some/image.png&quot;);">'
+            "A link in a inline style</p>",
         ),
-        TestContent(
-            "<p style=\"background: url('some/image.png')\">A link in a inline style</p>",
-            '<p style="background: url(&quot;some/image.png&quot;);">A link in a inline style</p>',
+        ContentForTests(
+            "<p style=\"background: url('some/image.png')\">"
+            "A link in a inline style</p>",
+            '<p style="background: url(&quot;some/image.png&quot;);">'
+            "A link in a inline style</p>",
         ),
-        TestContent(
+        ContentForTests(
             "<ul style='list-style: \">\"'>",
             '<ul style="list-style: &quot;&gt;&quot;;">',
         ),
@@ -61,15 +71,15 @@ def escaped_content(request):
 def test_escaped_content(escaped_content):
     transformed = (
         HtmlRewriter(ArticleUrlRewriter(escaped_content.article_url, set()), "", "")
-        .rewrite(escaped_content.input)
+        .rewrite(escaped_content.input_)
         .content
     )
     assert transformed == escaped_content.expected
 
 
-def long_path_replace_test_content(input: str, rewriten_url: str, article_url: str):
-    expected = input.replace("http://exemple.com/a/long/path", rewriten_url)
-    return TestContent(input, expected, article_url)
+def long_path_replace_test_content(input_: str, rewriten_url: str, article_url: str):
+    expected = input_.replace("http://exemple.com/a/long/path", rewriten_url)
+    return ContentForTests(input_, expected, article_url)
 
 
 lprtc = long_path_replace_test_content
@@ -151,7 +161,7 @@ def test_rewrite(rewrite_url):
             "",
             "",
         )
-        .rewrite(rewrite_url.input)
+        .rewrite(rewrite_url.input_)
         .content
         == rewrite_url.expected
     )
@@ -167,7 +177,17 @@ def test_extract_title():
       </body>
     </html>"""
 
-    assert HtmlRewriter("kiwix.org", "", "").rewrite(content).title == "Page title"
+    assert (
+        # Nota: lambda below is a trick, we should assign an ArticleUrlRewriter
+        HtmlRewriter(
+            lambda _: "kiwix.org",  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
+            "",
+            "",
+        )
+        .rewrite(content)
+        .title
+        == "Page title"
+    )
 
 
 def test_rewrite_attributes():
@@ -185,7 +205,8 @@ def test_rewrite_attributes():
 
     assert (
         rewriter.rewrite(
-            "<img srcset='https://kiwix.org/img-480w.jpg 480w, https://kiwix.org/img-800w.jpg 800w'></img>"
+            "<img srcset='https://kiwix.org/img-480w.jpg 480w, "
+            "https://kiwix.org/img-800w.jpg 800w'></img>"
         ).content
         == '<img srcset="img-480w.jpg 480w, img-800w.jpg 800w"></img>'
     )
@@ -195,13 +216,14 @@ def test_rewrite_css():
     output = (
         HtmlRewriter(ArticleUrlRewriter("", set()), "", "")
         .rewrite(
-            "<style>p { /* A comment with a http://link.org/ */ background: url('some/image.png') ; }</style>",
+            "<style>p { /* A comment with a http://link.org/ */ "
+            "background: url('some/image.png') ; }</style>",
         )
         .content
     )
     assert (
-        output
-        == '<style>p { /* A comment with a http://link.org/ */ background: url("some/image.png") ; }</style>'
+        output == "<style>p { /* A comment with a http://link.org/ */ "
+        'background: url("some/image.png") ; }</style>'
     )
 
 
