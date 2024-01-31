@@ -170,6 +170,8 @@ class ArticleUrlRewriter:
         The url is "fully" rewrited to point to a normalized entry path
         """
 
+        url = url.strip()
+
         if url.startswith("data:") or url.startswith("blob:"):
             return url
 

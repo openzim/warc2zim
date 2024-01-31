@@ -36,12 +36,13 @@ def test_relative_url(rewriter):
 
 def test_absolute_path_url(rewriter):
     for url in ["/foo", "/foo/bar"]:
-        rewriten = rewriter(url)
-        # Must produce a relative link.
-        assert not rewriten.startswith("/")
-        # Relative link must be resolved to a absolute url in the same domain than
-        # article_url.
-        assert urljoin(rewriter.article_url, rewriten) == "https://kiwix.org" + url
+        for input_url in [url, f" {url}", f"{url} ", f" {url} "]:
+            rewriten = rewriter(input_url)
+            # Must produce a relative link.
+            assert not rewriten.startswith("/")
+            # Relative link must be resolved to a absolute url in the same domain than
+            # article_url.
+            assert urljoin(rewriter.article_url, rewriten) == "https://kiwix.org" + url
 
 
 def test_absolute_scheme_url(rewriter):
