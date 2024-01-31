@@ -10,6 +10,7 @@ import pytest
 import requests
 from zimscraperlib.zim import Archive
 
+from warc2zim.__about__ import __version__
 from warc2zim.converter import iter_warc_records
 from warc2zim.main import main
 from warc2zim.url_rewriting import normalize
@@ -17,11 +18,13 @@ from warc2zim.utils import get_record_url
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
 
+SCRAPER_SUFFIX = " + zimit x.y.z-devw"
 
 # ============================================================================
 CMDLINES = [
     ["example-response.warc"],
     ["example-response.warc", "--progress-file", "progress.json"],
+    ["example-response.warc", "--scraper-suffix", SCRAPER_SUFFIX],
     ["example-resource.warc.gz", "--favicon", "https://example.com/some/favicon.ico"],
     ["example-resource.warc.gz", "--favicon", "https://www.google.com/favicon.ico"],
     ["example-revisit.warc.gz"],
@@ -96,7 +99,7 @@ class TestWarc2Zim:
         zim_fh = Archive(zimfile)
         return zim_fh.get_item(path)
 
-    def verify_warc_and_zim(self, warcfile, zimfile):
+    def verify_warc_and_zim(self, warcfile, zimfile, verify_scraper_suffix):
         assert os.path.isfile(warcfile)
         assert os.path.isfile(zimfile)
 
@@ -107,6 +110,13 @@ class TestWarc2Zim:
         warc_urls = set()
 
         zim_fh = Archive(zimfile)
+
+        if verify_scraper_suffix:
+            assert (
+                f"warc2zim {__version__}{SCRAPER_SUFFIX}"
+                == zim_fh.get_text_metadata("Scraper")
+            )
+
         for record in iter_warc_records([warcfile]):
             url = get_record_url(record)
             if not url:
@@ -283,7 +293,9 @@ class TestWarc2Zim:
                     and progress["written"] <= progress["total"]
                 )
 
-        self.verify_warc_and_zim(warcfile, tmp_path / zimfile)
+        self.verify_warc_and_zim(
+            warcfile, tmp_path / zimfile, "--scraper-suffix" in cmdline
+        )
 
     def test_same_domain_only(self, tmp_path):
         zim_output = "same-domain.zim"
