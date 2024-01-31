@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Adopted Python bootstrap conventions (#152)
+- Change wording in logs about the return code 100 (which is not an error code)
 
 ## [1.5.4] - 2023-09-18
 
