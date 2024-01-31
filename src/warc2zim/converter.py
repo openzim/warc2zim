@@ -195,7 +195,7 @@ class Converter:
     def run(self):
         if not self.inputs:
             logger.info(
-                "Arguments valid, no inputs to process. Exiting with error code 100"
+                "Arguments valid, no inputs to process. Exiting with return code 100"
             )
             return 100
 

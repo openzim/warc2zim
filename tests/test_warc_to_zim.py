@@ -465,7 +465,7 @@ class TestWarc2Zim:
         ):
             main(["--name", "test", "--output", "/no-such-dir"])
 
-        # success, special error code for no output files
+        # success, special return code for no output files
         assert main(["--name", "test", "--output", "./"]) == 100
 
     def test_custom_css(self, tmp_path):
