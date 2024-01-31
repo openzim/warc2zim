@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+-  Allow to specify a scraper suffix for the ZIM scraper metadata at the CLI (#168)
+
 ### Changed
 
 - Adopted Python bootstrap conventions (#152)
