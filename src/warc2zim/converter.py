@@ -142,6 +142,8 @@ class Converter:
 
         self.written_records = self.total_records = 0
 
+        self.scraper_suffix = args.scraper_suffix
+
     def init_env(self):
         # autoescape=False to allow injecting html entities from translated text
         env = Environment(
@@ -240,7 +242,7 @@ class Converter:
             Illustration_48x48_at_1=self.illustration,
             Tags=";".join(self.tags),
             Source=self.source,
-            Scraper=f"warc2zim {get_version()}",
+            Scraper=f"warc2zim {get_version()}{self.scraper_suffix}",
         ).start()
 
         for filename in importlib.resources.files("warc2zim.statics").iterdir():

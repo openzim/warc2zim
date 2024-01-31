@@ -79,6 +79,12 @@ def main(raw_args=None):
         default="",
     )
 
+    parser.add_argument(
+        "--scraper-suffix",
+        help="Additional string to append as a suffix to ZIM Scraper metadata, in "
+        "addition to regular warc2zim value",
+    )
+
     args = parser.parse_args(args=raw_args)
     converter = Converter(args)
     return converter.run()
