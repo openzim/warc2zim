@@ -50,6 +50,13 @@ def transform_attrs(
     return " ".join(format_attr(*attr) for attr in processed_attrs)
 
 
+def get_attr_value(attrs: AttrsList, name: str) -> str | None:
+    for attr in attrs:
+        if attr[0] == name:
+            return attr[1]
+    return None
+
+
 RewritenHtml = namedtuple("RewritenHmtl", ["title", "content"])
 
 
@@ -94,7 +101,10 @@ class HtmlRewriter(HTMLParser):
         elif tag == "style":
             self.rewrite_context = "style"
         elif tag == "script":
-            self.rewrite_context = "scrip"
+            if get_attr_value(attrs, "type") == "module":
+                self.rewrite_context = "module"
+            else:
+                self.rewrite_context = "scrip"
 
         self.send(f"<{tag}")
         if attrs:
@@ -129,9 +139,11 @@ class HtmlRewriter(HTMLParser):
             self.title = data.strip()
         elif self.rewrite_context == "style":
             data = self.css_rewriter.rewrite(data)
-        elif self.rewrite_context == "script":
+        elif self.rewrite_context in ["script", "module"]:
             if data.strip():
-                data = JsRewriter(self.url_rewriter).rewrite(data)
+                data = JsRewriter(self.url_rewriter).rewrite(
+                    data, opts={"isModule": self.rewrite_context == "module"}
+                )
         self.send(data)
 
     def handle_comment(self, data: str):
