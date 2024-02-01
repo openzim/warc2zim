@@ -67,7 +67,7 @@ class HtmlRewriter(HTMLParser):
         self.output = None
         # This works only for tag without children.
         # But as we use it to get the title, we are ok
-        self._active_tag = None
+        self.rewrite_context = None
         self.pre_head_insert = pre_head_insert
         self.post_head_insert = post_head_insert
 
@@ -89,7 +89,12 @@ class HtmlRewriter(HTMLParser):
         self.output.write(value)  # pyright: ignore[reportOptionalMemberAccess]
 
     def handle_starttag(self, tag: str, attrs: AttrsList, *, auto_close: bool = False):
-        self._active_tag = tag
+        if tag == "title":
+            self.rewrite_context = "title"
+        elif tag == "style":
+            self.rewrite_context = "style"
+        elif tag == "script":
+            self.rewrite_context = "script"
 
         self.send(f"<{tag}")
         if attrs:
@@ -110,21 +115,21 @@ class HtmlRewriter(HTMLParser):
             self.send(self.pre_head_insert)
 
     def handle_endtag(self, tag: str):
-        self._active_tag = None
+        self.rewrite_context = None
         if tag == "head" and self.post_head_insert:
             self.send(self.post_head_insert)
         self.send(f"</{tag}>")
 
     def handle_startendtag(self, tag: str, attrs: AttrsList):
         self.handle_starttag(tag, attrs, auto_close=True)
-        self._active_tag = None
+        self.rewrite_context = None
 
     def handle_data(self, data: str):
-        if self._active_tag == "title" and self.title is None:
+        if self.rewrite_context == "title" and self.title is None:
             self.title = data.strip()
-        elif self._active_tag == "style":
+        elif self.rewrite_context == "style":
             data = self.css_rewriter.rewrite(data)
-        elif self._active_tag == "script":
+        elif self.rewrite_context == "script":
             if data.strip():
                 data = JsRewriter(self.url_rewriter).rewrite(data)
         self.send(data)
