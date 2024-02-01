@@ -38,7 +38,8 @@ class Rewriter:
         if self.rewrite_mode == "css":
             return self.rewrite_css()
 
-        if self.rewrite_mode == "javascript":
+        if self.rewrite_mode in ["javascript", "module"]:
+            opts["isModule"] = self.rewrite_mode == "module"
             return self.rewrite_js(opts)
 
         return ("", self.content)
@@ -54,7 +55,10 @@ class Rewriter:
             return "css"
 
         if "javascript" in mimetype:
-            return "javascript"
+            if "module.js" in self.path:
+                return "module"
+            else:
+                return "javascript"
 
         return None
 
