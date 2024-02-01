@@ -187,7 +187,7 @@ B = await import(somefile);
 import * from "../../../example.com/file.js"
 import A from "../../../example.com/path/file2.js";
 
-import {C, D} from "abc.js";
+import {C, D} from "./abc.js";
 import {X, Y} from "../parent.js";
 import {E, F, G} from "../../path.js";
 import { Z } from "../../path.js";
@@ -198,7 +198,8 @@ B = await ____wb_rewrite_import__(import.meta.url, somefile);
         ImportTestContent(
             'import"import.js";import{A, B, C} from"test.js";(function() => { frames[0]'
             '.href = "/abc"; })',
-            'import"import.js";import{A, B, C} from"test.js";(function() => { frames[0]'
+            ## This is not rewriten as `./test.js`. It is because of a bug ???
+            'import"import.js";import{A, B, C} from"./test.js";(function() => { frames[0]'
             '.href = "/abc"; })',
         ),
         ImportTestContent(

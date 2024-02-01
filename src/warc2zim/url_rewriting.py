@@ -164,7 +164,9 @@ class ArticleUrlRewriter:
             # We want a directory
             self.base_path = posixpath.dirname(self.base_path)
 
-    def __call__(self, url: str, *, rewrite_all_url: bool = True) -> str:
+    def __call__(
+        self, url: str, *, rewrite_all_url: bool = True, force_relative_path=False
+    ) -> str:
         """Rewrite a url contained in a article.
 
         The url is "fully" rewrited to point to a normalized entry path
@@ -180,13 +182,17 @@ class ArticleUrlRewriter:
         normalized_url = normalize(absolute_url)
 
         if rewrite_all_url or get_without_fragment(normalized_url) in self.known_urls:
-            return self.from_normalized(normalized_url)
+            return self.from_normalized(
+                normalized_url, force_relative_path=force_relative_path
+            )
         else:
             logger.debug(f"WARNING {normalized_url} ({url}) not in archive.")
             # The url doesn't point to a known entry
             return url
 
-    def from_normalized(self, normalized_url_str: str) -> str:
+    def from_normalized(
+        self, normalized_url_str: str, *, force_relative_path=False
+    ) -> str:
         normalized_url = urlsplit(f"/{normalized_url_str}")
 
         # relative_to will lost our potential last '/'
@@ -195,6 +201,8 @@ class ArticleUrlRewriter:
 
         if slash_ending:
             relative_path += "/"
+        if force_relative_path and relative_path[0] != ".":
+            relative_path = "./" + relative_path
         normalized_url = normalized_url._replace(path=relative_path)
         normalized_url = urlunsplit(normalized_url)
 
