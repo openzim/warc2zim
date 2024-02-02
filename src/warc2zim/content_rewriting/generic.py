@@ -21,6 +21,7 @@ class Rewriter:
 
         mimetype = get_record_mime_type(record)
 
+        self.known_urls = known_urls
         self.path = path
         self.orig_url_str = get_record_url(record)
         self.url_rewriter = ArticleUrlRewriter(self.orig_url_str, known_urls)
@@ -69,9 +70,9 @@ class Rewriter:
             orig_scheme=orig_url.scheme,
             orig_host=orig_url.netloc,
         )
-        return HtmlRewriter(self.url_rewriter, head_insert, css_insert).rewrite(
-            self.content
-        )
+        return HtmlRewriter(
+            self.known_urls, self.url_rewriter, head_insert, css_insert
+        ).rewrite(self.content)
 
     def rewrite_css(self):
         return ("", CssRewriter(self.url_rewriter).rewrite(self.content))

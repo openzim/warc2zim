@@ -1,4 +1,4 @@
-import io
+import io, re
 from collections import namedtuple
 from html import escape
 from html.parser import HTMLParser
@@ -50,17 +50,26 @@ def transform_attrs(
     return " ".join(format_attr(*attr) for attr in processed_attrs)
 
 
+def get_attr_value(attrs: AttrsList, name: str) -> str | None:
+    for attr in attrs:
+        if attr[0] == name:
+            return attr[1]
+    return None
+
+
 RewritenHtml = namedtuple("RewritenHmtl", ["title", "content"])
 
 
 class HtmlRewriter(HTMLParser):
     def __init__(
         self,
+        known_urls: set[str],
         url_rewriter: ArticleUrlRewriter,
         pre_head_insert: str,
         post_head_insert: str | None,
     ):
         super().__init__()
+        self.known_urls = known_urls
         self.url_rewriter = url_rewriter
         self.css_rewriter = CssRewriter(url_rewriter)
         self.title = None
@@ -96,6 +105,45 @@ class HtmlRewriter(HTMLParser):
         elif tag == "script":
             self.rewrite_context = "script"
 
+        if tag == "iframe":
+            iframe_src = get_attr_value(attrs, "src")
+            if "player.vimeo.com" in iframe_src:
+                # Let's be hacking, replace the iframe with a html5 video
+                # We still have to get the url of the video to play.
+                # The url is hidden in the source of the player so it is difficult to get it.
+                # But, we also know that the video will be stored in a url "subdirectory" with the player_id
+                player_id = re.search("player.vimeo.com/video/(\d+)", iframe_src).group(
+                    1
+                )
+                video_url = next(
+                    url
+                    for url in self.known_urls
+                    if re.search(
+                        f"vimeo-cdn.fuzzy.replayweb.page/.*?/{player_id}/", url
+                    )
+                )
+
+                self.handle_starttag(
+                    "video",
+                    [
+                        ("width", get_attr_value(attrs, "width")),
+                        ("height", get_attr_value(attrs, "height")),
+                        ("controls", None),
+                    ],
+                )
+                self.handle_starttag(
+                    "source",
+                    [
+                        ("src", f"//{video_url}"),
+                        ("type", "video/mp4"),
+                    ],
+                )
+                # No end tag for source
+                self.handle_data("Your browser doesn't support the video tag")
+                self.handle_endtag("video")
+                self.rewrite_context = "skip_end"
+                return
+
         self.send(f"<{tag}")
         if attrs:
             self.send(" ")
@@ -115,7 +163,9 @@ class HtmlRewriter(HTMLParser):
             self.send(self.pre_head_insert)
 
     def handle_endtag(self, tag: str):
-        self.rewrite_context = None
+        rewrite_context, self.rewrite_context = self.rewrite_context, None
+        if rewrite_context == "skip_end":
+            return
         if tag == "head" and self.post_head_insert:
             self.send(self.post_head_insert)
         self.send(f"</{tag}>")
