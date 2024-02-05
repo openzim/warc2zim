@@ -5,14 +5,30 @@ import pytest
 from warc2zim.content_rewriting.css import CssRewriter
 from warc2zim.url_rewriting import ArticleUrlRewriter
 
+from .utils import ContentForTests
+
 
 @pytest.fixture(
     params=[
-        b"p { color: red; }",
-        b"p {\n color: red;\n}",
-        b"p { background: blue; }",
-        b"p { background: rgb(15, 0, 52); }",
-        b"/* See bug issue at http://exemple.com/issue/link */ p { color: blue; }",
+        ContentForTests(b"p { color: red; }"),
+        ContentForTests(b"p {\n color: red;\n}"),
+        ContentForTests(b"p { background: blue; }"),
+        ContentForTests(b"p { background: rgb(15, 0, 52); }"),
+        ContentForTests(
+            b"/* See bug issue at http://exemple.com/issue/link */ p { color: blue; }"
+        ),
+        ContentForTests(
+            b"p { width= } div { background: url(http://exemple.com/img.png)}",
+            b"p { width= } div { background: url(exemple.com/img.png)}",
+        ),
+        ContentForTests(
+            b"p { width= } div { background: url('http://exemple.com/img.png')}",
+            b'p { width= } div { background: url("exemple.com/img.png")}',
+        ),
+        ContentForTests(
+            b'p { width= } div { background: url("http://exemple.com/img.png")}',
+            b'p { width= } div { background: url("exemple.com/img.png")}',
+        ),
     ]
 )
 def no_rewrite_content(request):
@@ -21,8 +37,66 @@ def no_rewrite_content(request):
 
 def test_no_rewrite(no_rewrite_content):
     assert (
-        CssRewriter(ArticleUrlRewriter("kiwix.org", set())).rewrite(no_rewrite_content)
-        == no_rewrite_content.decode()
+        CssRewriter(ArticleUrlRewriter(no_rewrite_content.article_url, set())).rewrite(
+            no_rewrite_content.input_bytes
+        )
+        == no_rewrite_content.expected_bytes.decode()
+    )
+
+
+@pytest.fixture(
+    params=[
+        ContentForTests('"border:'),
+        ContentForTests("border: solid 1px #c0c0c0; width= 100%"),
+        # Despite being invalid, tinycss parse it as "width" property without value.
+        ContentForTests("width:", "width:;"),
+        ContentForTests("border-bottom-width: 1px;border-bottom-color: #c0c0c0;w"),
+        ContentForTests(
+            'background: url("http://exemple.com/foo.png"); width=',
+            'background: url("exemple.com/foo.png"); width=',
+        ),
+    ]
+)
+def invalid_content_inline(request):
+    yield request.param
+
+
+def test_invalid_css_inline(invalid_content_inline):
+    assert (
+        CssRewriter(
+            ArticleUrlRewriter(invalid_content_inline.article_url, set())
+        ).rewrite_inline(invalid_content_inline.input_str)
+        == invalid_content_inline.expected_str
+    )
+
+
+@pytest.fixture(
+    params=[
+        # Tinycss parse `"border:}` as a string with an unexpected eof in string.
+        # At serialization, tiny try to recover and close the opened rule
+        ContentForTests(b'p {"border:}', b'p {"border:}}'),
+        ContentForTests(b'"p {border:}'),
+        ContentForTests(b"p { border: solid 1px #c0c0c0; width= 100% }"),
+        ContentForTests(b"p { width: }"),
+        ContentForTests(
+            b"p { border-bottom-width: 1px;border-bottom-color: #c0c0c0;w }"
+        ),
+        ContentForTests(
+            b'p { background: url("http://exemple.com/foo.png"); width= }',
+            b'p { background: url("exemple.com/foo.png"); width= }',
+        ),
+    ]
+)
+def invalid_content(request):
+    yield request.param
+
+
+def test_invalid_cssl(invalid_content):
+    assert (
+        CssRewriter(ArticleUrlRewriter(invalid_content.article_url, set())).rewrite(
+            invalid_content.input_bytes
+        )
+        == invalid_content.expected_bytes.decode()
     )
 
 
