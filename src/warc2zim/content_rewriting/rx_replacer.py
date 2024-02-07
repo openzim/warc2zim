@@ -119,12 +119,14 @@ class RxRewriter:
 
     def rewrite_content(
         self,
-        text: str,
+        text: str | bytes,
         opts: dict[str, Any],
     ) -> str:
         """
         Apply the unique `compiled_rules` pattern and replace the content.
         """
+        if isinstance(text, bytes):
+            text = text.decode()
 
         def replace(m_object):
             """
