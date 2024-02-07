@@ -240,4 +240,5 @@ include = ["src", "tests", "tasks.py"]
 exclude = [".env/**", ".venv/**"]
 extraPaths = ["src"]
 pythonVersion = "3.11"
-typeCheckingMode="basic"
+typeCheckingMode = "basic"
+disableBytesTypePromotions = true
