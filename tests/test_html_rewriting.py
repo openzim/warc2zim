@@ -38,9 +38,9 @@ def no_rewrite_content(request):
 def test_no_rewrite(no_rewrite_content):
     assert (
         HtmlRewriter(ArticleUrlRewriter(no_rewrite_content.article_url, set()), "", "")
-        .rewrite(no_rewrite_content.input_)
+        .rewrite(no_rewrite_content.input_str)
         .content
-        == no_rewrite_content.expected
+        == no_rewrite_content.expected_str
     )
 
 
@@ -71,10 +71,10 @@ def escaped_content(request):
 def test_escaped_content(escaped_content):
     transformed = (
         HtmlRewriter(ArticleUrlRewriter(escaped_content.article_url, set()), "", "")
-        .rewrite(escaped_content.input_)
+        .rewrite(escaped_content.input_str)
         .content
     )
-    assert transformed == escaped_content.expected
+    assert transformed == escaped_content.expected_str
 
 
 def long_path_replace_test_content(input_: str, rewriten_url: str, article_url: str):
@@ -161,9 +161,9 @@ def test_rewrite(rewrite_url):
             "",
             "",
         )
-        .rewrite(rewrite_url.input_)
+        .rewrite(rewrite_url.input_str)
         .content
-        == rewrite_url.expected
+        == rewrite_url.expected_str
     )
 
 

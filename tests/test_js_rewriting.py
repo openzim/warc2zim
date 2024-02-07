@@ -26,8 +26,8 @@ def rewrite_this_js_content(request):
 
 def test_this_js_rewrite(rewrite_this_js_content):
     assert (
-        JsRewriter(lambda x: x).rewrite(rewrite_this_js_content.input_)
-        == rewrite_this_js_content.expected
+        JsRewriter(lambda x: x).rewrite(rewrite_this_js_content.input_str)
+        == rewrite_this_js_content.expected_str
     )
 
 
@@ -65,7 +65,7 @@ class WrappedTestContent(ContentForTests):
 
     def __post_init__(self):
         super().__post_init__()
-        self.expected = self.wrap_script(self.expected)
+        self.expected = self.wrap_script(self.expected_str)
 
 
 @pytest.fixture(
@@ -105,8 +105,8 @@ def rewrite_wrapped_content(request):
 
 def test_wrapped_rewrite(rewrite_wrapped_content):
     assert (
-        JsRewriter(lambda x: x).rewrite(rewrite_wrapped_content.input_)
-        == rewrite_wrapped_content.expected
+        JsRewriter(lambda x: x).rewrite(rewrite_wrapped_content.input_str)
+        == rewrite_wrapped_content.expected_str
     )
 
 
@@ -131,7 +131,7 @@ class ImportTestContent(ContentForTests):
     def __post_init__(self):
         super().__post_init__()
         self.article_url = "https://exemple.com/some/path/"
-        self.expected = self.wrap_import(self.expected)
+        self.expected = self.wrap_import(self.expected_str)
 
 
 @pytest.fixture(
@@ -220,8 +220,8 @@ def rewrite_import_content(request):
 def test_import_rewrite(rewrite_import_content):
     url_rewriter = ArticleUrlRewriter(rewrite_import_content.article_url, set())
     assert (
-        JsRewriter(url_rewriter).rewrite(rewrite_import_content.input_)
-        == rewrite_import_content.expected
+        JsRewriter(url_rewriter).rewrite(rewrite_import_content.input_str)
+        == rewrite_import_content.expected_str
     )
 
 
