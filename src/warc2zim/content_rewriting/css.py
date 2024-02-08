@@ -10,6 +10,7 @@ from tinycss2 import (
 )
 from tinycss2.serializer import serialize_url
 
+from warc2zim.constants import logger
 from warc2zim.content_rewriting import UrlRewriterProto
 from warc2zim.content_rewriting.rx_replacer import RxRewriter
 
@@ -51,6 +52,13 @@ class CssRewriter:
             # If tinycss fail to parse css, it will generate a "Error" token.
             # Exception is raised at serialization time.
             # We try/catch the whole process to be sure anyway.
+            logger.warning(
+                (
+                    "Css transformation fails. Fallback to regex rewriter.\n"
+                    "Article path is %s"
+                ),
+                self.url_rewriter.article_url,
+            )
             return self.fallback_rewriter.rewrite_content(content, {})
         return output
 
@@ -64,6 +72,13 @@ class CssRewriter:
             # If tinycss fail to parse css, it will generate a "Error" token.
             # Exception is raised at serialization time.
             # We try/catch the whole process to be sure anyway.
+            logger.warning(
+                (
+                    "Css transformation fails. Fallback to regex rewriter.\n"
+                    "Content is `%s`"
+                ),
+                content,
+            )
             return self.fallback_rewriter.rewrite_content(content, {})
 
     def process_list(self, components: Iterable[ast.Node]):
