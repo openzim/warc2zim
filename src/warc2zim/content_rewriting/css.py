@@ -1,3 +1,4 @@
+import re
 from collections.abc import Iterable
 
 from tinycss2 import (
@@ -9,28 +10,76 @@ from tinycss2 import (
 )
 from tinycss2.serializer import serialize_url
 
+from warc2zim.constants import logger
 from warc2zim.content_rewriting import UrlRewriterProto
+from warc2zim.content_rewriting.rx_replacer import RxRewriter
+
+
+class FallbackRegexCssRewriter(RxRewriter):
+    def __init__(self, url_rewriter: UrlRewriterProto):
+        rules = [
+            (
+                re.compile(r"""url\((?P<quote>['"])?(?P<url>.+?)(?P=quote)(?<!\\)\)"""),
+                lambda m_object, _opts: "".join(
+                    [
+                        "url(",
+                        m_object["quote"],
+                        url_rewriter(m_object["url"]),
+                        m_object["quote"],
+                        ")",
+                    ]
+                ),
+            )
+        ]
+        super().__init__(rules)
 
 
 class CssRewriter:
     def __init__(self, url_rewriter: UrlRewriterProto):
         self.url_rewriter = url_rewriter
+        self.fallback_rewriter = FallbackRegexCssRewriter(url_rewriter)
 
     def rewrite(self, content: str | bytes) -> str:
-        if isinstance(content, bytes):
-            rules = parse_stylesheet_bytes(content)[0]
-        else:
-            rules = parse_stylesheet(content)
-        self.process_list(rules)
+        try:
+            if isinstance(content, bytes):
+                rules = parse_stylesheet_bytes(content)[0]
+            else:
+                rules = parse_stylesheet(content)
+            self.process_list(rules)
 
-        output = serialize(rules)
+            output = serialize(rules)
+        except Exception:
+            # If tinycss fail to parse css, it will generate a "Error" token.
+            # Exception is raised at serialization time.
+            # We try/catch the whole process to be sure anyway.
+            logger.warning(
+                (
+                    "Css transformation fails. Fallback to regex rewriter.\n"
+                    "Article path is %s"
+                ),
+                self.url_rewriter.article_url,
+            )
+            return self.fallback_rewriter.rewrite_content(content, {})
         return output
 
     def rewrite_inline(self, content: str) -> str:
-        rules = parse_declaration_list(content)
-        self.process_list(rules)
-        output = serialize(rules)
-        return output
+        try:
+            rules = parse_declaration_list(content)
+            self.process_list(rules)
+            output = serialize(rules)
+            return output
+        except Exception:
+            # If tinycss fail to parse css, it will generate a "Error" token.
+            # Exception is raised at serialization time.
+            # We try/catch the whole process to be sure anyway.
+            logger.warning(
+                (
+                    "Css transformation fails. Fallback to regex rewriter.\n"
+                    "Content is `%s`"
+                ),
+                content,
+            )
+            return self.fallback_rewriter.rewrite_content(content, {})
 
     def process_list(self, components: Iterable[ast.Node]):
         if components:  # May be null
