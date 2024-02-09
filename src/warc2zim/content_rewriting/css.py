@@ -59,7 +59,7 @@ class CssRewriter:
                 ),
                 self.url_rewriter.article_url,
             )
-            return self.fallback_rewriter.rewrite_content(content, {})
+            return self.fallback_rewriter.rewrite(content, {})
         return output
 
     def rewrite_inline(self, content: str) -> str:
@@ -79,7 +79,7 @@ class CssRewriter:
                 ),
                 content,
             )
-            return self.fallback_rewriter.rewrite_content(content, {})
+            return self.fallback_rewriter.rewrite(content, {})
 
     def process_list(self, components: Iterable[ast.Node]):
         if components:  # May be null
