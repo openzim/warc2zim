@@ -122,7 +122,22 @@ class HtmlRewriter(HTMLParser):
                         f"vimeo-cdn.fuzzy.replayweb.page/.*?/{player_id}/", url
                     )
                 )
+            elif "www.youtube.com/embed" in iframe_src:
+                breakpoint()
+                # Let's be hacking, the videoID is hidden in json in `youtubei/v1/player?videoId={playerId}`.
+                # But, for now, we have only one video let's use it
+                player_id = re.search(
+                    "www.youtube.com/embed/([^?]+)", iframe_src
+                ).group(1)
+                video_url = next(
+                    url
+                    for url in self.known_urls
+                    if url.startswith("youtube.fuzzy.replayweb.page/videoplayback")
+                )
+            else:
+                video_url = None
 
+            if video_url:
                 self.handle_starttag(
                     "video",
                     [
