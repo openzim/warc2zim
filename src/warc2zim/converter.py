@@ -242,7 +242,7 @@ class Converter:
             Illustration_48x48_at_1=self.illustration,
             Tags=";".join(self.tags),
             Source=self.source,
-            Scraper=f"warc2zim {get_version()}{self.scraper_suffix}",
+            Scraper=f"warc2zim {get_version()}{self.scraper_suffix or ''}",
         ).start()
 
         for filename in importlib.resources.files("warc2zim.statics").iterdir():
