@@ -116,6 +116,8 @@ class TestWarc2Zim:
                 f"warc2zim {__version__}{SCRAPER_SUFFIX}"
                 == zim_fh.get_text_metadata("Scraper")
             )
+        else:
+            assert f"warc2zim {__version__}" == zim_fh.get_text_metadata("Scraper")
 
         for record in iter_warc_records([warcfile]):
             url = get_record_url(record)
