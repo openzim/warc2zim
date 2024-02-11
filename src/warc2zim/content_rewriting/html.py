@@ -1,4 +1,4 @@
-import io
+import io, re
 from collections import namedtuple
 from html import escape
 from html.parser import HTMLParser
@@ -50,24 +50,33 @@ def transform_attrs(
     return " ".join(format_attr(*attr) for attr in processed_attrs)
 
 
+def get_attr_value(attrs: AttrsList, name: str) -> str | None:
+    for attr in attrs:
+        if attr[0] == name:
+            return attr[1]
+    return None
+
+
 RewritenHtml = namedtuple("RewritenHmtl", ["title", "content"])
 
 
 class HtmlRewriter(HTMLParser):
     def __init__(
         self,
+        known_urls: set[str],
         url_rewriter: ArticleUrlRewriter,
         pre_head_insert: str,
         post_head_insert: str | None,
     ):
         super().__init__()
+        self.known_urls = known_urls
         self.url_rewriter = url_rewriter
         self.css_rewriter = CssRewriter(url_rewriter)
         self.title = None
         self.output = None
         # This works only for tag without children.
         # But as we use it to get the title, we are ok
-        self._active_tag = None
+        self.rewrite_context = None
         self.pre_head_insert = pre_head_insert
         self.post_head_insert = post_head_insert
 
@@ -89,7 +98,66 @@ class HtmlRewriter(HTMLParser):
         self.output.write(value)  # pyright: ignore[reportOptionalMemberAccess]
 
     def handle_starttag(self, tag: str, attrs: AttrsList, *, auto_close: bool = False):
-        self._active_tag = tag
+        if tag == "title":
+            self.rewrite_context = "title"
+        elif tag == "style":
+            self.rewrite_context = "style"
+        elif tag == "script":
+            self.rewrite_context = "script"
+
+        if tag == "iframe":
+            iframe_src = get_attr_value(attrs, "src")
+            if "player.vimeo.com" in iframe_src:
+                # Let's be hacking, replace the iframe with a html5 video
+                # We still have to get the url of the video to play.
+                # The url is hidden in the source of the player so it is difficult to get it.
+                # But, we also know that the video will be stored in a url "subdirectory" with the player_id
+                player_id = re.search("player.vimeo.com/video/(\d+)", iframe_src).group(
+                    1
+                )
+                video_url = next(
+                    url
+                    for url in self.known_urls
+                    if re.search(
+                        f"vimeo-cdn.fuzzy.replayweb.page/.*?/{player_id}/", url
+                    )
+                )
+            elif "www.youtube.com/embed" in iframe_src:
+                breakpoint()
+                # Let's be hacking, the videoID is hidden in json in `youtubei/v1/player?videoId={playerId}`.
+                # But, for now, we have only one video let's use it
+                player_id = re.search(
+                    "www.youtube.com/embed/([^?]+)", iframe_src
+                ).group(1)
+                video_url = next(
+                    url
+                    for url in self.known_urls
+                    if url.startswith("youtube.fuzzy.replayweb.page/videoplayback")
+                )
+            else:
+                video_url = None
+
+            if video_url:
+                self.handle_starttag(
+                    "video",
+                    [
+                        ("width", get_attr_value(attrs, "width")),
+                        ("height", get_attr_value(attrs, "height")),
+                        ("controls", None),
+                    ],
+                )
+                self.handle_starttag(
+                    "source",
+                    [
+                        ("src", f"//{video_url}"),
+                        ("type", "video/mp4"),
+                    ],
+                )
+                # No end tag for source
+                self.handle_data("Your browser doesn't support the video tag")
+                self.handle_endtag("video")
+                self.rewrite_context = "skip_end"
+                return
 
         self.send(f"<{tag}")
         if attrs:
@@ -110,21 +178,23 @@ class HtmlRewriter(HTMLParser):
             self.send(self.pre_head_insert)
 
     def handle_endtag(self, tag: str):
-        self._active_tag = None
+        rewrite_context, self.rewrite_context = self.rewrite_context, None
+        if rewrite_context == "skip_end":
+            return
         if tag == "head" and self.post_head_insert:
             self.send(self.post_head_insert)
         self.send(f"</{tag}>")
 
     def handle_startendtag(self, tag: str, attrs: AttrsList):
         self.handle_starttag(tag, attrs, auto_close=True)
-        self._active_tag = None
+        self.rewrite_context = None
 
     def handle_data(self, data: str):
-        if self._active_tag == "title" and self.title is None:
+        if self.rewrite_context == "title" and self.title is None:
             self.title = data.strip()
-        elif self._active_tag == "style":
+        elif self.rewrite_context == "style":
             data = self.css_rewriter.rewrite(data)
-        elif self._active_tag == "script":
+        elif self.rewrite_context == "script":
             if data.strip():
                 data = JsRewriter(self.url_rewriter).rewrite(data)
         self.send(data)
