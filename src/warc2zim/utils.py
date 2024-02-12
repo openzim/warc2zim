@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import re
 
+import chardet
 from bs4 import BeautifulSoup
 from warcio.recordloader import ArcWarcRecord
 
@@ -57,14 +58,38 @@ def get_record_encoding(record: ArcWarcRecord) -> str | None:
     if m := ENCODING_RE.search(content_type):
         return m.group("encoding")
 
-def to_string(input_: str | bytes) -> str:
-    try:
-        input_ = input_.decode(  # pyright: ignore[reportGeneralTypeIssues, reportAttributeAccessIssue]
-            "utf-8-sig"
-        )
-    except AttributeError:
-        pass
-    return input_  # pyright: ignore[reportGeneralTypeIssues, reportReturnType]
+
+def to_string(input_: str | bytes, encoding: str | None) -> str:
+    """
+    Decode content to string, trying to be the more tolerant possible to invalid
+    declared encoding.
+
+    This try decode the content using 3 methods:
+     - From http headers in the warc record (given as `encoding` argument)
+     - From encoding declaration inside the content (hopping that content can be
+       losely decode using ascii to something usable)
+     - From statistical analysis of the content (made by chardet)
+
+    """
+    if isinstance(input_, str):
+        return input_
+
+    if encoding:
+        try:
+            return input_.decode(encoding)
+        except ValueError:
+            pass
+
+    # Detect encoding from content.
+    content_start = input_[:1024].decode("ascii", errors="replace")
+    if m := ENCODING_RE.search(content_start):
+        encoding = m.group("encoding")
+    else:
+        encoding = chardet.detect(input_)["encoding"]
+
+    if not encoding:
+        raise ValueError(f"Impossible to detect encoding of content {input_[:200]}")
+    return input_.decode(encoding)
 
 
 def get_record_content(record: ArcWarcRecord):
