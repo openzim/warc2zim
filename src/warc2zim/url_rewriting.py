@@ -57,8 +57,6 @@ from urllib.parse import (
     urlunsplit,
 )
 
-from warc2zim.utils import to_string
-
 # Shared logger
 logger = logging.getLogger("warc2zim.url_rewriting")
 
@@ -115,7 +113,7 @@ def reduce(path: str) -> str:
     return path
 
 
-def normalize(url: str | bytes | None) -> str:
+def normalize(url: str | None) -> str:
     """Normalize a properly contructed url to a path to use as a entry's key.
 
     >>> normalize("http://exemple.com/path/to/article?foo=bar")
@@ -129,8 +127,6 @@ def normalize(url: str | bytes | None) -> str:
 
     if not url:
         return url  # pyright: ignore[reportGeneralTypeIssues, reportReturnType]
-
-    url = to_string(url)
 
     url_parts = urlsplit(url)
     url_parts = url_parts._replace(scheme="")

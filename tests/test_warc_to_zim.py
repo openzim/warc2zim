@@ -177,7 +177,6 @@ class TestWarc2Zim:
         assert normalize("https://exemple.com") == "exemple.com"
         assert normalize("https://exemple.com/") == "exemple.com/"
         assert normalize("http://example.com/?foo=bar") == "example.com/?foo=bar"
-        assert normalize(b"http://example.com/?foo=bar") == "example.com/?foo=bar"
 
         assert normalize("https://example.com/?foo=bar") == "example.com/?foo=bar"
 
