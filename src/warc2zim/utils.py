@@ -87,9 +87,16 @@ def to_string(input_: str | bytes, encoding: str | None) -> str:
     # Detect encoding from content.
     content_start = input_[:1024].decode("ascii", errors="replace")
     if m := ENCODING_RE.search(content_start):
-        encodings = [m.group("encoding")]
-    else:
-        encodings = [e["encoding"] for e in chardet.detect_all(input_)]
+        encoding = m.group("encoding")
+        if encoding:
+            try:
+                return input_.decode(encoding)
+            except ValueError:
+                pass
+
+    encodings = (
+        encoding for e in chardet.detect_all(input_) if (encoding := e["encoding"])
+    )
 
     for encoding in encodings:
         try:
