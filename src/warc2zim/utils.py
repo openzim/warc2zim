@@ -3,10 +3,17 @@
 
 from __future__ import annotations
 
+import re
+
 from bs4 import BeautifulSoup
 from warcio.recordloader import ArcWarcRecord
 
 from warc2zim.__about__ import __version__
+
+ENCODING_RE = re.compile(
+    r"(charset|encoding)=(?P<quote>['\"]?)(?P<encoding>[a-wA-Z0-9_\-]+)(?P=quote)",
+    re.ASCII,
+)
 
 
 def get_version():
@@ -44,6 +51,11 @@ def parse_title(content):
     except Exception:
         return ""
 
+
+def get_record_encoding(record: ArcWarcRecord) -> str | None:
+    content_type = get_record_content_type(record)
+    if m := ENCODING_RE.search(content_type):
+        return m.group("encoding")
 
 def to_string(input_: str | bytes) -> str:
     try:
