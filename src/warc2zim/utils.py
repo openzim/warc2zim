@@ -71,6 +71,7 @@ def to_string(input_: str | bytes, encoding: str | None) -> str:
      - From statistical analysis of the content (made by chardet)
 
     """
+    tried_encodings = set()
     if isinstance(input_, str):
         return input_
 
@@ -82,20 +83,24 @@ def to_string(input_: str | bytes, encoding: str | None) -> str:
         try:
             return input_.decode(encoding)
         except ValueError:
+            tried_encodings.add(encoding)
             pass
 
     # Detect encoding from content.
     content_start = input_[:1024].decode("ascii", errors="replace")
     if m := ENCODING_RE.search(content_start):
         encoding = m.group("encoding")
-        if encoding:
+        if encoding and encoding not in tried_encodings:
             try:
                 return input_.decode(encoding)
             except ValueError:
+                tried_encodings.add(encoding)
                 pass
 
     encodings = (
-        encoding for e in chardet.detect_all(input_) if (encoding := e["encoding"])
+        encoding
+        for e in chardet.detect_all(input_)
+        if (encoding := e["encoding"]) and encoding not in tried_encodings
     )
 
     for encoding in encodings:
