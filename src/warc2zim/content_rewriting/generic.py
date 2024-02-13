@@ -7,7 +7,12 @@ from warc2zim.content_rewriting.css import CssRewriter
 from warc2zim.content_rewriting.ds import build_domain_specific_rewriter
 from warc2zim.content_rewriting.html import HtmlRewriter
 from warc2zim.url_rewriting import ArticleUrlRewriter
-from warc2zim.utils import get_record_content, get_record_mime_type, get_record_url
+from warc2zim.utils import (
+    get_record_content,
+    get_record_mime_type,
+    get_record_url,
+    to_string,
+)
 
 
 class Rewriter:
@@ -70,7 +75,7 @@ class Rewriter:
             orig_host=orig_url.netloc,
         )
         return HtmlRewriter(self.url_rewriter, head_insert, css_insert).rewrite(
-            self.content
+            to_string(self.content)
         )
 
     def rewrite_css(self):
