@@ -21,7 +21,7 @@ def get_record_url(record):
     return record.rec_headers["WARC-Target-URI"]
 
 
-def get_record_mime_type(record):
+def get_record_content_type(record: ArcWarcRecord) -> str:
     if record.http_headers:
         # if the record has HTTP headers, use the Content-Type from those
         # (eg. 'response' record)
@@ -29,9 +29,12 @@ def get_record_mime_type(record):
     else:
         # otherwise, use the Content-Type from WARC headers
         content_type = record.rec_headers["Content-Type"]
+    return content_type or ""
 
-    mime = content_type or ""
-    return mime.split(";")[0]
+
+def get_record_mime_type(record: ArcWarcRecord) -> str:
+    content_type = get_record_content_type(record)
+    return content_type.split(";")[0]
 
 
 def parse_title(content):
