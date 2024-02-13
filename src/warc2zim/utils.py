@@ -74,6 +74,10 @@ def to_string(input_: str | bytes, encoding: str | None) -> str:
     if isinstance(input_, str):
         return input_
 
+    if not input_:
+        # Empty bytes are easy to decode
+        return ""
+
     if encoding:
         try:
             return input_.decode(encoding)
