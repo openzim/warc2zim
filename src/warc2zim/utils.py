@@ -87,13 +87,16 @@ def to_string(input_: str | bytes, encoding: str | None) -> str:
     # Detect encoding from content.
     content_start = input_[:1024].decode("ascii", errors="replace")
     if m := ENCODING_RE.search(content_start):
-        encoding = m.group("encoding")
+        encodings = [m.group("encoding")]
     else:
-        encoding = chardet.detect(input_)["encoding"]
+        encodings = [e["encoding"] for e in chardet.detect_all(input_)]
 
-    if not encoding:
-        raise ValueError(f"Impossible to detect encoding of content {input_[:200]}")
-    return input_.decode(encoding)
+    for encoding in encodings:
+        try:
+            return input_.decode(encoding)
+        except ValueError:
+            pass
+    raise ValueError(f"Impossible to decode content {input_[:200]}")
 
 
 def get_record_content(record: ArcWarcRecord):
