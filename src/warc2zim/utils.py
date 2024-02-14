@@ -82,7 +82,7 @@ def to_string(input_: str | bytes, encoding: str | None) -> str:
     if encoding:
         try:
             return input_.decode(encoding)
-        except ValueError:
+        except (ValueError, LookupError):
             tried_encodings.add(encoding)
             pass
 
@@ -93,7 +93,7 @@ def to_string(input_: str | bytes, encoding: str | None) -> str:
         if encoding and encoding not in tried_encodings:
             try:
                 return input_.decode(encoding)
-            except ValueError:
+            except (ValueError, LookupError):
                 tried_encodings.add(encoding)
                 pass
 
