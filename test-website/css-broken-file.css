@@ -1,0 +1,16 @@
+
+.great {
+    not_exits_prop: red; /* property does not exist */
+    background-image: url('http://www.mediaelementjs.com/images/big_buck_bunny.jpg');
+    width: 150px;
+    font-size: ; /* missing value */
+    display= 12; /* equal sign */
+    height: 100px;
+    margin: 2rem;
+    padding: 1rem;
+    font-weight: bolder;
+    color: white;
+    text-align: center;
+}
+
+"broken
