@@ -7,7 +7,6 @@ from warc2zim.content_rewriting import UrlRewriterProto
 from warc2zim.content_rewriting.css import CssRewriter
 from warc2zim.content_rewriting.js import JsRewriter
 from warc2zim.url_rewriting import ArticleUrlRewriter
-from warc2zim.utils import to_string
 
 AttrsList = list[tuple[str, str | None]]
 
@@ -71,12 +70,10 @@ class HtmlRewriter(HTMLParser):
         self.pre_head_insert = pre_head_insert
         self.post_head_insert = post_head_insert
 
-    def rewrite(self, content: str | bytes) -> RewritenHtml:
+    def rewrite(self, content: str) -> RewritenHtml:
         if self.output is not None:
             raise Exception("ouput should not already be set")  # pragma: no cover
         self.output = io.StringIO()
-
-        content = to_string(content)
 
         self.feed(content)
         self.close()
