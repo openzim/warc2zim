@@ -11,6 +11,7 @@ WOMBAT_SOURCE_URL = "https://cdn.jsdelivr.net/npm/@webrecorder/wombat@3.7.0/dist
 class GetJsDepsHook(BuildHookInterface):
     def initialize(self, version, build_data):
         self.download_wombat("wombat.js")
+        self.download_wombat("wombatWorkers.js")
         return super().initialize(version, build_data)
 
     def download_wombat(self, name):

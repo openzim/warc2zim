@@ -278,7 +278,7 @@ class JsRewriter(RxRewriter):
             def func(m_object, _opts):
                 def sub_funct(match):
                     return (
-                        f"{match.group(1)}{self.url_rewriter(match.group(2))}"
+                        f"{match.group(1)}{self.url_rewriter(match.group(2), force_relative_path=True)}"
                         f"{match.group(3)}"
                     )
 
