@@ -35,6 +35,13 @@ class Rewriter:
 
         self.rewrite_mode = self.get_rewrite_mode(record, mimetype)
 
+    @property
+    def content_str(self):
+        try:
+            return to_string(self.content, self.encoding)
+        except ValueError as e:
+            raise RuntimeError(f"Impossible to decode item {self.path}") from e
+
     def rewrite(
         self, head_template: Template, css_insert: str | None
     ) -> tuple[str, str | bytes]:
@@ -78,7 +85,7 @@ class Rewriter:
             orig_host=orig_url.netloc,
         )
         return HtmlRewriter(self.url_rewriter, head_insert, css_insert).rewrite(
-            to_string(self.content, self.encoding)
+            self.content_str
         )
 
     def rewrite_css(self):
@@ -88,5 +95,5 @@ class Rewriter:
         rewriter = build_domain_specific_rewriter(self.path, self.url_rewriter)
         return (
             "",
-            rewriter.rewrite(to_string(self.content, self.encoding), opts),
+            rewriter.rewrite(self.content_str, opts),
         )
