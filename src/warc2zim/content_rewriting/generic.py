@@ -1,12 +1,14 @@
 from collections.abc import Callable
+from typing import Any
 from urllib.parse import urlsplit
 
 from jinja2.environment import Template
 from warcio.recordloader import ArcWarcRecord
 
 from warc2zim.content_rewriting.css import CssRewriter
-from warc2zim.content_rewriting.ds import build_domain_specific_rewriter
+from warc2zim.content_rewriting.ds import get_ds_rules
 from warc2zim.content_rewriting.html import HtmlRewriter
+from warc2zim.content_rewriting.js import JsRewriter
 from warc2zim.url_rewriting import ArticleUrlRewriter
 from warc2zim.utils import (
     get_record_content,
@@ -114,5 +116,6 @@ class Rewriter:
 
     @no_title
     def rewrite_js(self, opts: dict[str, Any]) -> str | bytes:
-        rewriter = build_domain_specific_rewriter(self.path, self.url_rewriter)
+        ds_rules = get_ds_rules(self.orig_url_str)
+        rewriter = JsRewriter(self.url_rewriter, ds_rules)
         return rewriter.rewrite(self.content.decode(), opts)

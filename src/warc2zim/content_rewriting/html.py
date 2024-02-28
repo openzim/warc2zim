@@ -5,6 +5,7 @@ from html.parser import HTMLParser
 
 from warc2zim.content_rewriting import UrlRewriterProto
 from warc2zim.content_rewriting.css import CssRewriter
+from warc2zim.content_rewriting.ds import get_ds_rules
 from warc2zim.content_rewriting.js import JsRewriter
 from warc2zim.url_rewriting import ArticleUrlRewriter
 
@@ -122,8 +123,9 @@ class HtmlRewriter(HTMLParser):
         elif self._active_tag == "style":
             data = self.css_rewriter.rewrite(data)
         elif self._active_tag == "script":
+            rules = get_ds_rules(self.url_rewriter.article_url)
             if data.strip():
-                data = JsRewriter(self.url_rewriter).rewrite(data)
+                data = JsRewriter(self.url_rewriter, rules).rewrite(data)
         self.send(data)
 
     def handle_entityref(self, name: str):

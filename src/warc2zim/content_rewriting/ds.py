@@ -8,10 +8,10 @@
 
 import json
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 from warc2zim.content_rewriting.js import (
-    JsRewriter,
     TransformationAction,
     TransformationRule,
     add_prefix,
@@ -160,6 +160,8 @@ def rule_rewrite_vimeo_dash_manifest(m_object: re.Match, opts: dict | None) -> s
     return json.dumps(vimeo_manifest)
 
 
+# This set of rules tell which rules to apply depending on the url of the content
+# First rule to match stops the lookup, so rules have to be sorted accordingly.
 RULES = [
     SpecificRules(
         ["youtube.com", "youtube-nocookie.com"],
@@ -256,14 +258,15 @@ RULES = [
 ]
 
 
-def build_domain_specific_rewriter(path: str, url_rewriter):
+def get_ds_rules(path: str) -> Iterable[TransformationRule]:
     """
-    This build a JsRewriter with extra rules depending of the path.
+    This build a domain specifc Rewriter (given in rewriter_class), by passing a set of
+    extra rules to the rewriter if needed.
     """
 
     for rule in RULES:
-        for contain in rule.contains:
-            if contain in path:
-                return JsRewriter(url_rewriter, rule.rx_rules)
+        for pattern in rule.contains:
+            if pattern in path:
+                return rule.rx_rules
 
-    return JsRewriter(url_rewriter)
+    return []
