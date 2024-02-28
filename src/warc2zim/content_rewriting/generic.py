@@ -1,3 +1,4 @@
+import re
 from collections.abc import Callable
 from typing import Any
 from urllib.parse import urlsplit
@@ -9,6 +10,7 @@ from warc2zim.content_rewriting.css import CssRewriter
 from warc2zim.content_rewriting.ds import get_ds_rules
 from warc2zim.content_rewriting.html import HtmlRewriter
 from warc2zim.content_rewriting.js import JsRewriter
+from warc2zim.content_rewriting.rx_replacer import RxRewriter
 from warc2zim.url_rewriting import ArticleUrlRewriter
 from warc2zim.utils import (
     get_record_content,
@@ -17,6 +19,12 @@ from warc2zim.utils import (
     get_record_url,
     to_string,
 )
+
+# Parse JSONP. This match "anything" preceded by space or comments
+JSONP_REGEX = re.compile(
+    r"^(?:\s*(?:(?:\/\*[^*]*\*\/)|(?:\/\/[^\n]+[\n])))*\s*([\w.]+)\([{[]"
+)
+JSONP_CALLBACK_REGEX = re.compile(r"[?].*(?:callback|jsonp)=([^&]+)", re.I)
 
 
 def no_title(
@@ -36,6 +44,14 @@ def no_title(
         return ("", function(*args, **kwargs))
 
     return rewrite
+
+
+def extract_jsonp_callback(url: str):
+    callback = JSONP_CALLBACK_REGEX.match(url)
+    if not callback or callback.group(1) == "?":
+        return None
+
+    return callback.group(1)
 
 
 class Rewriter:
@@ -78,20 +94,39 @@ class Rewriter:
         if self.rewrite_mode == "javascript":
             return self.rewrite_js(opts)
 
+        if self.rewrite_mode == "jsonp":
+            return self.rewrite_jsonp()
+
+        if self.rewrite_mode == "json":
+            return self.rewrite_json()
+
         return ("", self.content)
 
     def get_rewrite_mode(self, record, mimetype):
-        if getattr(record, "method", "GET") == "POST":
-            return None
         if mimetype == "text/html":
+            if getattr(record, "method", "GET") == "POST":
+                return None
+
             # TODO : Handle header "Accept" == "application/json"
             return "html"
 
         if mimetype == "text/css":
             return "css"
 
-        if "javascript" in mimetype:
+        if mimetype in [
+            "text/javascript",
+            "application/javascript",
+            "application/x-javascript",
+        ]:
+            if extract_jsonp_callback(self.orig_url_str):
+                return "jsonp"
+
+            if self.path.endswith(".json"):
+                return "json"
             return "javascript"
+
+        if mimetype == "application/json":
+            return "json"
 
         return None
 
@@ -119,3 +154,27 @@ class Rewriter:
         ds_rules = get_ds_rules(self.orig_url_str)
         rewriter = JsRewriter(self.url_rewriter, ds_rules)
         return rewriter.rewrite(self.content.decode(), opts)
+
+    @no_title
+    def rewrite_jsonp(self) -> str | bytes:
+        content = self.content.decode()
+        match = JSONP_REGEX.match(content)
+        if not match:
+            return content
+
+        callback = extract_jsonp_callback(self.orig_url_str)
+
+        if not callback:
+            return content
+
+        return callback + match.group(1)
+
+    @no_title
+    def rewrite_json(self) -> str | bytes:
+        content = self.rewrite_jsonp()[1]
+        ds_rules = get_ds_rules(self.orig_url_str)
+        if not ds_rules:
+            return content
+
+        rewriter = RxRewriter(ds_rules)
+        return rewriter.rewrite(content, {})

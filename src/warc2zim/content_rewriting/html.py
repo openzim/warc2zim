@@ -7,6 +7,7 @@ from warc2zim.content_rewriting import UrlRewriterProto
 from warc2zim.content_rewriting.css import CssRewriter
 from warc2zim.content_rewriting.ds import get_ds_rules
 from warc2zim.content_rewriting.js import JsRewriter
+from warc2zim.content_rewriting.rx_replacer import RxRewriter
 from warc2zim.url_rewriting import ArticleUrlRewriter
 
 AttrsList = list[tuple[str, str | None]]
@@ -50,6 +51,13 @@ def transform_attrs(
     return " ".join(format_attr(*attr) for attr in processed_attrs)
 
 
+def extract_attr(attrs: AttrsList, name: str, default: str | None = None) -> str | None:
+    for attr_name, value in attrs:
+        if attr_name == name:
+            return value
+    return default
+
+
 RewritenHtml = namedtuple("RewritenHmtl", ["title", "content"])
 
 
@@ -88,6 +96,9 @@ class HtmlRewriter(HTMLParser):
 
     def handle_starttag(self, tag: str, attrs: AttrsList, *, auto_close: bool = False):
         self._active_tag = tag
+        if tag == "script":
+            if "json" in (extract_attr(attrs, "type") or ""):
+                self._active_tag = "json"
 
         self.send(f"<{tag}")
         if attrs:
@@ -126,6 +137,11 @@ class HtmlRewriter(HTMLParser):
             rules = get_ds_rules(self.url_rewriter.article_url)
             if data.strip():
                 data = JsRewriter(self.url_rewriter, rules).rewrite(data)
+        elif self._active_tag == "json":
+            if data.strip():
+                rules = get_ds_rules(self.url_rewriter.article_url)
+                if rules:
+                    data = RxRewriter(rules).rewrite(data, {})
         self.send(data)
 
     def handle_entityref(self, name: str):

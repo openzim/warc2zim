@@ -33,6 +33,9 @@ from .utils import ContentForTests
         ContentForTests(
             "<p> This is a smiley (🙂) and it html hex value (&#x1F642;) </p>"
         ),
+        ContentForTests(
+            '<script type="json">{"window": "https://kiwix.org/path"}</script>'
+        ),
     ]
 )
 def no_rewrite_content(request):
@@ -65,6 +68,30 @@ def test_no_rewrite(no_rewrite_content):
         ContentForTests(
             "<ul style='list-style: \">\"'>",
             '<ul style="list-style: &quot;&gt;&quot;;">',
+        ),
+        ContentForTests(
+            '<script>{"window": "https://kiwix.org/path"}</script>',
+            (
+                "<script>var _____WB$wombat$assign$function_____ = function(name) "
+                "{return (self._wb_wombat && self._wb_wombat.local_init && "
+                "self._wb_wombat.local_init(name)) || self[name]; };\n"
+                "if (!self.__WB_pmw) { self.__WB_pmw = function(obj) "
+                "{ this.__WB_source = obj; return this; } }\n"
+                "{\n"
+                """let window = _____WB$wombat$assign$function_____("window");\n"""
+                "let globalThis = _____WB$wombat$assign$function_____"
+                """("globalThis");\n"""
+                """let self = _____WB$wombat$assign$function_____("self");\n"""
+                """let document = _____WB$wombat$assign$function_____("document");\n"""
+                """let location = _____WB$wombat$assign$function_____("location");\n"""
+                """let top = _____WB$wombat$assign$function_____("top");\n"""
+                """let parent = _____WB$wombat$assign$function_____("parent");\n"""
+                """let frames = _____WB$wombat$assign$function_____("frames");\n"""
+                """let opener = _____WB$wombat$assign$function_____("opener");\n"""
+                "let arguments;\n\n"
+                """{"window": "https://kiwix.org/path"}\n"""
+                "}</script>"
+            ),
         ),
     ]
 )
