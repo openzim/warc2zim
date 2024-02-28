@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from urllib.parse import urlsplit
 
 from jinja2.environment import Template
@@ -14,6 +15,25 @@ from warc2zim.utils import (
     get_record_url,
     to_string,
 )
+
+
+def no_title(
+    function: Callable[..., str | bytes]
+) -> Callable[..., tuple[str, str | bytes]]:
+    """Decorator for methods transforming content without extracting a title.
+
+    The generic rewriter return a title to use as item title but most
+    content don't have a title. Such rewriter just rewrite content and do not
+    extract a title, but the general API of returning a title must be fulfilled.
+
+    This decorator takes a rewriter method not returning a title and make it return
+    an empty title.
+    """
+
+    def rewrite(*args, **kwargs) -> tuple[str, str | bytes]:
+        return ("", function(*args, **kwargs))
+
+    return rewrite
 
 
 class Rewriter:
@@ -88,12 +108,11 @@ class Rewriter:
             self.content_str
         )
 
-    def rewrite_css(self):
-        return ("", CssRewriter(self.url_rewriter).rewrite(self.content))
+    @no_title
+    def rewrite_css(self) -> str | bytes:
+        return CssRewriter(self.url_rewriter).rewrite(self.content)
 
-    def rewrite_js(self, opts):
+    @no_title
+    def rewrite_js(self, opts: dict[str, Any]) -> str | bytes:
         rewriter = build_domain_specific_rewriter(self.path, self.url_rewriter)
-        return (
-            "",
-            rewriter.rewrite(self.content_str, opts),
-        )
+        return rewriter.rewrite(self.content.decode(), opts)
