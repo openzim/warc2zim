@@ -59,7 +59,7 @@ class HtmlRewriter(HTMLParser):
         pre_head_insert: str,
         post_head_insert: str | None,
     ):
-        super().__init__()
+        super().__init__(convert_charrefs=False)
         self.url_rewriter = url_rewriter
         self.css_rewriter = CssRewriter(url_rewriter)
         self.title = None
@@ -125,6 +125,12 @@ class HtmlRewriter(HTMLParser):
             if data.strip():
                 data = JsRewriter(self.url_rewriter).rewrite(data)
         self.send(data)
+
+    def handle_entityref(self, name: str):
+        self.send(f"&{name};")
+
+    def handle_charref(self, name: str):
+        self.send(f"&#{name};")
 
     def handle_comment(self, data: str):
         self.send(f"<!--{data}-->")
