@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-openzim==0.2.0"]
 build-backend = "hatchling.build"
 
 [project]
@@ -9,23 +9,22 @@ authors = [
   { name = "Webrecorder Software", email = "info@webrecorder.net" },
 ]
 keywords = ["kiwix", "zim", "offline", "warc"]
-requires-python = ">=3.11,<3.12"
+requires-python = ">=3.12,<3.13"
 description = "Convert WARC to ZIM"
 readme = "README.md"
 license = {text = "GPL-3.0-or-later"}
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
 ]
 dependencies = [
   "warcio==1.7.4",
   "requests==2.31.0",
   "beautifulsoup4==4.9.3",
-  "zimscraperlib==3.2.0",
-  "Babel==2.12.1",
-  "jinja2==3.1.2",
-  "setuptools==68.2.2",
+  "zimscraperlib==3.3.1",
+  "Babel==2.14.0",
+  "jinja2==3.1.3",
   "chardet==5.2.0",
   # to support possible brotli content in warcs
   "brotlipy==0.7.0",
@@ -39,19 +38,19 @@ scripts = [
   "invoke==2.2.0",
 ]
 lint = [
-  "black==23.12.1",
-  "ruff==0.1.3",
+  "black==24.2.0",
+  "ruff==0.3.0",
 ]
 check = [
-  "pyright==1.1.348",
+  "pyright==1.1.352",
 ]
 test = [
-  "pytest==7.4.4",
-  "coverage==7.4.0",
+  "pytest==8.0.2",
+  "coverage==7.4.3",
 ]
 dev = [
-  "pre-commit==3.6.0",
-  "debugpy==1.8.0",
+  "pre-commit==3.6.2",
+  "debugpy==1.8.1",
   "warc2zim[scripts]",
   "warc2zim[lint]",
   "warc2zim[test]",
@@ -116,12 +115,14 @@ all = "inv checkall --args '{args}'"
 
 [tool.black]
 line-length = 88
-target-version = ['py311']
+target-version = ['py312']
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py312"
 line-length = 88
 src = ["src"]
+
+[tool.ruff.lint]
 select = [
   "A",  # flake8-builtins
   # "ANN",  # flake8-annotations
@@ -198,17 +199,17 @@ unfixable = [
   "F401",
 ]
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["warc2zim"]
 
-[tool.ruff.flake8-bugbear]
+[tool.ruff.lint.flake8-bugbear]
 # add exceptions to B008 for fastapi.
 extend-immutable-calls = ["fastapi.Depends", "fastapi.Query"]
 
-[tool.ruff.flake8-tidy-imports]
+[tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 # Tests can use magic values, assertions, and relative imports
 "tests/**/*" = ["PLR2004", "S101", "TID252"]
 
@@ -240,6 +241,6 @@ exclude_lines = [
 include = ["src", "tests", "tasks.py"]
 exclude = [".env/**", ".venv/**"]
 extraPaths = ["src"]
-pythonVersion = "3.11"
+pythonVersion = "3.12"
 typeCheckingMode = "basic"
 disableBytesTypePromotions = true
