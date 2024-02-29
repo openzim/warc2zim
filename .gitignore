@@ -210,3 +210,6 @@ pyrightconfig.json
 
 # ignore all vscode, this is not standard configuration in this place
 .vscode
+
+# installed at build time
+wombat.js
