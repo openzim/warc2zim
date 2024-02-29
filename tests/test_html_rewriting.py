@@ -29,6 +29,10 @@ from .utils import ContentForTests
         ),
         ContentForTests("<a href></a>"),
         ContentForTests("<img src />"),
+        ContentForTests("<code>&lt;script&gt;</code>"),
+        ContentForTests(
+            "<p> This is a smiley (🙂) and it html hex value (&#x1F642;) </p>"
+        ),
     ]
 )
 def no_rewrite_content(request):
