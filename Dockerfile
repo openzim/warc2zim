@@ -1,4 +1,4 @@
-FROM python:3.11-slim-bookworm
+FROM python:3.12-slim-bookworm
 LABEL org.opencontainers.image.source https://github.com/openzim/warc2zim
 
 RUN apt-get update -y \
@@ -12,7 +12,7 @@ RUN apt-get update -y \
 WORKDIR /output
 
 # Copy pyproject.toml and its dependencies
-COPY pyproject.toml README.md hatch_build.py /src/
+COPY pyproject.toml openzim.toml README.md /src/
 COPY src/warc2zim/__about__.py /src/src/warc2zim/__about__.py
 
 # Install Python dependencies
