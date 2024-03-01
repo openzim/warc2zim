@@ -4,20 +4,9 @@ build-backend = "hatchling.build"
 
 [project]
 name = "warc2zim"
-authors = [
-  { name = "Kiwix", email = "dev@kiwix.org" },
-  { name = "Webrecorder Software", email = "info@webrecorder.net" },
-]
-keywords = ["kiwix", "zim", "offline", "warc"]
 requires-python = ">=3.12,<3.13"
 description = "Convert WARC to ZIM"
 readme = "README.md"
-license = {text = "GPL-3.0-or-later"}
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.12",
-    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
-]
 dependencies = [
   "warcio==1.7.4",
   "requests==2.31.0",
@@ -31,7 +20,17 @@ dependencies = [
   "cdxj_indexer==1.4.5",
   "tinycss2==1.2.1",
 ]
-dynamic = ["version"]
+dynamic = ["authors", "classifiers", "keywords", "license", "version", "urls"]
+
+[tool.hatch.metadata.hooks.openzim-metadata]
+kind = "scraper"
+additional-keywords = ["warc"]
+
+[[tool.hatch.metadata.hooks.openzim-metadata.additional-authors]]
+name="Webrecorder Software"
+email="info@webrecorder.net"
+
+[tool.hatch.build.hooks.openzim-build]
 
 [project.optional-dependencies]
 scripts = [
@@ -59,10 +58,6 @@ dev = [
   "hatchling==1.18.0",
 ]
 
-[project.urls]
-Homepage = "https://github.com/openzim/warc2zim"
-Donate = "https://www.kiwix.org/en/support-us/"
-
 [project.scripts]
 warc2zim = "warc2zim.main:main"
 
@@ -73,9 +68,6 @@ path = "src/warc2zim/__about__.py"
 exclude = [
   "/.github",
 ]
-
-[tool.hatch.build.hooks.custom]
-path = "hatch_build.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/warc2zim"]

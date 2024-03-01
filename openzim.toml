@@ -1,0 +1,7 @@
+[files.assets.config]
+target_dir="src/warc2zim/statics"
+
+[files.assets.actions."wombat.js"]
+action="get_file"
+source="https://cdn.jsdelivr.net/npm/@webrecorder/wombat@3.7.0/dist/wombat.js"
+target_file="wombat.js"
