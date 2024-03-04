@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # vim: ai ts=4 sts=4 et sw=4 nu
 
+import io
 import json
 import os
 import re
@@ -8,6 +9,7 @@ import time
 
 import pytest
 import requests
+from zimscraperlib.image.convertion import convert_image, resize_image
 from zimscraperlib.zim import Archive
 
 from warc2zim.__about__ import __version__
@@ -86,6 +88,12 @@ class TestWarc2Zim:
         zim_fh = Archive(zimfile)
         for x in range(zim_fh.entry_count):
             yield zim_fh.get_entry_by_id(x)
+
+    def get_main_entry_with_redirect(self, zimfile):
+        zim_fh = Archive(zimfile)
+        if zim_fh.main_entry.is_redirect:
+            return zim_fh.main_entry.get_redirect_entry()
+        return zim_fh.main_entry
 
     def get_metadata(self, zimfile, name):
         zim_fh = Archive(zimfile)
@@ -173,6 +181,23 @@ class TestWarc2Zim:
                 assert not payload
 
             warc_urls.add(url)
+
+    def rebuild_favicon_bytes(self, zim, favicon_path) -> bytes:
+        favicon_bytes = self.get_article(
+            zim,
+            favicon_path,
+        )
+        assert favicon_bytes
+        dst = io.BytesIO()
+        convert_image(
+            io.BytesIO(
+                favicon_bytes
+            ),  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
+            dst,  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
+            fmt="PNG",  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
+        )
+        resize_image(dst, width=48, height=48, method="cover")
+        return dst.getvalue()
 
     def test_normalize(self):
         assert normalize(None) is None
@@ -373,14 +398,55 @@ class TestWarc2Zim:
         assert self.get_metadata(zim_output, "Language") == b"fra"
 
         # test detected favicon
-        assert self.get_article(
-            zim_output,
-            "lesfondamentaux.reseau-canope.fr/fileadmin/template/img/favicon.ico",
+        zim_favicon = self.get_metadata(zim_output, "Illustration_48x48@1")
+        assert zim_favicon
+
+        assert (
+            self.rebuild_favicon_bytes(
+                zim_output,
+                "lesfondamentaux.reseau-canope.fr/fileadmin/template/img/favicon.ico",
+            )
+            == zim_favicon
         )
-        assert self.get_metadata(zim_output, "Illustration_48x48@1")
 
         # test default tags added
         assert self.get_metadata(zim_output, "Tags") == b"_ftindex:yes;_category:other"
+
+    def test_website_with_redirect(self, tmp_path):
+        zim_output = "kiwix.zim"
+        main(
+            [
+                os.path.join(TEST_DATA_DIR, "kiwix-with-redirects.warc.gz"),
+                "-u",
+                "http://www.kiwix.org",
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "kiwix",
+            ]
+        )
+
+        zim_output = tmp_path / zim_output
+
+        # check that redirections have been followed
+        assert self.get_main_entry_with_redirect(zim_output).path == "kiwix.org/en/"
+
+        # test detected language
+        assert self.get_metadata(zim_output, "Language") == b"eng"
+
+        # test detected favicon
+        zim_favicon = self.get_metadata(zim_output, "Illustration_48x48@1")
+        assert zim_favicon
+
+        assert (
+            self.rebuild_favicon_bytes(
+                zim_output,
+                "kiwix.org/favicon.ico",
+            )
+            == zim_favicon
+        )
 
     def test_all_warcs_root_dir(self, tmp_path):
         zim_output = "test-all.zim"
