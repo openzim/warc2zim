@@ -485,7 +485,7 @@ class Converter:
                 logger.debug(f"Skipping url {url}, outside included domains")
                 return
 
-        if record.rec_type != "revisit":
+        if record.rec_type == "response":
             if self.is_self_redirect(record, url):
                 logger.debug("Skipping self-redirect: " + url)
                 return
@@ -510,7 +510,8 @@ class Converter:
             self.indexed_urls.add(normalized_url)
 
         elif (
-            record.rec_headers["WARC-Refers-To-Target-URI"] != url
+            record.rec_type == "revisit"
+            and record.rec_headers["WARC-Refers-To-Target-URI"] != url
             and normalized_url not in self.revisits
         ):  # pragma: no branch
             self.revisits[normalized_url] = normalize(

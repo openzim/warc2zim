@@ -159,7 +159,7 @@ class TestWarc2Zim:
                 # We should check with the content of the targeted record...
                 # But difficult to test as we don't have it
                 assert payload
-            else:
+            elif record.rec_type == "response":
                 # We must have a payload
                 assert payload
                 payload_content = payload.content.tobytes()
@@ -168,6 +168,9 @@ class TestWarc2Zim:
                 # have exact match
                 if payload.mimetype.startswith("text/html"):
                     assert head_insert in payload_content
+            elif record.rec_type == "resource":
+                # we do not want to embed resources "as-is"
+                assert not payload
 
             warc_urls.add(url)
 
