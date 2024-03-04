@@ -21,6 +21,7 @@ import pathlib
 import re
 import tempfile
 import time
+from http import HTTPStatus
 from pathlib import Path
 from urllib.parse import urldefrag, urljoin, urlsplit, urlunsplit
 
@@ -320,6 +321,26 @@ class Converter:
                 continue
 
             # if we get here, found record for the main page
+
+            # if main page is a redirect, update the main url accordingly
+            if record.http_headers:
+                status_code = int(record.http_headers.get_statuscode())
+                if status_code in [
+                    HTTPStatus.MOVED_PERMANENTLY,
+                    HTTPStatus.FOUND,
+                ]:
+                    original_path = self.main_path
+                    self.main_path = normalize(
+                        urljoin(
+                            get_record_url(record),
+                            record.http_headers.get_header("Location").strip(),
+                        )
+                    )
+                    logger.warning(
+                        f"HTTP {status_code} occurred on main page; "
+                        f"replacing {original_path} with '{self.main_path}'"
+                    )
+                    continue
 
             # if main page is not html, still allow (eg. could be text, img),
             # but print warning
