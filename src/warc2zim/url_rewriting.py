@@ -63,8 +63,8 @@ logger = logging.getLogger("warc2zim.url_rewriting")
 
 FUZZY_RULES = [
     {
-        "pattern": r".*googlevideo.com/(videoplayback\?).*((?<=[?&])id=[^&]+).*",
-        "replace": r"youtube.fuzzy.replayweb.page/\1\2",
+        "pattern": r".*googlevideo.com/(videoplayback(?=\?)).*[?&](id=[^&]+).*",
+        "replace": r"youtube.fuzzy.replayweb.page/\1?\2",
     },
     {
         "pattern": r"(?:www\.)?youtube(?:-nocookie)?\.com/(get_video_info\?).*(video_id"
