@@ -117,7 +117,7 @@ class RxRewriter:
         rx_buff = "|".join(f"({rule[0].pattern})" for rule in rules)
         self.compiled_rule = re.compile(f"(?:{rx_buff})", re.M)
 
-    def rewrite_content(
+    def rewrite(
         self,
         text: str | bytes,
         opts: dict[str, Any],

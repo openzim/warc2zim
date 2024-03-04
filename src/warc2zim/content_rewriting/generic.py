@@ -1,11 +1,16 @@
+import re
+from collections.abc import Callable
+from typing import Any
 from urllib.parse import urlsplit
 
 from jinja2.environment import Template
 from warcio.recordloader import ArcWarcRecord
 
 from warc2zim.content_rewriting.css import CssRewriter
-from warc2zim.content_rewriting.ds import build_domain_specific_rewriter
+from warc2zim.content_rewriting.ds import get_ds_rules
 from warc2zim.content_rewriting.html import HtmlRewriter
+from warc2zim.content_rewriting.js import JsRewriter
+from warc2zim.content_rewriting.rx_replacer import RxRewriter
 from warc2zim.url_rewriting import ArticleUrlRewriter
 from warc2zim.utils import (
     get_record_content,
@@ -14,6 +19,39 @@ from warc2zim.utils import (
     get_record_url,
     to_string,
 )
+
+# Parse JSONP. This match "anything" preceded by space or comments
+JSONP_REGEX = re.compile(
+    r"^(?:\s*(?:(?:\/\*[^*]*\*\/)|(?:\/\/[^\n]+[\n])))*\s*([\w.]+)\([{[]"
+)
+JSONP_CALLBACK_REGEX = re.compile(r"[?].*(?:callback|jsonp)=([^&]+)", re.I)
+
+
+def no_title(
+    function: Callable[..., str | bytes]
+) -> Callable[..., tuple[str, str | bytes]]:
+    """Decorator for methods transforming content without extracting a title.
+
+    The generic rewriter return a title to use as item title but most
+    content don't have a title. Such rewriter just rewrite content and do not
+    extract a title, but the general API of returning a title must be fulfilled.
+
+    This decorator takes a rewriter method not returning a title and make it return
+    an empty title.
+    """
+
+    def rewrite(*args, **kwargs) -> tuple[str, str | bytes]:
+        return ("", function(*args, **kwargs))
+
+    return rewrite
+
+
+def extract_jsonp_callback(url: str):
+    callback = JSONP_CALLBACK_REGEX.match(url)
+    if not callback or callback.group(1) == "?":
+        return None
+
+    return callback.group(1)
 
 
 class Rewriter:
@@ -56,20 +94,39 @@ class Rewriter:
         if self.rewrite_mode == "javascript":
             return self.rewrite_js(opts)
 
+        if self.rewrite_mode == "jsonp":
+            return self.rewrite_jsonp()
+
+        if self.rewrite_mode == "json":
+            return self.rewrite_json()
+
         return ("", self.content)
 
     def get_rewrite_mode(self, record, mimetype):
-        if getattr(record, "method", "GET") == "POST":
-            return None
         if mimetype == "text/html":
+            if getattr(record, "method", "GET") == "POST":
+                return None
+
             # TODO : Handle header "Accept" == "application/json"
             return "html"
 
         if mimetype == "text/css":
             return "css"
 
-        if "javascript" in mimetype:
+        if mimetype in [
+            "text/javascript",
+            "application/javascript",
+            "application/x-javascript",
+        ]:
+            if extract_jsonp_callback(self.orig_url_str):
+                return "jsonp"
+
+            if self.path.endswith(".json"):
+                return "json"
             return "javascript"
+
+        if mimetype == "application/json":
+            return "json"
 
         return None
 
@@ -88,12 +145,36 @@ class Rewriter:
             self.content_str
         )
 
-    def rewrite_css(self):
-        return ("", CssRewriter(self.url_rewriter).rewrite(self.content))
+    @no_title
+    def rewrite_css(self) -> str | bytes:
+        return CssRewriter(self.url_rewriter).rewrite(self.content)
 
-    def rewrite_js(self, opts):
-        rewriter = build_domain_specific_rewriter(self.path, self.url_rewriter)
-        return (
-            "",
-            rewriter.rewrite(self.content_str, opts),
-        )
+    @no_title
+    def rewrite_js(self, opts: dict[str, Any]) -> str | bytes:
+        ds_rules = get_ds_rules(self.orig_url_str)
+        rewriter = JsRewriter(self.url_rewriter, ds_rules)
+        return rewriter.rewrite(self.content.decode(), opts)
+
+    @no_title
+    def rewrite_jsonp(self) -> str | bytes:
+        content = self.content.decode()
+        match = JSONP_REGEX.match(content)
+        if not match:
+            return content
+
+        callback = extract_jsonp_callback(self.orig_url_str)
+
+        if not callback:
+            return content
+
+        return callback + match.group(1)
+
+    @no_title
+    def rewrite_json(self) -> str | bytes:
+        content = self.rewrite_jsonp()[1]
+        ds_rules = get_ds_rules(self.orig_url_str)
+        if not ds_rules:
+            return content
+
+        rewriter = RxRewriter(ds_rules)
+        return rewriter.rewrite(content, {})

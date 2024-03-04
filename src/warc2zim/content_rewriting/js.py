@@ -187,6 +187,13 @@ def create_js_rules() -> list[TransformationRule]:
 REWRITE_JS_RULES = create_js_rules()
 
 
+def js_rewriter_builder(url_rewriter: UrlRewriterProto):
+    def build_js_rewriter(extra_rules):
+        return JsRewriter(url_rewriter, extra_rules)
+
+    return build_js_rewriter
+
+
 class JsRewriter(RxRewriter):
     """
     JsRewriter is in charge of rewriting the js code stored in our zim file.
@@ -260,7 +267,7 @@ class JsRewriter(RxRewriter):
 
         self._compile_rules(rules)
 
-        new_text = self.rewrite_content(text, opts)
+        new_text = super().rewrite(text, opts)
 
         if opts["isModule"]:
             return self._get_module_decl(GLOBAL_OVERRIDES) + new_text
