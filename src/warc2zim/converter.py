@@ -108,7 +108,7 @@ class Converter:
         self.source: str = args.source or main_url
         self.scraper = "warc2zim " + get_version()
         self.illustration = b""
-        self.main_url = normalize(main_url)
+        self.main_path = normalize(main_url)
 
         self.output = Path(args.output)
         self.zim_file = args.zim_file
@@ -227,7 +227,7 @@ class Converter:
 
         self.creator = Creator(
             self.full_filename,
-            main_path=self.main_url,
+            main_path=self.main_path,
         )
 
         self.creator.config_metadata(
@@ -247,7 +247,9 @@ class Converter:
 
         for filename in importlib.resources.files("warc2zim.statics").iterdir():
             with importlib.resources.as_file(filename) as file:
-                self.creator.add_item(StaticArticle(file, self.main_url))
+                self.creator.add_item(
+                    StaticArticle(filename=file, main_path=self.main_path)
+                )
 
         # Add wombat_setup.js
         wombat_setup_template = self.env.get_template("wombat_setup.js")
@@ -299,12 +301,12 @@ class Converter:
             if record.rec_type == "revisit":
                 continue
 
-            # if no main_url, use first 'text/html' record as the main page by default
+            # if no main_path, use first 'text/html' record as the main page by default
             # not guaranteed to always work
             mime = get_record_mime_type(record)
 
             if (
-                not self.main_url
+                not self.main_path
                 and mime == "text/html"
                 and record.payload_length != 0
                 and (
@@ -312,9 +314,9 @@ class Converter:
                     or record.http_headers.get_statuscode() == "200"
                 )
             ):
-                self.main_url = normalized_url
+                self.main_path = normalized_url
 
-            if urldefrag(self.main_url).url != normalized_url:
+            if urldefrag(self.main_path).url != normalized_url:
                 continue
 
             # if we get here, found record for the main page
@@ -343,7 +345,7 @@ class Converter:
 
         if not main_page_found:
             raise KeyError(
-                f"Unable to find WARC record for main page: {self.main_url}, aborting"
+                f"Unable to find WARC record for main page: {self.main_path}, aborting"
             )
 
     def find_icon_and_language(self, content):
@@ -362,13 +364,13 @@ class Converter:
                 )
             ):
                 self.favicon_url = urljoin(
-                    self.main_url,
+                    self.main_path,
                     icon.attrs[  # pyright: ignore[reportGeneralTypeIssues ,reportAttributeAccessIssue]
                         "href"
                     ],
                 )
             else:
-                self.favicon_url = urljoin(self.main_url, "/favicon.ico")
+                self.favicon_url = urljoin(self.main_path, "/favicon.ico")
 
         if not self.language:
             # HTML5 Standard

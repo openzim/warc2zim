@@ -45,10 +45,10 @@ class WARCPayloadItem(StaticItem):
 
 
 class StaticArticle(StaticItem):
-    def __init__(self, filename: Path, main_url, **kwargs):
+    def __init__(self, filename: Path, main_path: str, **kwargs):
         super().__init__(**kwargs)
         self.filename = filename
-        self.main_url = main_url
+        self.main_path = main_path
 
         self.mime = get_mime_for_name(filename)
         self.mime = self.mime or "application/octet-stream"
