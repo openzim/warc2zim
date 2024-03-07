@@ -21,6 +21,7 @@ import pathlib
 import re
 import tempfile
 import time
+from http import HTTPStatus
 from pathlib import Path
 from urllib.parse import urldefrag, urljoin, urlsplit, urlunsplit
 
@@ -99,6 +100,7 @@ class Converter:
         self.name = args.name
         self.title = args.title
         self.favicon_url = args.favicon
+        self.favicon_path = None
         self.language = args.lang
         self.description = args.description
         self.long_description = args.long_description
@@ -108,7 +110,7 @@ class Converter:
         self.source: str = args.source or main_url
         self.scraper = "warc2zim " + get_version()
         self.illustration = b""
-        self.main_url = normalize(main_url)
+        self.main_path = normalize(main_url)
 
         self.output = Path(args.output)
         self.zim_file = args.zim_file
@@ -227,7 +229,7 @@ class Converter:
 
         self.creator = Creator(
             self.full_filename,
-            main_path=self.main_url,
+            main_path=self.main_path,
         )
 
         self.creator.config_metadata(
@@ -247,7 +249,9 @@ class Converter:
 
         for filename in importlib.resources.files("warc2zim.statics").iterdir():
             with importlib.resources.as_file(filename) as file:
-                self.creator.add_item(StaticArticle(file, self.main_url))
+                self.creator.add_item(
+                    StaticArticle(filename=file, main_path=self.main_path)
+                )
 
         # Add wombat_setup.js
         wombat_setup_template = self.env.get_template("wombat_setup.js")
@@ -299,12 +303,12 @@ class Converter:
             if record.rec_type == "revisit":
                 continue
 
-            # if no main_url, use first 'text/html' record as the main page by default
+            # if no main_path, use first 'text/html' record as the main page by default
             # not guaranteed to always work
             mime = get_record_mime_type(record)
 
             if (
-                not self.main_url
+                not self.main_path
                 and mime == "text/html"
                 and record.payload_length != 0
                 and (
@@ -312,12 +316,32 @@ class Converter:
                     or record.http_headers.get_statuscode() == "200"
                 )
             ):
-                self.main_url = normalized_url
+                self.main_path = normalized_url
 
-            if urldefrag(self.main_url).url != normalized_url:
+            if urldefrag(self.main_path).url != normalized_url:
                 continue
 
             # if we get here, found record for the main page
+
+            # if main page is a redirect, update the main url accordingly
+            if record.http_headers:
+                status_code = int(record.http_headers.get_statuscode())
+                if status_code in [
+                    HTTPStatus.MOVED_PERMANENTLY,
+                    HTTPStatus.FOUND,
+                ]:
+                    original_path = self.main_path
+                    self.main_path = normalize(
+                        urljoin(
+                            get_record_url(record),
+                            record.http_headers.get_header("Location").strip(),
+                        )
+                    )
+                    logger.warning(
+                        f"HTTP {status_code} occurred on main page; "
+                        f"replacing {original_path} with '{self.main_path}'"
+                    )
+                    continue
 
             # if main page is not html, still allow (eg. could be text, img),
             # but print warning
@@ -334,19 +358,19 @@ class Converter:
             if not self.title:
                 self.title = parse_title(content)
 
-            self.find_icon_and_language(content)
+            self.find_icon_and_language(record, content)
 
             logger.debug(f"Title: {self.title}")
             logger.debug(f"Language: {self.language}")
-            logger.debug(f"Favicon: {self.favicon_url}")
+            logger.debug(f"Favicon: {self.favicon_url or self.favicon_path}")
             main_page_found = True
 
         if not main_page_found:
             raise KeyError(
-                f"Unable to find WARC record for main page: {self.main_url}, aborting"
+                f"Unable to find WARC record for main page: {self.main_path}, aborting"
             )
 
-    def find_icon_and_language(self, content):
+    def find_icon_and_language(self, record, content):
         soup = BeautifulSoup(content, "html.parser")
 
         if not self.favicon_url:
@@ -361,14 +385,19 @@ class Converter:
                     "href"
                 )
             ):
-                self.favicon_url = urljoin(
-                    self.main_url,
-                    icon.attrs[  # pyright: ignore[reportGeneralTypeIssues ,reportAttributeAccessIssue]
-                        "href"
-                    ],
-                )
+                icon_url = icon.attrs[  # pyright: ignore[reportGeneralTypeIssues ,reportAttributeAccessIssue]
+                    "href"
+                ]
             else:
-                self.favicon_url = urljoin(self.main_url, "/favicon.ico")
+                icon_url = "/favicon.ico"
+
+            # transform icon URL into WARC path
+            self.favicon_path = normalize(
+                urljoin(
+                    get_record_url(record),
+                    icon_url,
+                )
+            )
 
         if not self.language:
             # HTML5 Standard
@@ -398,42 +427,47 @@ class Converter:
                 return
 
     def retrieve_illustration(self):
-        """sets self.illustration from self.favicon_url either from WARC or download
+        """sets self.illustration either from WARC or download
 
         Uses fallback in case of errors/missing"""
-        if not self.favicon_url:
-            self.favicon_url = "fallback.png"
-            self.illustration = DEFAULT_DEV_ZIM_METADATA["Illustration_48x48_at_1"]
-            return
-        # look into WARC records first
-        for record in self.iter_all_warc_records():
-            url = get_record_url(record)
-            if not url or record.rec_type == "revisit":
-                continue
-            if url == self.favicon_url:
-                logger.debug(f"Found WARC record for favicon: {self.favicon_url}")
-                if record and record.http_headers.get_statuscode() != "200":
-                    logger.warning("WARC record for favicon is unuable. Skipping")
-                    self.favicon_url = "fallback.png"
-                    self.illustration = DEFAULT_DEV_ZIM_METADATA[
-                        "Illustration_48x48_at_1"
-                    ]
-                    return
-                self.illustration = get_record_content(record)
 
-        # favicon_url not in WARC ; downloading
-        try:
-            dst = io.BytesIO()
-            if not stream_file(self.favicon_url, byte_stream=dst)[0]:
-                raise OSError(
-                    "No bytes received downloading favicon"
-                )  # pragma: no cover
-            self.illustration = dst.getvalue()
-        except Exception as exc:
-            logger.warning(f"Unable to retrieve favicon. Using fallback: {exc}")
-            self.favicon_url = "fallback.png"
+        if self.favicon_url or self.favicon_path:
+            # look into WARC records
+            for record in self.iter_all_warc_records():
+                if record.rec_type != "response":
+                    continue
+                url = get_record_url(record)
+                path = normalize(url)
+                if path == self.favicon_path or url == self.favicon_url:
+                    logger.debug("Found WARC record for favicon")
+                    if (
+                        record.http_headers
+                        and record.http_headers.get_statuscode() != "200"
+                    ):  # pragma: no cover
+                        logger.warning("WARC record for favicon is unusable")
+                        break
+                    self.illustration = get_record_content(record)
+                    break
+
+            # download favicon_url (might be custom URL, not present in WARC records)
+            if not self.illustration and self.favicon_url:
+                try:
+                    dst = io.BytesIO()
+                    if not stream_file(self.favicon_url, byte_stream=dst)[0]:
+                        raise OSError(
+                            "No bytes received downloading favicon"
+                        )  # pragma: no cover
+                    self.illustration = dst.getvalue()
+                except Exception as exc:
+                    logger.warning("Unable to download favicon", exc_info=exc)
+
+        if not self.illustration:
+            logger.warning("Illustration not found, using default")
             self.illustration = DEFAULT_DEV_ZIM_METADATA["Illustration_48x48_at_1"]
-            return
+
+        # Illustration is now set, no need to keep url/path anymore
+        del self.favicon_url
+        del self.favicon_path
 
     def convert_illustration(self):
         """convert self.illustration into a 48x48px PNG with fallback"""
