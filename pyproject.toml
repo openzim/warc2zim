@@ -71,6 +71,9 @@ exclude = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/warc2zim"]
+artifacts = [
+  "src/warc2zim/statics/**",
+]
 
 [tool.hatch.envs.default]
 features = ["dev"]
