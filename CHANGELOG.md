@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.6]
+
+### Changed
+
+- Changed default publisher metadata from 'Kiwix' to 'openZIM'
 
 ## [1.5.5] - 2024-01-18
 
