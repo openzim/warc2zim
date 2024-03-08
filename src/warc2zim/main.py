@@ -98,7 +98,7 @@ def main(args=None):
         "If unspecified, will attempt to detect from main page, or use 'eng'",
         default="",
     )
-    parser.add_argument("--publisher", help="ZIM publisher", default="Kiwix")
+    parser.add_argument("--publisher", help="ZIM publisher", default="openZIM")
     parser.add_argument("--creator", help="ZIM creator", default="-")
     parser.add_argument("--source", help="ZIM source", default="")
 
