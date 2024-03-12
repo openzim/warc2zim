@@ -36,7 +36,7 @@
     style=" background:#FFF; border:0; border-radius:3px; box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin: 1px; max-width:540px; min-width:326px; padding:0; width:99.375%; width:-webkit-calc(100% - 2px); width:calc(100% - 2px);">
     <div style="padding:16px;"> <a
         href="https://www.instagram.com/p/C2Hi4fKMG2j/?utm_source=ig_embed&amp;utm_campaign=loading"
-        style=" background:#FFFFFF; line-height:0; padding:0 0; text-align:center; text-decoration:none; width:100%;"
+        style=" background:#FFFFFF; line-height:0; padding:0; text-align:center; text-decoration:none; width:100%;"
         target="_blank">
         <div style=" display: flex; flex-direction: row; align-items: center;">
           <div
@@ -286,6 +286,27 @@
 
   Not present here, it becomes valid at every file save in a text editor.
 
+  <h2>URL encoding test(s)</h2>
+
+  <p>Image with non-encoded chars in name with non-encoded special chars in link</p>
+
+  <img width="200" src="./images/urlencoding1_icône-débuter-Solidarité-Numérique_1@300x.png" />
+
+  <p>Image with non-encoded chars in name and already encoded special chars</p>
+
+  <img width="200" src="./images/urlencoding1_ico%CC%82ne-de%CC%81buter-Solidarite%CC%81-Nume%CC%81rique_1%40300x.png" />
+
+  <p>Image with non-encoded chars in name and a mix of non-encoded and already encoded special chars</p>
+
+  <img width="200" src="./images/urlencoding1_icône-débuter-Solidarite%CC%81-Nume%CC%81rique_1@300x.png" />
+
+  <p>Image with many weird characters</p>
+
+  <img width="200" src="./images/urlencoding4_(_[_|_]_).png" />
+
+  <p>Image with UTF-8 characters</p>
+
+  <img width="200" src="./images/urlencoding4_ؼ.png" />
 
 </body>
 
