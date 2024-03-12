@@ -55,6 +55,11 @@ from warc2zim.utils import (
     parse_title,
 )
 
+from warcio.recordloader import ArcWarcRecord
+from jinja2.environment import Template
+from warc2zim.content_rewriting.generic import Rewriter
+
+
 # HTML mime types
 HTML_TYPES = ("text/html", "application/xhtml", "application/xhtml+xml")
 
@@ -297,6 +302,17 @@ class Converter:
 
             self.warc_urls.add(normalized_url)
 
+            mime = get_record_mime_type(record)
+
+            if mime == "application/javascript":
+                normalized_url_for_module = normalize(
+                    url, additional_query="zimjstype=module"
+                )
+                self.warc_urls.add(normalized_url_for_module)
+                logger.debug(
+                    f"Adding a trick {normalized_url_for_module} for {normalized_url}"
+                )
+
             if main_page_found:
                 continue
 
@@ -305,7 +321,6 @@ class Converter:
 
             # if no main_path, use first 'text/html' record as the main page by default
             # not guaranteed to always work
-            mime = get_record_mime_type(record)
 
             if (
                 not self.main_path
@@ -524,22 +539,27 @@ class Converter:
                 logger.debug("Skipping self-redirect: " + url)
                 return
 
-            payload_item = WARCPayloadItem(
-                normalized_url,
-                record,
-                self.head_template,
-                self.css_insert,
-                self.warc_urls,
-            )
+            mimetype = get_record_mime_type(record)
 
-            if len(payload_item.content) != 0:
-                try:
-                    self.creator.add_item(payload_item)
-                except RuntimeError as exc:
-                    if not DUPLICATE_EXC_STR.match(str(exc)):
-                        raise exc
-                self.total_records += 1
-                self.update_stats()
+            for title, content in Rewriter(
+                normalized_url, record, self.warc_urls
+            ).rewrite(self.head_template, self.css_insert):
+
+                payload_item = WARCPayloadItem(
+                    path=normalized_url,
+                    mimetype=mimetype,
+                    title=title,
+                    content=content,
+                )
+
+                if len(payload_item.content) != 0:
+                    try:
+                        self.creator.add_item(payload_item)
+                    except RuntimeError as exc:
+                        if not DUPLICATE_EXC_STR.match(str(exc)):
+                            raise exc
+                    self.total_records += 1
+                    self.update_stats()
 
             self.indexed_urls.add(normalized_url)
 

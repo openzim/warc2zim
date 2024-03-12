@@ -138,12 +138,24 @@ class ImportTestContent(ContentForTests):
     params=[
         # import rewrite
         ImportTestContent(
-            """import "foo";
-
-a = this.location""",
-            """import "foo";
-
-a = _____WB$wombat$check$this$function_____(this).location""",
+            """import "foo";""",
+            """import "foo";""",
+        ),
+        ImportTestContent(
+            """import "./bar";""",
+            """import "bar";""",
+        ),
+        ImportTestContent(
+            """import "./bar/blu.js";""",
+            """import "bar/blu.js";""",
+        ),
+        ImportTestContent(
+            """import "./bar/blu.js?param=value";""",
+            """import "bar/blu.js?param=value";""",
+        ),
+        ImportTestContent(
+            """import "./bar/blu.js?1234";""",
+            """import "bar/blu.js";""",  # digits are removed by fuzzy rules
         ),
         # import/export module rewrite
         ImportTestContent(
@@ -213,15 +225,120 @@ export{ a, $ as b};
         ),
     ]
 )
-def rewrite_import_content(request):
+def rewrite_import_content_classic(request):
     yield request.param
 
 
-def test_import_rewrite(rewrite_import_content):
-    url_rewriter = ArticleUrlRewriter(rewrite_import_content.article_url, set())
+def test_import_rewrite_classic(rewrite_import_content_classic):
+    url_rewriter = ArticleUrlRewriter(rewrite_import_content_classic.article_url, set())
     assert (
-        JsRewriter(url_rewriter).rewrite(rewrite_import_content.input_str)
-        == rewrite_import_content.expected_str
+        JsRewriter(url_rewriter).rewrite(rewrite_import_content_classic.input_str)
+        == rewrite_import_content_classic.expected_str
+    )
+
+
+@pytest.fixture(
+    params=[
+        # import rewrite
+        ImportTestContent(
+            """import "foo";""",
+            """import "foo";""",
+        ),
+        ImportTestContent(
+            """import "./bar";""",
+            """import "bar?zimjstype=module";""",
+        ),
+        ImportTestContent(
+            """import "./bar/blu.js";""",
+            """import "bar/blu.js?zimjstype=module";""",
+        ),
+        ImportTestContent(
+            """import "./bar/blu.js?param=value";""",
+            """import "bar/blu.js?param=value&zimjstype=module";""",
+        ),
+        ImportTestContent(
+            """import "./bar/blu.js?1234";""",
+            """import "bar/blu.js?zimjstype=module";""",  # digits are removed by fuzzy rules
+        ),
+        # import/export module rewrite
+        ImportTestContent(
+            """a = this.location
+
+export { a };
+""",
+            """a = _____WB$wombat$check$this$function_____(this).location
+
+export { a };
+""",
+        ),
+        # rewrite ESM module import
+        ImportTestContent(
+            'import "https://example.com/file.js"',
+            'import "../../../example.com/file.js?zimjstype=module"',
+        ),
+        ImportTestContent(
+            '''
+import {A, B}
+ from
+ "https://example.com/file.js"''',
+            '''
+import {A, B}
+ from
+ "../../../example.com/file.js?zimjstype=module"''',
+        ),
+        ImportTestContent(
+            """
+import * from "https://example.com/file.js"
+import A from "http://example.com/path/file2.js";
+
+import {C, D} from "./abc.js";
+import {X, Y} from "../parent.js";
+import {E, F, G} from "/path.js";
+import { Z } from "../../../path.js";
+
+B = await import(somefile);
+""",
+            """
+import * from "../../../example.com/file.js?zimjstype=module"
+import A from "../../../example.com/path/file2.js?zimjstype=module";
+
+import {C, D} from "abc.js?zimjstype=module";
+import {X, Y} from "../parent.js?zimjstype=module";
+import {E, F, G} from "../../path.js?zimjstype=module";
+import { Z } from "../../path.js?zimjstype=module";
+
+B = await ____wb_rewrite_import__(import.meta.url, somefile);
+""",
+        ),
+        ImportTestContent(
+            'import"import.js";import{A, B, C} from"test.js";(function() => { frames[0]'
+            '.href = "/abc"; })',
+            'import"import.js";import{A, B, C} from"test.js";(function() => { frames[0]'
+            '.href = "/abc"; })',
+        ),
+        ImportTestContent(
+            """a = location
+
+export{ a, $ as b};
+""",
+            """a = location
+
+export{ a, $ as b};
+""",
+        ),
+    ]
+)
+def rewrite_import_content_module(request):
+    yield request.param
+
+
+def test_import_rewrite_module(rewrite_import_content_module):
+    url_rewriter = ArticleUrlRewriter(rewrite_import_content_module.article_url, set())
+    assert (
+        JsRewriter(url_rewriter).rewrite(
+            rewrite_import_content_module.input_str, opts={"isModule": True}
+        )
+        == rewrite_import_content_module.expected_str
     )
 
 
@@ -271,5 +388,6 @@ def no_rewrite_js_content(request):
 
 def test_no_rewrite(no_rewrite_js_content):
     assert (
-        JsRewriter(lambda x: x).rewrite(no_rewrite_js_content) == no_rewrite_js_content
+        JsRewriter(lambda x, _: x).rewrite(no_rewrite_js_content)
+        == no_rewrite_js_content
     )

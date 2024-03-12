@@ -113,7 +113,7 @@ def reduce(path: str) -> str:
     return path
 
 
-def normalize(url: str | None) -> str:
+def normalize(url: str | None, additional_query: str | None = None) -> str:
     """Normalize a properly contructed url to a path to use as a entry's key.
 
     >>> normalize("http://exemple.com/path/to/article?foo=bar")
@@ -129,16 +129,30 @@ def normalize(url: str | None) -> str:
         return url  # pyright: ignore[reportGeneralTypeIssues, reportReturnType]
 
     url_parts = urlsplit(url)
-    url_parts = url_parts._replace(scheme="")
 
     # Remove the netloc (by moving it into path)
     if url_parts.netloc:
         new_path = url_parts.netloc + url_parts.path
-        url_parts = url_parts._replace(netloc="", path=new_path)
-    if url_parts.path and url_parts.path[0] == "/":
-        url_parts = url_parts._replace(path=url_parts.path[1:])
+    else:
+        if url_parts.path and url_parts.path[0] == "/":
+            new_path = url_parts.path[1:]
+        else:
+            new_path = url_parts.path
 
-    path = urlunsplit(url_parts)
+    if additional_query:
+        if url_parts.query:
+            # the condition below is a hack to take into account the fuzzy rule which
+            # remove query parameters under certain conditions
+            if reduce("foo?" + url_parts.query) == "foo?":
+                new_query = additional_query
+            else:
+                new_query = url_parts.query + "&" + additional_query
+        else:
+            new_query = additional_query
+    else:
+        new_query = url_parts.query
+
+    path = urlunsplit(["", "", new_path, new_query, url_parts.fragment])
     path = reduce(path)
 
     return path
@@ -160,7 +174,13 @@ class ArticleUrlRewriter:
             # We want a directory
             self.base_path = posixpath.dirname(self.base_path)
 
-    def __call__(self, url: str, *, rewrite_all_url: bool = True) -> str:
+    def __call__(
+        self,
+        url: str,
+        additional_query: str | None = None,
+        *,
+        rewrite_all_url: bool = True,
+    ) -> str:
         """Rewrite a url contained in a article.
 
         The url is "fully" rewrited to point to a normalized entry path
@@ -173,7 +193,7 @@ class ArticleUrlRewriter:
 
         absolute_url = urljoin(self.article_url, url)
 
-        normalized_url = normalize(absolute_url)
+        normalized_url = normalize(absolute_url, additional_query=additional_query)
 
         if rewrite_all_url or get_without_fragment(normalized_url) in self.known_urls:
             return self.from_normalized(normalized_url)
@@ -193,5 +213,6 @@ class ArticleUrlRewriter:
             relative_path += "/"
         normalized_url = normalized_url._replace(path=relative_path)
         normalized_url = urlunsplit(normalized_url)
+        return normalized_url
 
         return quote(normalized_url, safe="/#")

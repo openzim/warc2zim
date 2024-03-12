@@ -199,7 +199,7 @@ class TestWarc2Zim:
         resize_image(dst, width=48, height=48, method="cover")
         return dst.getvalue()
 
-    def test_normalize(self):
+    def test_normalize_no_addition(self):
         assert normalize(None) is None
         assert normalize("") == ""
         assert normalize("https://exemple.com") == "exemple.com"
@@ -225,11 +225,79 @@ class TestWarc2Zim:
 
         assert normalize("http://test@example.com/") == "test@example.com/"
 
+        # digits are remove by fuzzy rules
         assert (
             normalize(
                 "http://lesfondamentaux.reseau-canope.fr/fileadmin/template/css/main.css?1588230493"
             )
             == "lesfondamentaux.reseau-canope.fr/fileadmin/template/css/main.css?"
+        )
+
+    def test_normalize_with_addition(self):
+        assert normalize(None, additional_query="param1=value1") is None
+        assert normalize("", additional_query="param1=value1") == ""
+        assert (
+            normalize("https://exemple.com", additional_query="param1=value1")
+            == "exemple.com?param1=value1"
+        )
+        assert (
+            normalize("https://exemple.com/", additional_query="param1=value1")
+            == "exemple.com/?param1=value1"
+        )
+        assert (
+            normalize("http://example.com/?foo=bar", additional_query="param1=value1")
+            == "example.com/?foo=bar&param1=value1"
+        )
+
+        assert (
+            normalize("https://example.com/?foo=bar", additional_query="param1=value1")
+            == "example.com/?foo=bar&param1=value1"
+        )
+
+        assert (
+            normalize(
+                "https://example.com/some/path/http://example.com/?foo=bar",
+                additional_query="param1=value1",
+            )
+            == "example.com/some/path/http://example.com/?foo=bar&param1=value1"
+        )
+
+        assert (
+            normalize(
+                "example.com/some/path/http://example.com/?foo=bar",
+                additional_query="param1=value1",
+            )
+            == "example.com/some/path/http://example.com/?foo=bar&param1=value1"
+        )
+
+        assert (
+            normalize(
+                "http://example.com/path/with/final/slash/",
+                additional_query="param1=value1",
+            )
+            == "example.com/path/with/final/slash/?param1=value1"
+        )
+
+        assert (
+            normalize("http://test@example.com/", additional_query="param1=value1")
+            == "test@example.com/?param1=value1"
+        )
+
+        # digits are remove by fuzzy rules
+        assert (
+            normalize(
+                "http://lesfondamentaux.reseau-canope.fr/fileadmin/template/css/main.css?1588230493",
+                additional_query="param1=value1",
+            )
+            == "lesfondamentaux.reseau-canope.fr/fileadmin/template/css/main.css?param1=value1"
+        )
+
+        assert (
+            normalize(
+                "http://googlevideo.com/videoplayback?id=123&param2=value2",
+                additional_query="param1=value1",
+            )
+            == "youtube.fuzzy.replayweb.page/videoplayback?id=123&param1=value1"
         )
 
     def test_warc_to_zim_specify_params_and_metadata(self, tmp_path):

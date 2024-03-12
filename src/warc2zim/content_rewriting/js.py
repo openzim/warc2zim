@@ -285,7 +285,7 @@ class JsRewriter(RxRewriter):
             def func(m_object, _opts):
                 def sub_funct(match):
                     return (
-                        f"{match.group(1)}{self.url_rewriter(match.group(2))}"
+                        f"{match.group(1)}{self.url_rewriter(match.group(2), "zimjstype=module")}"
                         f"{match.group(3)}"
                     )
 

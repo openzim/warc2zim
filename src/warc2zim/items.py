@@ -26,18 +26,16 @@ class WARCPayloadItem(StaticItem):
     def __init__(
         self,
         path: str,
-        record: ArcWarcRecord,
-        head_template: Template,
-        css_insert: str | None,
-        known_urls: set[str],
+        mimetype: str,
+        title: str,
+        content: str | bytes,
     ):
         super().__init__()
 
         self.path = path
-        self.mimetype = get_record_mime_type(record)
-        (self.title, self.content) = Rewriter(path, record, known_urls).rewrite(
-            head_template, css_insert
-        )
+        self.mimetype = mimetype
+        self.title = title
+        self.content = content
 
     def get_hints(self):
         is_front = self.mimetype.startswith("text/html")

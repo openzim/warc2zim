@@ -60,6 +60,7 @@ class Rewriter:
         path: str,
         record: ArcWarcRecord,
         known_urls: set[str],
+        rewrite_mode: str | None = None,
     ):
         self.content = get_record_content(record)
 
@@ -71,7 +72,10 @@ class Rewriter:
         self.orig_url_str = get_record_url(record)
         self.url_rewriter = ArticleUrlRewriter(self.orig_url_str, known_urls)
 
-        self.rewrite_mode = self.get_rewrite_mode(record, mimetype)
+        if rewrite_mode:
+            self.rewrite_mode = rewrite_mode
+        else:
+            self.rewrite_mode = self.get_rewrite_mode(record, mimetype)
 
     @property
     def content_str(self):
@@ -82,25 +86,24 @@ class Rewriter:
 
     def rewrite(
         self, head_template: Template, css_insert: str | None
-    ) -> tuple[str, str | bytes]:
-        opts = {}
+    ) -> list[tuple[str, str | bytes]]:
 
         if self.rewrite_mode == "html":
-            return self.rewrite_html(head_template, css_insert)
+            return [self.rewrite_html(head_template, css_insert)]
 
         if self.rewrite_mode == "css":
-            return self.rewrite_css()
+            return [self.rewrite_css()]
 
         if self.rewrite_mode == "javascript":
-            return self.rewrite_js(opts)
+            return [self.rewrite_js(opts={}), self.rewrite_js(opts={"isModule": True})]
 
         if self.rewrite_mode == "jsonp":
-            return self.rewrite_jsonp()
+            return [self.rewrite_jsonp()]
 
         if self.rewrite_mode == "json":
-            return self.rewrite_json()
+            return [self.rewrite_json()]
 
-        return ("", self.content)
+        return [("", self.content)]
 
     def get_rewrite_mode(self, record, mimetype):
         if mimetype == "text/html":

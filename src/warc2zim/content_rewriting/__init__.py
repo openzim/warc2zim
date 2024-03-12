@@ -1,3 +1,3 @@
 from collections.abc import Callable
 
-UrlRewriterProto = Callable[[str], str]
+UrlRewriterProto = Callable[[str, str | None], str]
