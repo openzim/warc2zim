@@ -30,6 +30,11 @@
     <p>An image should be displayed below</p>
     <img width="200" src="./images/urlencoding1_icône-débuter-Solidarite%CC%81-Nume%CC%81rique_1@300x.png" />
 
+    <h2>Image with non-encoded chars in name with non-encoded special chars in link and a query parameter and fragment with reserved chars</h2>
+
+    <p>An image should be displayed below as well</p>
+    <img width="200" src="./images/urlencoding1_icône-débuter-Solidarité-Numérique_1@300x.png?param1=value1&param2=value%262#anchor%233" />
+
     <hr/>
 
     <h2>Image with already encoded chars in name with non-encoded special chars in link</h2>
@@ -75,6 +80,11 @@
 
     <p>An image should be displayed below</p>
     <img width="200" src="./images/urlencoding4_ؼ.png" />
+
+    <h2>Hostname with UTF-8 chars</h2>
+
+    <p>An image should be displayed below</p>
+    <img width="200" src="http://jédéacçents.oviles.info/urlencoding5_(_[_|_ؼ_]_).png" />
 
 </body>
 
