@@ -288,29 +288,38 @@
 
   <h2>URL encoding test(s)</h2>
 
-  <p>Image with non-encoded chars in name with non-encoded special chars in link</p>
+  <p>Image with non-encoded chars in name with non-encoded special chars in link - an image should be displayed below</p>
 
   <img width="200" src="./images/urlencoding1_icône-débuter-Solidarité-Numérique_1@300x.png" />
 
-  <p>Image with non-encoded chars in name and already encoded special chars</p>
+  <p>Image with non-encoded chars in name and already encoded special chars - an image should be displayed below</p>
 
   <img width="200" src="./images/urlencoding1_ico%CC%82ne-de%CC%81buter-Solidarite%CC%81-Nume%CC%81rique_1%40300x.png" />
 
-  <p>Image with non-encoded chars in name and a mix of non-encoded and already encoded special chars</p>
+  <p>Image with non-encoded chars in name and a mix of non-encoded and already encoded special chars - an image should be displayed below</p>
 
   <img width="200" src="./images/urlencoding1_icône-débuter-Solidarite%CC%81-Nume%CC%81rique_1@300x.png" />
 
-  <p>Image with many weird characters</p>
+  <p>Image with many weird characters - an image should be displayed below</p>
 
   <img width="200" src="./images/urlencoding4_(_[_|_]_).png" />
 
-  <p>Image with UTF-8 characters</p>
+  <p>Image with UTF-8 characters - an image should be displayed below</p>
 
   <img width="200" src="./images/urlencoding4_ؼ.png" />
 
-  <p>Hostname with UTF-8 chars</p>
+  <p>Hostname with UTF-8 chars and simple image - an image should be displayed below</p>
+  <img width="200" src="http://jédéacçents.oviles.info/image1.png" />
 
+  <p>Hostname with UTF-8 chars and image with UTF-8 chars - an image should be displayed below</p>
   <img width="200" src="http://jédéacçents.oviles.info/urlencoding5_(_[_|_ؼ_]_).png" />
+
+  <p>Hostname with UTF-8 chars and query parameter 1 - an image should be displayed below with a 1 in the right</p>
+  <img width="200" src="http://jédéacçents.oviles.info/image.php?path=urlencoding5_(_[_|_ؼ_]_)_1.png" />
+
+  <p>Hostname with UTF-8 chars and query parameter 2 - an image should be displayed below with a 2 in the right</p>
+  <img width="200" src="http://jédéacçents.oviles.info/image.php?path=urlencoding5_(_[_|_ؼ_]_)_2.png" />
+
 
 </body>
 
