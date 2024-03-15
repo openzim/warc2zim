@@ -1,10 +1,11 @@
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
 class ContentForTests:
-    input_: str | bytes
-    expected: str | bytes = ""
+    input_: str | bytes | Any
+    expected: str | bytes | Any = ""
     article_url: str = "kiwix.org"
 
     def __post_init__(self):

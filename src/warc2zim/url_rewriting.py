@@ -61,56 +61,134 @@ from urllib.parse import (
 logger = logging.getLogger("warc2zim.url_rewriting")
 
 
-FUZZY_RULES = [
+FUZZY_RULES_PYTHON = [
     {
-        "pattern": r".*googlevideo.com/(videoplayback(?=\?)).*[?&](id=[^&]+).*",
-        "replace": r"youtube.fuzzy.replayweb.page/\1?\2",
+        "pattern": (
+            r"(?P<scheme>https?://)?.*googlevideo.com/(?P<videoplayback>videoplayback"
+            r"(?=\?)).*[?&](?P<id>id=[^&]+).*"
+        ),
+        "replace": r"\g<scheme>youtube.fuzzy.replayweb.page/\g<videoplayback>?\g<id>",
     },
     {
-        "pattern": r"(?:www\.)?youtube(?:-nocookie)?\.com/(get_video_info\?).*(video_id"
-        r"=[^&]+).*",
-        "replace": r"youtube.fuzzy.replayweb.page/\1\2",
-    },
-    {"pattern": r"([^?]+\?)[\d]+$", "replace": r"\1"},
-    {
-        "pattern": r"(?:www\.)?youtube(?:-nocookie)?\.com\/(youtubei\/[^?]+).*(videoId["
-        r"^&]+).*",
-        "replace": r"youtube.fuzzy.replayweb.page/\1?\2",
+        "pattern": (
+            r"(?P<scheme>https?://)?(?:www\.)?youtube(?:-nocookie)?\.com/"
+            r"(?P<prefix>get_video_info\?).*(?P<videoid>video_id=[^&]+).*"
+        ),
+        "replace": r"\g<scheme>youtube.fuzzy.replayweb.page/\g<prefix>\g<videoid>",
     },
     {
-        "pattern": r"(?:www\.)?youtube(?:-nocookie)?\.com/embed/([^?]+).*",
-        "replace": r"youtube.fuzzy.replayweb.page/embed/\1",
+        "pattern": r"(?P<scheme>https?://)?(?P<baseurl>[^?]+\?)[\d]+$",
+        "replace": r"\g<scheme>\g<baseurl>",
+    },
+    {
+        "pattern": (
+            r"(?P<scheme>https?://)?(?:www\.)?youtube(?:-nocookie)?\.com\/"
+            r"(?P<prefix>youtubei\/[^?]+).*(?P<videoid>videoId[^&]+).*"
+        ),
+        "replace": r"\g<scheme>youtube.fuzzy.replayweb.page/\g<prefix>?\g<videoid>",
+    },
+    {
+        "pattern": (
+            r"(?P<scheme>https?://)?(?:www\.)?youtube(?:-nocookie)?\.com/embed/"
+            r"(?P<path>[^?]+).*"
+        ),
+        "replace": r"\g<scheme>youtube.fuzzy.replayweb.page/embed/\g<path>",
     },
     # This is an extra rule for JS rewriting only.
     # Youtube replayer may add thing to an already rewrited url. We have to clean it
-    # again
+    # again ; nota: this rule is only usefull once injected inside Wombat. It is not
+    # used for Python rewriting of HTML/JS/...
     {
-        "pattern": r"youtube.fuzzy.replayweb.page/embed/([^?&]+).*",
-        "replace": r"youtube.fuzzy.replayweb.page/embed/\1",
+        "pattern": (
+            r"(?P<scheme>https?://)?youtube.fuzzy.replayweb.page/embed/"
+            r"(?P<path>[^?&]+).*"
+        ),
+        "replace": r"\g<scheme>youtube.fuzzy.replayweb.page/embed/\g<path>",
     },
     {
-        "pattern": r".*(?:gcs-vimeo|vod|vod-progressive)\.akamaized\.net.*?/([\d/]+"
-        r".mp4)$",
-        "replace": r"vimeo-cdn.fuzzy.replayweb.page/\1",
+        "pattern": (
+            r"(?P<scheme>https?://)?.*(?:gcs-vimeo|vod|vod-progressive)\.akamaized\.net"
+            r".*?/(?P<id>[\d/]+.mp4)$"
+        ),
+        "replace": r"\g<scheme>vimeo-cdn.fuzzy.replayweb.page/\g<id>",
     },
     {
-        "pattern": r".*player.vimeo.com/(video/[\d]+)\?.*",
-        "replace": r"vimeo.fuzzy.replayweb.page/\1",
+        "pattern": (
+            r"(?P<scheme>https?://)?.*player.vimeo.com/(?P<path>video/[\d]+)\?.*"
+        ),
+        "replace": r"\g<scheme>vimeo.fuzzy.replayweb.page/\g<path>",
     },
+]
+
+# In Python, named capture group are ?P<name> while in JS they are ?<name>
+# In Python, named back reference are \g<name> while in JS they are \k<name>
+FUZZY_RULES_JS = [
+    {
+        "pattern": rule["pattern"].replace("(?P<", "(?<"),
+        "replace": rule["replace"].replace(r"\g<", r"\k<"),
+    }
+    for rule in FUZZY_RULES_PYTHON
 ]
 
 COMPILED_FUZZY_RULES = [
     {"match": re.compile(rule["pattern"]), "replace": rule["replace"]}
-    for rule in FUZZY_RULES
+    for rule in FUZZY_RULES_PYTHON
 ]
 
 
-def reduce(path: str) -> str:
-    """Reduce a path"""
+class HttpUrl:
+    """A utility class representing an HTTP url, usefull to pass this data around
+
+    Includes a basic validation, ensuring that URL is encoded, scheme is provided.
+    """
+
+    def __init__(self, value: str) -> None:
+        HttpUrl.check_validity(value)
+        self._value = value
+
+    def __eq__(self, __value: object) -> bool:
+        return isinstance(__value, HttpUrl) and __value.value == self.value
+
+    @property
+    def value(self) -> str:
+        return self._value
+
+    @classmethod
+    def check_validity(cls, value: str) -> None:
+        parts = urlsplit(value)
+
+        if parts.scheme.lower() not in ["http", "https"]:
+            raise ValueError(
+                f"Incorrect HttpUrl scheme in value: {value} {parts.scheme}"
+            )
+
+        if not parts.hostname:
+            raise ValueError(f"Unsupported empty hostname in value: {value}")
+
+        if parts.hostname.lower() != parts.hostname:
+            raise ValueError(f"Unsupported upper-case chars in hostname : {value}")
+
+        # TODO: validate host does not contain unencoded chars which should be encoded
+        # TODO: validate path does not contain unencoded chars which should be encoded
+
+
+def apply_fuzzy_rules(uri: HttpUrl | str) -> HttpUrl | str:
+    """Apply fuzzy rules on a encoded URL or encoded relative path
+
+    First matching fuzzy rule matching the input value is applied and its result
+    is returned.
+
+    If no fuzzy rule is matching, the input is returned as-is.
+    """
+    value = uri.value if isinstance(uri, HttpUrl) else uri
     for rule in COMPILED_FUZZY_RULES:
-        if match := rule["match"].match(path):
-            return match.expand(rule["replace"])
-    return path
+        if match := rule["match"].match(value):
+            return (
+                HttpUrl(match.expand(rule["replace"]))
+                if isinstance(uri, HttpUrl)
+                else match.expand(rule["replace"])
+            )
+    return HttpUrl(value) if isinstance(uri, HttpUrl) else uri
 
 
 def normalize(url: str | None) -> str:
@@ -139,7 +217,7 @@ def normalize(url: str | None) -> str:
         url_parts = url_parts._replace(path=url_parts.path[1:])
 
     path = urlunsplit(url_parts)
-    path = reduce(path)
+    path = apply_fuzzy_rules(path)
 
     return path
 

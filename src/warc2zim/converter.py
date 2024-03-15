@@ -46,7 +46,7 @@ from zimscraperlib.zim.items import StaticItem
 
 from warc2zim.constants import logger
 from warc2zim.items import StaticArticle, WARCPayloadItem
-from warc2zim.url_rewriting import FUZZY_RULES, normalize
+from warc2zim.url_rewriting import FUZZY_RULES_JS, normalize
 from warc2zim.utils import (
     get_record_content,
     get_record_mime_type,
@@ -255,7 +255,7 @@ class Converter:
 
         # Add wombat_setup.js
         wombat_setup_template = self.env.get_template("wombat_setup.js")
-        wombat_setup_content = wombat_setup_template.render(FUZZY_RULES=FUZZY_RULES)
+        wombat_setup_content = wombat_setup_template.render(FUZZY_RULES=FUZZY_RULES_JS)
         self.creator.add_item(
             StaticItem(
                 path="_zim_static/wombat_setup.js",  # pyright: ignore [reportArgumentType, reportGeneralTypeIssues]
