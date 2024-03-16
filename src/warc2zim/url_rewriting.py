@@ -71,7 +71,7 @@ FUZZY_RULES = [
         r"=[^&]+).*",
         "replace": r"youtube.fuzzy.replayweb.page/\1\2",
     },
-    {"pattern": r"([^?]+\?)[\d]+$", "replace": r"\1"},
+    {"pattern": r"([^?]+)\?[\d]+$", "replace": r"\1"},
     {
         "pattern": r"(?:www\.)?youtube(?:-nocookie)?\.com\/(youtubei\/[^?]+).*(videoId["
         r"^&]+).*",

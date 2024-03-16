@@ -87,7 +87,7 @@ def test_fuzzyrules_google_video_infos(google_video_info_case):
     params=[
         ContentForTests(
             "www.example.com/page?1234",
-            "www.example.com/page?",
+            "www.example.com/page",
         ),
         ContentForTests(
             "www.example.com/page?foo=1234",
