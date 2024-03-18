@@ -292,6 +292,12 @@ class Converter:
     def gather_information_from_warc(self):
         main_page_found = False
         for record in iter_warc_records(self.inputs):
+
+            # only response records can be considered as main_path and as existing ZIM
+            # path
+            if record.rec_type not in ("response", "revisit"):
+                continue
+
             url = get_record_url(record)
             normalized_url = normalize(url)
 
@@ -500,6 +506,10 @@ class Converter:
         return normalize(url) == normalize(location)
 
     def add_items_for_warc_record(self, record):
+
+        if record.rec_type not in ("response", "revisit"):
+            return
+
         url = get_record_url(record)
         normalized_url = normalize(url)
         if not url:
