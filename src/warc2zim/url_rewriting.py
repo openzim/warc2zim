@@ -7,42 +7,38 @@ This module is about url and entry path rewriting.
 
 The global scheme is the following:
 
-Entries are stored in the zim file using their urldecoded full path properly urlencoded
-(yes!):
-- The full path is the full url without the scheme (ie :
-  "<host>/<path>(?<query_string)"). The scheme information is lost. We will serve the
-  content using the scheme of the real server, whatever was the scheme of the original
-  url. We probably don't care about different content served from different scheme but
-  with same `host/path`.
-- urldecoded: As most as possible the path itself must not be urlencoded:
+Entries are stored in the ZIM file using their decoded fully decoded path:
+- The full path is the full url without the scheme, username, password, port, fragment
+ (ie : "<host>/<path>(?<query_string)"). See documentation of the `normalize` function
+ for more details.
+- urldecoded: the path itself must not be urlencoded or it would conflict with ZIM
+  specification and readers won't be able to retrieve it, some parts (e.g. querystring)
+  might be absorbed by a web server, ...
   . This is valid : "foo/part with space/bar?key=value"
   . This is NOT valid : "foo/part%20with%20space/bar%3Fkey%3Dvalue"
-- Properly urlencoded: However, for correct parsing, some character may still need to be
-  encoded.
-  The querystring components (and others) must be url encoded as needed:
+- even having multiple ? in a ZIM path is valid
   . This is valid :
-    "foo/part/file with %3F and +?who=Chip%26Dale&quer=Is%20there%20any%20%2B%20here%3F"
-  . This is NOT valid :
     "foo/part/file with ? and +?who=Chip&Dale&question=It there any + here?"
-- Space in query string must be encoded with `%20` not `+`:
-  . This is valid : "foo/part/file?question=Is%20there%20any%20%2B%20here%3F"
-  . This is NOT valid : "foo/part/file?question=Is+there+any+%2B+here%3F"
+  . This is NOT valid :
+    "foo/part/file with %3F and +?who=Chip%26Dale&quer=Is%20there%20any%20%2B%20here%3F"
+- space in query string must be stored as ` `, not `%2B`, `%20` or `+`, the `+` in a ZIM
+  path means a `%2B in web resource (HTML document, ...):
+  . This is valid : "foo/part/file?question=Is there any + here?"
+  . This is NOT valid : "foo/part/file?question%3DIs%20there%20any%20%2B%20here%3F"
 
-In python words :
-- full path are `urllib.parse.ParseResults` with `scheme==''`
-- `urllib.parse.urlparse` must correctly parse the path (generating `ParseResults` with
-  empty scheme)
-- The querystring part must be parsable by `urllib.parse.parse_qs` (even if we don't do
-  it here)
-- The querystring must be generated as by `urllib.parse.urlencode(<query>,
-  quote_via=quote)`
-
-On top of that, paths are "reduced" using fuzzy rules:
-A path "https://www.youtube.com/youtubei/v1/foo/baz/things?key=value&other_key=
-other_value&videoId=xxxx&yet_another_key=yet_another_value"
-is reduced to "youtube.fuzzy.replayweb.page/youtubei/v1/foo/baz/things?videoId=xxxx"
+On top of that, fuzzy rules are applied on the ZIM path:
+For instance a path "https://www.youtube.com/youtubei/v1/foo/baz/things?key=value
+&other_key=other_value&videoId=xxxx&yet_another_key=yet_another_value"
+is transformed to "youtube.fuzzy.replayweb.page/youtubei/v1/foo/baz/things?videoId=xxxx"
 by slightly simplifying the path and keeping only the usefull arguments in the
 querystring.
+
+When rewriting documents (HTML, CSS, JS, ...), every time we find a URI to rewrite we
+start by resolving it into an absolute URL (based on the containing document absolute
+URI), applying the transformation to compute the corresponding ZIM path and we
+url-encode the whole ZIM path, so that readers will have one single blob to process,
+url-decode and find corresponding ZIM entry. Only '/' separators are considered safe
+and not url-encoded.
 """
 
 from __future__ import annotations
@@ -52,14 +48,18 @@ import posixpath
 import re
 from urllib.parse import (
     quote,
+    unquote,
     urljoin,
     urlsplit,
     urlunsplit,
 )
 
+import idna
+
 # Shared logger
 logger = logging.getLogger("warc2zim.url_rewriting")
 
+known_bad_hostnames: set[str] = set()
 
 FUZZY_RULES = [
     {
@@ -99,49 +99,186 @@ FUZZY_RULES = [
     },
 ]
 
+
 COMPILED_FUZZY_RULES = [
     {"match": re.compile(rule["pattern"]), "replace": rule["replace"]}
     for rule in FUZZY_RULES
 ]
 
 
-def reduce(path: str) -> str:
-    """Reduce a path"""
-    for rule in COMPILED_FUZZY_RULES:
-        if match := rule["match"].match(path):
-            return match.expand(rule["replace"])
-    return path
+class HttpUrl:
+    """A utility class representing an HTTP url, usefull to pass this data around
 
-
-def normalize(url: str | None) -> str:
-    """Normalize a properly contructed url to a path to use as a entry's key.
-
-    >>> normalize("http://exemple.com/path/to/article?foo=bar")
-    "exemple.com/path/to/article?foo=bar"
-    >>> normalize("http://other.com/path to strange ar+t%3Ficle?foo=bar+baz")
-    "other.com/path to strange ar+t%3Ficle?foo=bar%20baz"
-    >>> normalize("http://youtube.com/youtubei/bar?key=value&videoId=xxxx&otherKey=
-    otherValue")
-    "youtube.fuzzy.replayweb.page/youtubei/bar?videoId=xxxx"
+    Includes a basic validation, ensuring that URL is encoded, scheme is provided.
     """
 
-    if not url:
-        return url  # pyright: ignore[reportGeneralTypeIssues, reportReturnType]
+    def __init__(self, value: str) -> None:
+        HttpUrl.check_validity(value)
+        self._value = value
 
-    url_parts = urlsplit(url)
-    url_parts = url_parts._replace(scheme="")
+    def __eq__(self, __value: object) -> bool:
+        return isinstance(__value, HttpUrl) and __value.value == self.value
 
-    # Remove the netloc (by moving it into path)
-    if url_parts.netloc:
-        new_path = url_parts.netloc + url_parts.path
-        url_parts = url_parts._replace(netloc="", path=new_path)
-    if url_parts.path and url_parts.path[0] == "/":
-        url_parts = url_parts._replace(path=url_parts.path[1:])
+    def __hash__(self) -> int:
+        return self.value.__hash__()
 
-    path = urlunsplit(url_parts)
-    path = reduce(path)
+    def __str__(self) -> str:
+        return f"HttpUrl({self.value})"
 
-    return path
+    @property
+    def value(self) -> str:
+        return self._value
+
+    @classmethod
+    def check_validity(cls, value: str) -> None:
+        parts = urlsplit(value)
+
+        if parts.scheme.lower() not in ["http", "https"]:
+            raise ValueError(
+                f"Incorrect HttpUrl scheme in value: {value} {parts.scheme}"
+            )
+
+        if not parts.hostname:
+            raise ValueError(f"Unsupported empty hostname in value: {value}")
+
+        if parts.hostname.lower() != parts.hostname:
+            raise ValueError(f"Unsupported upper-case chars in hostname : {value}")
+
+
+class ZimPath:
+    """A utility class representing a ZIM path, usefull to pass this data around
+
+    Includes a basic validation, ensuring that path does start with scheme, hostname,...
+    """
+
+    def __init__(self, value: str) -> None:
+        ZimPath.check_validity(value)
+        self._value = value
+
+    def __eq__(self, __value: object) -> bool:
+        return isinstance(__value, ZimPath) and __value.value == self.value
+
+    def __hash__(self) -> int:
+        return self.value.__hash__()
+
+    def __str__(self) -> str:
+        return f"ZimPath({self.value})"
+
+    @property
+    def value(self) -> str:
+        return self._value
+
+    @classmethod
+    def check_validity(cls, value: str) -> None:
+        parts = urlsplit(value)
+
+        if parts.scheme:
+            raise ValueError(f"Unexpected scheme in value: {value} {parts.scheme}")
+
+        if parts.hostname:
+            raise ValueError(f"Unexpected hostname in value: {value} {parts.hostname}")
+
+        if parts.username:
+            raise ValueError(f"Unexpected username in value: {value} {parts.username}")
+
+        if parts.password:
+            raise ValueError(f"Unexpected password in value: {value} {parts.password}")
+
+
+def apply_fuzzy_rules(uri: HttpUrl | str) -> HttpUrl | str:
+    """Apply fuzzy rules on a URL or relative path
+
+    First matching fuzzy rule matching the input value is applied and its result
+    is returned.
+
+    If no fuzzy rule is matching, the input is returned as-is.
+    """
+    value = uri.value if isinstance(uri, HttpUrl) else uri
+    for rule in COMPILED_FUZZY_RULES:
+        if match := rule["match"].match(value):
+            return match.expand(rule["replace"])
+    return value
+
+
+def normalize(url: HttpUrl) -> ZimPath:
+    """Transform a HTTP URL into a ZIM path to use as a entry's key.
+
+    According to RFC 3986, a URL allows only a very limited set of characters, so we
+    assume by default that the url is encoded to match this specification.
+
+    The transformation rewrites the hostname, the path and the querystring.
+
+    The transformation drops the URL scheme, username, password, port and fragment:
+    - we suppose there is no conflict of URL scheme or port: there is no two ressources
+     with same hostname, path and querystring but different URL schemeor port leading
+     to different content
+    - we consider username/password port are purely authentication mechanism which have
+    no impact on the content to server
+    - we know that the fragment is never passed to the server, it stays in the
+    User-Agent, so if we encounter a fragment while normalizing a URL found in a
+    document, it won't make its way to the ZIM anyway and will stay client-side
+
+    The transformation consists mainly in decoding the three components so that ZIM path
+    is not encoded at all, as required by the ZIM specification.
+
+    Decoding is done differently for the hostname (decoded with puny encoding) and the
+    path and querystring (both decoded with url decoding).
+
+    The final transformation is the application of fuzzy rules (sourced from wabac) to
+    transform some URLs into replay URLs and drop some useless stuff.
+
+    Returned value is a ZIM path, without any puny/url encoding applied, ready to be
+    passed to python-libzim for UTF-8 encoding.
+    """
+
+    url_parts = urlsplit(url.value)
+
+    hostname = url_parts.hostname
+
+    if hostname and hostname not in known_bad_hostnames:
+        try:
+            # try to decode the hostname
+            hostname = idna.decode(hostname)
+        except idna.IDNAError as exc:
+            # exception might happen if illegal character are found in hostname like the
+            # `_` in `host_ip` ; we keep the set of bad hostname in memory to not fill
+            # the logs with these warnings
+            logger.warning(f"Bad hostname found, kept as-is: {hostname}", exc_info=exc)
+            known_bad_hostnames.add(hostname)
+
+    path = url_parts.path
+
+    if path:
+        # unquote the path so that it is stored unencoded in the ZIM as required by ZIM
+        # specification
+        path = unquote(path)
+    else:
+        # if path is empty, we need a "/" to remove ambiguities, e.g. https://example.com
+        # and https://example.com/ must all lead to the same ZIM entry to match RFC 3986
+        # section 6.2.3 : https://www.rfc-editor.org/rfc/rfc3986#section-6.2.3
+        path = "/"
+
+    query = url_parts.query
+
+    # if query is missing, we do not add it at all, not even a trailing ? without
+    # anything after it
+    if url_parts.query:
+        # `+`` in query parameter must be decoded as space first to remove ambiguities
+        # between a space (encoded as `+` in url query parameter) and a real plus sign
+        # (encoded as %2B but soon decoded in ZIM path)
+        query = query.replace("+", " ")
+        # unquote the query so that it is stored unencoded in the ZIM as required by ZIM
+        # specification
+        query = "?" + unquote(query)
+    else:
+        query = ""
+
+    fuzzified_url = apply_fuzzy_rules(f"{hostname}{path}{query}")
+
+    if not isinstance(fuzzified_url, str):
+        raise ValueError("Inappropriate value returned, should be str")
+
+    return ZimPath(fuzzified_url)
 
 
 def get_without_fragment(url: str) -> str:
@@ -152,46 +289,69 @@ def get_without_fragment(url: str) -> str:
 class ArticleUrlRewriter:
     """Rewrite urls in article."""
 
-    def __init__(self, article_url: str, known_urls: set[str]):
+    def __init__(self, article_url: HttpUrl, existing_zim_paths: set[ZimPath]):
+        self.article_path = normalize(article_url)
         self.article_url = article_url
-        self.known_urls = known_urls
-        self.base_path = f"/{urlsplit(normalize(article_url)).path}"
-        if self.base_path[-1] != "/":
-            # We want a directory
-            self.base_path = posixpath.dirname(self.base_path)
+        self.existing_zim_paths = existing_zim_paths
+        self.missing_zim_paths: set[ZimPath] = set()
 
-    def __call__(self, url: str, *, rewrite_all_url: bool = True) -> str:
+    def __call__(self, item_url: str, *, rewrite_all_url: bool = True) -> str:
         """Rewrite a url contained in a article.
 
         The url is "fully" rewrited to point to a normalized entry path
         """
 
-        url = url.strip()
+        item_url = item_url.strip()
 
-        if url.startswith("data:") or url.startswith("blob:"):
-            return url
+        item_scheme = urlsplit(item_url).scheme
+        if item_scheme and item_scheme not in ("http", "https"):
+            return item_url
 
-        absolute_url = urljoin(self.article_url, url)
+        item_absolute_url = urljoin(self.article_url.value, item_url)
+        item_fragment = urlsplit(item_absolute_url).fragment
 
-        normalized_url = normalize(absolute_url)
+        item_path = normalize(HttpUrl(item_absolute_url))
 
-        if rewrite_all_url or get_without_fragment(normalized_url) in self.known_urls:
-            return self.from_normalized(normalized_url)
+        if rewrite_all_url or item_path in self.existing_zim_paths:
+            return self.get_document_uri(item_path, item_fragment)
         else:
-            logger.debug(f"WARNING {normalized_url} ({url}) not in archive.")
+            if item_path not in self.missing_zim_paths:
+                logger.debug(f"WARNING {item_path} ({item_url}) not in archive.")
+                # maintain a collection of missing Zim Path to not fill the logs with
+                # duplicate messages
+                self.missing_zim_paths.add(item_path)
             # The url doesn't point to a known entry
-            return url
+            return item_absolute_url
 
-    def from_normalized(self, normalized_url_str: str) -> str:
-        normalized_url = urlsplit(f"/{normalized_url_str}")
+    def get_document_uri(self, item_path: ZimPath, item_fragment: str) -> str:
+        """Given an ZIM item path and its fragment, get the URI to use in document
 
-        # relative_to will lost our potential last '/'
-        slash_ending = normalized_url.path[-1] == "/"
-        relative_path = posixpath.relpath(normalized_url.path, self.base_path)
+        This function transforms the path of a ZIM item we want to adress from current
+        document (HTML / JS / ...) and returns the corresponding URI to use.
 
-        if slash_ending:
+        It computes the relative path based on current document location and escape
+        everything which needs to be to transform the ZIM path into a valid RFC 3986 URI
+
+        It also append a potential trailing item fragment at the end of the resulting
+        URI.
+
+        """
+        item_parts = urlsplit(item_path.value)
+
+        # item_path is both path + querystring, both will be url-encoded in the document
+        # so that readers consider them as a whole and properly pass them to libzim
+        item_url = item_parts.path
+        if item_parts.query:
+            item_url += "?" + item_parts.query
+
+        relative_path = posixpath.relpath(
+            item_url, posixpath.dirname(self.article_path.value)
+        )
+        # relpath removes a potential last '/' in the path, we add it back
+        if item_path.value.endswith("/"):
             relative_path += "/"
-        normalized_url = normalized_url._replace(path=relative_path)
-        normalized_url = urlunsplit(normalized_url)
 
-        return quote(normalized_url, safe="/#")
+        return (
+            f"{quote(relative_path, safe='/')}"
+            f"{'#' + item_fragment if item_fragment else ''}"
+        )

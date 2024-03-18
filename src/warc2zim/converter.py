@@ -23,7 +23,7 @@ import tempfile
 import time
 from http import HTTPStatus
 from pathlib import Path
-from urllib.parse import urldefrag, urljoin, urlsplit, urlunsplit
+from urllib.parse import urljoin, urlsplit, urlunsplit
 
 import requests
 
@@ -46,7 +46,7 @@ from zimscraperlib.zim.items import StaticItem
 
 from warc2zim.constants import logger
 from warc2zim.items import StaticArticle, WARCPayloadItem
-from warc2zim.url_rewriting import FUZZY_RULES, normalize
+from warc2zim.url_rewriting import FUZZY_RULES, HttpUrl, ZimPath, normalize
 from warc2zim.utils import (
     get_record_content,
     get_record_mime_type,
@@ -88,14 +88,15 @@ class Converter:
             for handler in logger.handlers:
                 handler.setLevel(logging.DEBUG)
 
-        main_url: str = args.url
+        main_url: str | None = str(args.url) if args.url else None
         # ensure trailing slash is added if missing
-        parts = urlsplit(main_url)
-        if parts.path == "":
-            parts = list(parts)
-            # set path
-            parts[2] = "/"
-            main_url = urlunsplit(parts)
+        if main_url:
+            parts = urlsplit(main_url)
+            if parts.path == "":
+                parts = list(parts)
+                # set path
+                parts[2] = "/"
+                main_url = urlunsplit(parts)
 
         self.name = args.name
         self.title = args.title
@@ -107,10 +108,10 @@ class Converter:
         self.creator_metadata = args.creator
         self.publisher = args.publisher
         self.tags = DEFAULT_TAGS + (args.tags or [])
-        self.source: str = args.source or main_url
+        self.source: str | None = str(args.source) if args.source else None or main_url
         self.scraper = "warc2zim " + get_version()
         self.illustration = b""
-        self.main_path = normalize(main_url)
+        self.main_path = normalize(HttpUrl(main_url)) if main_url else None
 
         self.output = Path(args.output)
         self.zim_file = args.zim_file
@@ -132,8 +133,8 @@ class Converter:
         self.custom_css = args.custom_css
 
         self.indexed_urls = set({})
-        self.revisits = {}
-        self.warc_urls = set({})
+        self.revisits: dict[ZimPath, ZimPath] = {}
+        self.existing_zim_paths: set[ZimPath] = set()
 
         # progress file handling
         self.stats_filename = (
@@ -202,6 +203,8 @@ class Converter:
             return 100
 
         self.gather_information_from_warc()
+        if not self.main_path:
+            raise ValueError("Unable to find main path, aborting")
         self.title = self.title or "Untitled"
         if len(self.title) > RECOMMENDED_MAX_TITLE_LENGTH:
             self.title = f"{self.title[0:29]}…"
@@ -229,7 +232,7 @@ class Converter:
 
         self.creator = Creator(
             self.full_filename,
-            main_path=self.main_path,
+            main_path=self.main_path.value,
         )
 
         self.creator.config_metadata(
@@ -250,7 +253,7 @@ class Converter:
         for filename in importlib.resources.files("warc2zim.statics").iterdir():
             with importlib.resources.as_file(filename) as file:
                 self.creator.add_item(
-                    StaticArticle(filename=file, main_path=self.main_path)
+                    StaticArticle(filename=file, main_path=self.main_path.value)
                 )
 
         # Add wombat_setup.js
@@ -272,7 +275,9 @@ class Converter:
             if normalized_url not in self.indexed_urls:
                 logger.debug(f"Adding alias {normalized_url} -> {target_url}")
                 try:
-                    self.creator.add_alias(normalized_url, "", target_url, {})
+                    self.creator.add_alias(
+                        normalized_url.value, "", target_url.value, {}
+                    )
                 except RuntimeError as exc:
                     if not ALIAS_EXC_STR.match(str(exc)):
                         raise exc
@@ -299,9 +304,9 @@ class Converter:
                 continue
 
             url = get_record_url(record)
-            normalized_url = normalize(url)
+            zim_path = normalize(HttpUrl(url))
 
-            self.warc_urls.add(normalized_url)
+            self.existing_zim_paths.add(zim_path)
 
             if main_page_found:
                 continue
@@ -322,9 +327,9 @@ class Converter:
                     or record.http_headers.get_statuscode() == "200"
                 )
             ):
-                self.main_path = normalized_url
+                self.main_path = zim_path
 
-            if urldefrag(self.main_path).url != normalized_url:
+            if self.main_path != zim_path:
                 continue
 
             # if we get here, found record for the main page
@@ -338,14 +343,16 @@ class Converter:
                 ]:
                     original_path = self.main_path
                     self.main_path = normalize(
-                        urljoin(
-                            get_record_url(record),
-                            record.http_headers.get_header("Location").strip(),
+                        HttpUrl(
+                            urljoin(
+                                get_record_url(record),
+                                record.http_headers.get_header("Location").strip(),
+                            )
                         )
                     )
                     logger.warning(
                         f"HTTP {status_code} occurred on main page; "
-                        f"replacing {original_path} with '{self.main_path}'"
+                        f"replacing {original_path} with {self.main_path}"
                     )
                     continue
 
@@ -399,9 +406,11 @@ class Converter:
 
             # transform icon URL into WARC path
             self.favicon_path = normalize(
-                urljoin(
-                    get_record_url(record),
-                    icon_url,
+                HttpUrl(
+                    urljoin(
+                        get_record_url(record),
+                        icon_url,
+                    )
                 )
             )
 
@@ -443,7 +452,7 @@ class Converter:
                 if record.rec_type != "response":
                     continue
                 url = get_record_url(record)
-                path = normalize(url)
+                path = normalize(HttpUrl(url))
                 if path == self.favicon_path or url == self.favicon_url:
                     logger.debug("Found WARC record for favicon")
                     if (
@@ -503,7 +512,8 @@ class Converter:
             return False
 
         location = record.http_headers.get("Location", "")
-        return normalize(url) == normalize(location)
+        location = urljoin(url, location)
+        return normalize(HttpUrl(url)) == normalize(HttpUrl(location))
 
     def add_items_for_warc_record(self, record):
 
@@ -511,14 +521,11 @@ class Converter:
             return
 
         url = get_record_url(record)
-        normalized_url = normalize(url)
         if not url:
             logger.debug(f"Skipping record with empty WARC-Target-URI {record}")
             return
 
-        if normalized_url in self.indexed_urls:
-            logger.debug(f"Skipping duplicate {url}, already added to ZIM")
-            return
+        normalized_url = normalize(HttpUrl(url))
 
         # if include_domains is set, only include urls from those domains
         if self.include_domains:
@@ -529,17 +536,21 @@ class Converter:
                 logger.debug(f"Skipping url {url}, outside included domains")
                 return
 
+        if normalized_url in self.indexed_urls:
+            logger.debug(f"Skipping duplicate {url}, already added to ZIM")
+            return
+
         if record.rec_type == "response":
             if self.is_self_redirect(record, url):
                 logger.debug("Skipping self-redirect: " + url)
                 return
 
             payload_item = WARCPayloadItem(
-                normalized_url,
+                normalized_url.value,
                 record,
                 self.head_template,
                 self.css_insert,
-                self.warc_urls,
+                self.existing_zim_paths,
             )
 
             if len(payload_item.content) != 0:
@@ -559,7 +570,7 @@ class Converter:
             and normalized_url not in self.revisits
         ):  # pragma: no branch
             self.revisits[normalized_url] = normalize(
-                record.rec_headers["WARC-Refers-To-Target-URI"]
+                HttpUrl(record.rec_headers["WARC-Refers-To-Target-URI"])
             )
 
 

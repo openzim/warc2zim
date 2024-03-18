@@ -3,7 +3,7 @@ from textwrap import dedent
 import pytest
 
 from warc2zim.content_rewriting.css import CssRewriter
-from warc2zim.url_rewriting import ArticleUrlRewriter
+from warc2zim.url_rewriting import ArticleUrlRewriter, HttpUrl
 
 from .utils import ContentForTests
 
@@ -19,15 +19,15 @@ from .utils import ContentForTests
         ),
         ContentForTests(
             b"p { width= } div { background: url(http://exemple.com/img.png)}",
-            b"p { width= } div { background: url(exemple.com/img.png)}",
+            b"p { width= } div { background: url(../exemple.com/img.png)}",
         ),
         ContentForTests(
             b"p { width= } div { background: url('http://exemple.com/img.png')}",
-            b'p { width= } div { background: url("exemple.com/img.png")}',
+            b'p { width= } div { background: url("../exemple.com/img.png")}',
         ),
         ContentForTests(
             b'p { width= } div { background: url("http://exemple.com/img.png")}',
-            b'p { width= } div { background: url("exemple.com/img.png")}',
+            b'p { width= } div { background: url("../exemple.com/img.png")}',
         ),
     ]
 )
@@ -37,9 +37,11 @@ def no_rewrite_content(request):
 
 def test_no_rewrite(no_rewrite_content):
     assert (
-        CssRewriter(ArticleUrlRewriter(no_rewrite_content.article_url, set())).rewrite(
-            no_rewrite_content.input_bytes
-        )
+        CssRewriter(
+            ArticleUrlRewriter(
+                HttpUrl(f"http://{no_rewrite_content.article_url}"), set()
+            )
+        ).rewrite(no_rewrite_content.input_bytes)
         == no_rewrite_content.expected_bytes.decode()
     )
 
@@ -53,7 +55,7 @@ def test_no_rewrite(no_rewrite_content):
         ContentForTests("border-bottom-width: 1px;border-bottom-color: #c0c0c0;w"),
         ContentForTests(
             'background: url("http://exemple.com/foo.png"); width=',
-            'background: url("exemple.com/foo.png"); width=',
+            'background: url("../exemple.com/foo.png"); width=',
         ),
     ]
 )
@@ -64,7 +66,9 @@ def invalid_content_inline(request):
 def test_invalid_css_inline(invalid_content_inline):
     assert (
         CssRewriter(
-            ArticleUrlRewriter(invalid_content_inline.article_url, set())
+            ArticleUrlRewriter(
+                HttpUrl(f"http://{invalid_content_inline.article_url}"), set()
+            )
         ).rewrite_inline(invalid_content_inline.input_str)
         == invalid_content_inline.expected_str
     )
@@ -83,7 +87,7 @@ def test_invalid_css_inline(invalid_content_inline):
         ),
         ContentForTests(
             b'p { background: url("http://exemple.com/foo.png"); width= }',
-            b'p { background: url("exemple.com/foo.png"); width= }',
+            b'p { background: url("../exemple.com/foo.png"); width= }',
         ),
     ]
 )
@@ -93,9 +97,9 @@ def invalid_content(request):
 
 def test_invalid_cssl(invalid_content):
     assert (
-        CssRewriter(ArticleUrlRewriter(invalid_content.article_url, set())).rewrite(
-            invalid_content.input_bytes
-        )
+        CssRewriter(
+            ArticleUrlRewriter(HttpUrl(f"http://{invalid_content.article_url}"), set())
+        ).rewrite(invalid_content.input_bytes)
         == invalid_content.expected_bytes.decode()
     )
 
@@ -123,7 +127,7 @@ p, input {
 
     expected = """
     /* A comment with a link : http://foo.com */
-    @import url(../fonts.googleapis.com/icon%3Ffamily%3DMaterial%2BIcons);
+    @import url(../fonts.googleapis.com/icon%3Ffamily%3DMaterial%20Icons);
 
     p, input {
         color: rbg(1, 2, 3);
@@ -143,6 +147,8 @@ p, input {
     expected = dedent(expected)
 
     assert (
-        CssRewriter(ArticleUrlRewriter("kiwix.org/article", set())).rewrite(content)
+        CssRewriter(
+            ArticleUrlRewriter(HttpUrl("http://kiwix.org/article"), set())
+        ).rewrite(content)
         == expected
     )
