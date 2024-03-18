@@ -54,8 +54,6 @@ dev = [
   "warc2zim[lint]",
   "warc2zim[test]",
   "warc2zim[check]",
-  # hatchling is a dev dependency only needed for hook development on developer machine
-  "hatchling==1.18.0",
 ]
 
 [project.scripts]
