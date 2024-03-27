@@ -81,13 +81,6 @@ FUZZY_RULES = [
         "pattern": r"(?:www\.)?youtube(?:-nocookie)?\.com/embed/([^?]+).*",
         "replace": r"youtube.fuzzy.replayweb.page/embed/\1",
     },
-    # This is an extra rule for JS rewriting only.
-    # Youtube replayer may add thing to an already rewrited url. We have to clean it
-    # again
-    {
-        "pattern": r"youtube.fuzzy.replayweb.page/embed/([^?&]+).*",
-        "replace": r"youtube.fuzzy.replayweb.page/embed/\1",
-    },
     {
         "pattern": r".*(?:gcs-vimeo|vod|vod-progressive)\.akamaized\.net.*?/([\d/]+"
         r".mp4)$",
