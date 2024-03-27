@@ -232,7 +232,7 @@ class Converter:
 
         self.creator = Creator(
             self.full_filename,
-            main_path=self.main_path.value,
+            main_path=self.main_path,
         )
 
         self.creator.config_metadata(
@@ -253,7 +253,7 @@ class Converter:
         for filename in importlib.resources.files("warc2zim.statics").iterdir():
             with importlib.resources.as_file(filename) as file:
                 self.creator.add_item(
-                    StaticArticle(filename=file, main_path=self.main_path.value)
+                    StaticArticle(filename=file, main_path=self.main_path)
                 )
 
         # Add wombat_setup.js
@@ -275,9 +275,7 @@ class Converter:
             if normalized_url not in self.added_zim_items:
                 logger.debug(f"Adding alias {normalized_url} -> {target_url}")
                 try:
-                    self.creator.add_alias(
-                        normalized_url.value, "", target_url.value, {}
-                    )
+                    self.creator.add_alias(normalized_url, "", target_url, {})
                 except RuntimeError as exc:
                     if not ALIAS_EXC_STR.match(str(exc)):
                         raise exc
@@ -546,7 +544,7 @@ class Converter:
                 return
 
             payload_item = WARCPayloadItem(
-                item_zim_path.value,
+                item_zim_path,
                 record,
                 self.head_template,
                 self.css_insert,

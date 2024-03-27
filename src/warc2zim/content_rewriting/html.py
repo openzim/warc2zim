@@ -134,12 +134,12 @@ class HtmlRewriter(HTMLParser):
         elif self._active_tag == "style":
             data = self.css_rewriter.rewrite(data)
         elif self._active_tag == "script":
-            rules = get_ds_rules(self.url_rewriter.article_url.value)
+            rules = get_ds_rules(self.url_rewriter.article_url)
             if data.strip():
                 data = JsRewriter(self.url_rewriter, rules).rewrite(data)
         elif self._active_tag == "json":
             if data.strip():
-                rules = get_ds_rules(self.url_rewriter.article_url.value)
+                rules = get_ds_rules(self.url_rewriter.article_url)
                 if rules:
                     data = RxRewriter(rules).rewrite(data, {})
         self.send(data)

@@ -99,28 +99,24 @@ COMPILED_FUZZY_RULES = [
 ]
 
 
-class HttpUrl:
+class HttpUrl(str):
     """A utility class representing an HTTP url, usefull to pass this data around
 
     Includes a basic validation, ensuring that URL is encoded, scheme is provided.
     """
 
-    def __init__(self, value: str) -> None:
-        HttpUrl.check_validity(value)
-        self._value = value
+    def __new__(cls, content):
+        HttpUrl.check_validity(content)
+        return super().__new__(cls, content)
 
     def __eq__(self, __value: object) -> bool:
-        return isinstance(__value, HttpUrl) and __value.value == self.value
+        return isinstance(__value, HttpUrl) and super().__eq__(__value)
+
+    def __repr__(self) -> str:
+        return f"HttpUrl({self})"
 
     def __hash__(self) -> int:
-        return self.value.__hash__()
-
-    def __str__(self) -> str:
-        return f"HttpUrl({self.value})"
-
-    @property
-    def value(self) -> str:
-        return self._value
+        return super().__hash__()
 
     @classmethod
     def check_validity(cls, value: str) -> None:
@@ -138,28 +134,24 @@ class HttpUrl:
             raise ValueError(f"Unsupported upper-case chars in hostname : {value}")
 
 
-class ZimPath:
+class ZimPath(str):
     """A utility class representing a ZIM path, usefull to pass this data around
 
     Includes a basic validation, ensuring that path does start with scheme, hostname,...
     """
 
-    def __init__(self, value: str) -> None:
-        ZimPath.check_validity(value)
-        self._value = value
+    def __new__(cls, content):
+        ZimPath.check_validity(content)
+        return super().__new__(cls, content)
 
     def __eq__(self, __value: object) -> bool:
-        return isinstance(__value, ZimPath) and __value.value == self.value
+        return isinstance(__value, ZimPath) and super().__eq__(__value)
+
+    def __repr__(self) -> str:
+        return f"ZimPath({self})"
 
     def __hash__(self) -> int:
-        return self.value.__hash__()
-
-    def __str__(self) -> str:
-        return f"ZimPath({self.value})"
-
-    @property
-    def value(self) -> str:
-        return self._value
+        return super().__hash__()
 
     @classmethod
     def check_validity(cls, value: str) -> None:
@@ -186,7 +178,7 @@ def apply_fuzzy_rules(uri: HttpUrl | str) -> str:
 
     If no fuzzy rule is matching, the input is returned as-is.
     """
-    value = uri.value if isinstance(uri, HttpUrl) else uri
+    value = str(uri) if isinstance(uri, HttpUrl) else uri
     for rule in COMPILED_FUZZY_RULES:
         if match := rule["match"].match(value):
             return match.expand(rule["replace"])
@@ -224,7 +216,7 @@ def normalize(url: HttpUrl) -> ZimPath:
     passed to python-libzim for UTF-8 encoding.
     """
 
-    url_parts = urlsplit(url.value)
+    url_parts = urlsplit(url)
 
     hostname = url_parts.hostname
 
@@ -297,7 +289,7 @@ class ArticleUrlRewriter:
         if item_scheme and item_scheme not in ("http", "https"):
             return item_url
 
-        item_absolute_url = urljoin(self.article_url.value, item_url)
+        item_absolute_url = urljoin(self.article_url, item_url)
         item_fragment = urlsplit(item_absolute_url).fragment
 
         item_path = normalize(HttpUrl(item_absolute_url))
@@ -326,7 +318,7 @@ class ArticleUrlRewriter:
         URI.
 
         """
-        item_parts = urlsplit(item_path.value)
+        item_parts = urlsplit(item_path)
 
         # item_path is both path + querystring, both will be url-encoded in the document
         # so that readers consider them as a whole and properly pass them to libzim
@@ -336,15 +328,15 @@ class ArticleUrlRewriter:
         relative_path = str(
             PurePosixPath(item_url).relative_to(
                 (
-                    PurePosixPath(self.article_path.value)
-                    if self.article_path.value.endswith("/")
-                    else PurePosixPath(self.article_path.value).parent
+                    PurePosixPath(self.article_path)
+                    if self.article_path.endswith("/")
+                    else PurePosixPath(self.article_path).parent
                 ),
                 walk_up=True,
             )
         )
         # relative_to removes a potential last '/' in the path, we add it back
-        if item_path.value.endswith("/"):
+        if item_path.endswith("/"):
             relative_path += "/"
 
         return (
