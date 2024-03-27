@@ -210,7 +210,7 @@ def normalize(url: HttpUrl) -> ZimPath:
 
     The transformation drops the URL scheme, username, password, port and fragment:
     - we suppose there is no conflict of URL scheme or port: there is no two ressources
-     with same hostname, path and querystring but different URL schemeor port leading
+     with same hostname, path and querystring but different URL scheme or port leading
      to different content
     - we consider username/password port are purely authentication mechanism which have
     no impact on the content to server
