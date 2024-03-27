@@ -44,8 +44,8 @@ and not url-encoded.
 from __future__ import annotations
 
 import logging
-import posixpath
 import re
+from pathlib import PurePosixPath
 from urllib.parse import (
     quote,
     unquote,
@@ -340,11 +340,17 @@ class ArticleUrlRewriter:
         item_url = item_parts.path
         if item_parts.query:
             item_url += "?" + item_parts.query
-
-        relative_path = posixpath.relpath(
-            item_url, posixpath.dirname(self.article_path.value)
+        relative_path = str(
+            PurePosixPath(item_url).relative_to(
+                (
+                    PurePosixPath(self.article_path.value)
+                    if self.article_path.value.endswith("/")
+                    else PurePosixPath(self.article_path.value).parent
+                ),
+                walk_up=True,
+            )
         )
-        # relpath removes a potential last '/' in the path, we add it back
+        # relative_to removes a potential last '/' in the path, we add it back
         if item_path.value.endswith("/"):
             relative_path += "/"
 
