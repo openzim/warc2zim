@@ -6,6 +6,7 @@ import json
 import os
 import re
 import time
+from urllib.parse import unquote
 
 import pytest
 import requests
@@ -15,7 +16,7 @@ from zimscraperlib.zim import Archive
 from warc2zim.__about__ import __version__
 from warc2zim.converter import iter_warc_records
 from warc2zim.main import main
-from warc2zim.url_rewriting import normalize
+from warc2zim.url_rewriting import HttpUrl, ZimPath, normalize
 from warc2zim.utils import get_record_url
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
@@ -27,8 +28,6 @@ CMDLINES = [
     ["example-response.warc"],
     ["example-response.warc", "--progress-file", "progress.json"],
     ["example-response.warc", "--scraper-suffix", SCRAPER_SUFFIX],
-    ["example-resource.warc.gz", "--favicon", "https://example.com/some/favicon.ico"],
-    ["example-resource.warc.gz", "--favicon", "https://www.google.com/favicon.ico"],
     ["example-revisit.warc.gz"],
     [
         "example-revisit.warc.gz",
@@ -154,6 +153,24 @@ class TestWarc2Zim:
 
             url_no_scheme = re.sub(r"\?\d+$", "?", url_no_scheme)
 
+            # remove user/password
+            if "@" in url_no_scheme:
+                at_index = url_no_scheme.index("@")
+                if at_index >= 0:
+                    if "/" in url_no_scheme:
+                        slash_index = url_no_scheme.index("/")
+                        if at_index < slash_index:
+                            url_no_scheme = url_no_scheme[at_index + 1 :]
+                    else:
+                        url_no_scheme = url_no_scheme[at_index + 1 :]
+
+            # remove trailing ?
+            if url_no_scheme.endswith("?"):
+                url_no_scheme = url_no_scheme[:-1]
+
+            # unquote url since everything is not encoded in ZIM
+            url_no_scheme = unquote(url_no_scheme)
+
             # ensure payloads match
             try:
                 payload = zim_fh.get_item(url_no_scheme)
@@ -199,38 +216,97 @@ class TestWarc2Zim:
         resize_image(dst, width=48, height=48, method="cover")
         return dst.getvalue()
 
-    def test_normalize(self):
-        assert normalize(None) is None
-        assert normalize("") == ""
-        assert normalize("https://exemple.com") == "exemple.com"
-        assert normalize("https://exemple.com/") == "exemple.com/"
-        assert normalize("http://example.com/?foo=bar") == "example.com/?foo=bar"
-
-        assert normalize("https://example.com/?foo=bar") == "example.com/?foo=bar"
-
-        assert (
-            normalize("https://example.com/some/path/http://example.com/?foo=bar")
-            == "example.com/some/path/http://example.com/?foo=bar"
-        )
-
-        assert (
-            normalize("example.com/some/path/http://example.com/?foo=bar")
-            == "example.com/some/path/http://example.com/?foo=bar"
-        )
-
-        assert (
-            normalize("http://example.com/path/with/final/slash/")
-            == "example.com/path/with/final/slash/"
-        )
-
-        assert normalize("http://test@example.com/") == "test@example.com/"
-
-        assert (
-            normalize(
-                "http://lesfondamentaux.reseau-canope.fr/fileadmin/template/css/main.css?1588230493"
-            )
-            == "lesfondamentaux.reseau-canope.fr/fileadmin/template/css/main.css?"
-        )
+    @pytest.mark.parametrize(
+        "url,zim_path",
+        [
+            ("https://exemple.com", "exemple.com/"),
+            ("https://exemple.com/", "exemple.com/"),
+            ("http://example.com/resource", "example.com/resource"),
+            ("http://example.com/resource/", "example.com/resource/"),
+            (
+                "http://example.com/resource/folder/sub.txt",
+                "example.com/resource/folder/sub.txt",
+            ),
+            (
+                "http://example.com/resource/folder/sub",
+                "example.com/resource/folder/sub",
+            ),
+            (
+                "http://example.com/resource/folder/sub?foo=bar",
+                "example.com/resource/folder/sub?foo=bar",
+            ),
+            (
+                "http://example.com/resource/folder/sub?foo=bar#anchor1",
+                "example.com/resource/folder/sub?foo=bar",
+            ),
+            ("http://example.com/resource/#anchor1", "example.com/resource/"),
+            ("http://example.com/resource/?foo=bar", "example.com/resource/?foo=bar"),
+            ("http://example.com#anchor1", "example.com/"),
+            ("http://example.com?foo=bar#anchor1", "example.com/?foo=bar"),
+            ("http://example.com/?foo=bar", "example.com/?foo=bar"),
+            ("http://example.com/?foo=ba+r", "example.com/?foo=ba r"),
+            (
+                "http://example.com/?foo=ba r",
+                "example.com/?foo=ba r",
+            ),  # situation where the ` ` has not been properly escaped in document
+            ("http://example.com/?foo=ba%2Br", "example.com/?foo=ba+r"),
+            ("http://example.com/?foo=ba+%2B+r", "example.com/?foo=ba + r"),
+            ("http://example.com/#anchor1", "example.com/"),
+            (
+                "http://example.com/some/path/http://example.com//some/path",
+                "example.com/some/path/http://example.com//some/path",
+            ),
+            (
+                "http://example.com/some/pa?th/http://example.com//some/path",
+                "example.com/some/pa?th/http://example.com//some/path",
+            ),
+            (
+                "http://example.com/so?me/pa?th/http://example.com//some/path",
+                "example.com/so?me/pa?th/http://example.com//some/path",
+            ),
+            ("http://example.com/resource?", "example.com/resource"),
+            ("http://example.com/resource#", "example.com/resource"),
+            ("http://user@example.com/resource", "example.com/resource"),
+            ("http://user:password@example.com/resource", "example.com/resource"),
+            ("http://example.com:8080/resource", "example.com/resource"),
+            (
+                "http://foobargooglevideo.com/videoplayback?id=1576&key=value",
+                "youtube.fuzzy.replayweb.page/videoplayback?id=1576",
+            ),  # Fuzzy rule is applied in addition to path transformations
+            ("https://xn--exmple-cva.com", "exémple.com/"),
+            ("https://xn--exmple-cva.com/", "exémple.com/"),
+            ("https://xn--exmple-cva.com/resource", "exémple.com/resource"),
+            ("https://exémple.com/", "exémple.com/"),
+            ("https://exémple.com/resource", "exémple.com/resource"),
+            ("https://host_ip/", "host_ip/"),
+            ("https://host_ip/resource", "host_ip/resource"),
+            ("http://example.com/res%24urce", "example.com/res$urce"),
+            (
+                "http://example.com/resource?foo=b%24r",
+                "example.com/resource?foo=b$r",
+            ),
+            ("http://example.com/resource@300x", "example.com/resource@300x"),
+            ("http://example.com:8080/resource", "example.com/resource"),
+            ("http://user@example.com:8080/resource", "example.com/resource"),
+            ("http://user:password@example.com:8080/resource", "example.com/resource"),
+            # the two URI below are an illustration of a potential collision (two
+            # differents URI leading to the same ZIM path)
+            (
+                "http://tmp.kiwix.org/ci/test-website/images/urlencoding1_ico%CC%82ne-"
+                "de%CC%81buter-Solidarite%CC%81-Nume%CC%81rique_1%40300x.png",
+                "tmp.kiwix.org/ci/test-website/images/urlencoding1_icône-débuter-"
+                "Solidarité-Numérique_1@300x.png",
+            ),
+            (
+                "https://tmp.kiwix.org/ci/test-website/images/urlencoding1_ico%CC%82ne-"
+                "de%CC%81buter-Solidarite%CC%81-Nume%CC%81rique_1@300x.png",
+                "tmp.kiwix.org/ci/test-website/images/urlencoding1_icône-débuter-"
+                "Solidarité-Numérique_1@300x.png",
+            ),
+        ],
+    )
+    def test_normalize(self, url, zim_path):
+        assert normalize(HttpUrl(url)) == ZimPath(zim_path)
 
     def test_warc_to_zim_specify_params_and_metadata(self, tmp_path):
         zim_output = "zim-out-filename.zim"
@@ -299,7 +375,7 @@ class TestWarc2Zim:
         )
         assert self.get_metadata(zim_output, "Title") == b"Some Title"
 
-    def test_warc_to_zim(self, cmdline, tmp_path):
+    def test_warc_to_zim_main(self, cmdline, tmp_path):
         # intput filename
         filename = cmdline[0]
 
@@ -479,7 +555,7 @@ class TestWarc2Zim:
         )
 
         # timestamp fuzzy match from example-with-timestamp.warc
-        assert self.get_article(zim_output, "example.com/path.txt?") != b""
+        assert self.get_article(zim_output, "example.com/path.txt") != b""
 
     def test_fuzzy_urls(self, tmp_path, fuzzycheck):
         zim_output = fuzzycheck["filename"] + ".zim"
@@ -503,11 +579,7 @@ class TestWarc2Zim:
 
     def test_error_bad_main_page(self, tmp_path):
         zim_output_not_created = "zim-out-not-created.zim"
-        with pytest.raises(
-            KeyError,
-            match="Unable to find WARC record for main page: no-such-url.example.com/,"
-            " aborting",
-        ):
+        with pytest.raises(KeyError, match="Unable to find WARC record for main page:"):
             main(
                 [
                     "-v",

@@ -12,6 +12,7 @@ from warc2zim.content_rewriting.rx_replacer import (
     replace,
     replace_prefix_from,
 )
+from warc2zim.url_rewriting import ZimPath
 
 # Regex used to check if we ar import or exporting things in the string
 # ie : If we are a module
@@ -236,8 +237,8 @@ class JsRewriter(RxRewriter):
 
         This will be added to script only if the script is a module script.
         """
-        wb_module_decl_url = self.url_rewriter.from_normalized(
-            "_zim_static/__wb_module_decl.js"
+        wb_module_decl_url = self.url_rewriter.get_document_uri(
+            ZimPath("_zim_static/__wb_module_decl.js"), ""
         )
         return (
             f"""import {{ {", ".join(local_decls)} }} from "{wb_module_decl_url}";\n"""

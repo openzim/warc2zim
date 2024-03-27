@@ -11,7 +11,7 @@ from warc2zim.content_rewriting.ds import get_ds_rules
 from warc2zim.content_rewriting.html import HtmlRewriter
 from warc2zim.content_rewriting.js import JsRewriter
 from warc2zim.content_rewriting.rx_replacer import RxRewriter
-from warc2zim.url_rewriting import ArticleUrlRewriter
+from warc2zim.url_rewriting import ArticleUrlRewriter, HttpUrl, ZimPath
 from warc2zim.utils import (
     get_record_content,
     get_record_encoding,
@@ -59,7 +59,7 @@ class Rewriter:
         self,
         path: str,
         record: ArcWarcRecord,
-        known_urls: set[str],
+        existing_zim_paths: set[ZimPath],
     ):
         self.content = get_record_content(record)
 
@@ -69,7 +69,9 @@ class Rewriter:
 
         self.path = path
         self.orig_url_str = get_record_url(record)
-        self.url_rewriter = ArticleUrlRewriter(self.orig_url_str, known_urls)
+        self.url_rewriter = ArticleUrlRewriter(
+            HttpUrl(self.orig_url_str), existing_zim_paths
+        )
 
         self.rewrite_mode = self.get_rewrite_mode(record, mimetype)
 
@@ -133,7 +135,9 @@ class Rewriter:
     def rewrite_html(self, head_template: Template, css_insert: str | None):
         orig_url = urlsplit(self.orig_url_str)
 
-        rel_static_prefix = self.url_rewriter.from_normalized("_zim_static/")
+        rel_static_prefix = self.url_rewriter.get_document_uri(
+            ZimPath("_zim_static/"), ""
+        )
         head_insert = head_template.render(
             path=self.path,
             static_prefix=rel_static_prefix,

@@ -1,7 +1,7 @@
 import pytest
 
 from warc2zim.content_rewriting.js import JsRewriter
-from warc2zim.url_rewriting import ArticleUrlRewriter
+from warc2zim.url_rewriting import ArticleUrlRewriter, HttpUrl
 
 from .utils import ContentForTests
 
@@ -218,7 +218,9 @@ def rewrite_import_content(request):
 
 
 def test_import_rewrite(rewrite_import_content):
-    url_rewriter = ArticleUrlRewriter(rewrite_import_content.article_url, set())
+    url_rewriter = ArticleUrlRewriter(
+        HttpUrl(rewrite_import_content.article_url), set()
+    )
     assert (
         JsRewriter(url_rewriter).rewrite(rewrite_import_content.input_str)
         == rewrite_import_content.expected_str

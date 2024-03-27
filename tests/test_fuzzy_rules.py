@@ -1,6 +1,6 @@
 import pytest
 
-from warc2zim.url_rewriting import reduce
+from warc2zim.url_rewriting import apply_fuzzy_rules
 
 from .utils import ContentForTests
 
@@ -34,7 +34,10 @@ def google_videos_case(request):
 
 
 def test_fuzzyrules_google_videos(google_videos_case):
-    assert reduce(google_videos_case.input_str) == google_videos_case.expected_str
+    assert (
+        apply_fuzzy_rules(google_videos_case.input_str)
+        == google_videos_case.expected_str
+    )
 
 
 @pytest.fixture(
@@ -79,7 +82,8 @@ def google_video_info_case(request):
 
 def test_fuzzyrules_google_video_infos(google_video_info_case):
     assert (
-        reduce(google_video_info_case.input_str) == google_video_info_case.expected_str
+        apply_fuzzy_rules(google_video_info_case.input_str)
+        == google_video_info_case.expected_str
     )
 
 
@@ -87,7 +91,7 @@ def test_fuzzyrules_google_video_infos(google_video_info_case):
     params=[
         ContentForTests(
             "www.example.com/page?1234",
-            "www.example.com/page?",
+            "www.example.com/page",
         ),
         ContentForTests(
             "www.example.com/page?foo=1234",
@@ -112,7 +116,7 @@ def trim_digits_only_query_case(request):
 
 def test_fuzzyrules_trim_digits_only_query(trim_digits_only_query_case):
     assert (
-        reduce(trim_digits_only_query_case.input_str)
+        apply_fuzzy_rules(trim_digits_only_query_case.input_str)
         == trim_digits_only_query_case.expected_str
     )
 
@@ -165,7 +169,7 @@ def youtubei_case(request):
 
 
 def test_fuzzyrules_youtubei(youtubei_case):
-    assert reduce(youtubei_case.input_str) == youtubei_case.expected_str
+    assert apply_fuzzy_rules(youtubei_case.input_str) == youtubei_case.expected_str
 
 
 @pytest.fixture(
@@ -205,7 +209,10 @@ def youtube_embed_case(request):
 
 
 def test_fuzzyrules_youtube_embed(youtube_embed_case):
-    assert reduce(youtube_embed_case.input_str) == youtube_embed_case.expected_str
+    assert (
+        apply_fuzzy_rules(youtube_embed_case.input_str)
+        == youtube_embed_case.expected_str
+    )
 
 
 @pytest.fixture(
@@ -254,7 +261,7 @@ def vimeo_cdn_case(request):
 
 
 def test_fuzzyrules_vimeo_cdn(vimeo_cdn_case):
-    assert reduce(vimeo_cdn_case.input_str) == vimeo_cdn_case.expected_str
+    assert apply_fuzzy_rules(vimeo_cdn_case.input_str) == vimeo_cdn_case.expected_str
 
 
 @pytest.fixture(
@@ -283,4 +290,4 @@ def vimeo_host_case(request):
 
 
 def test_fuzzyrules_vimeo_host(vimeo_host_case):
-    assert reduce(vimeo_host_case.input_str) == vimeo_host_case.expected_str
+    assert apply_fuzzy_rules(vimeo_host_case.input_str) == vimeo_host_case.expected_str
