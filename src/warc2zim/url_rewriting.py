@@ -185,7 +185,7 @@ class ZimPath:
             raise ValueError(f"Unexpected password in value: {value} {parts.password}")
 
 
-def apply_fuzzy_rules(uri: HttpUrl | str) -> HttpUrl | str:
+def apply_fuzzy_rules(uri: HttpUrl | str) -> str:
     """Apply fuzzy rules on a URL or relative path
 
     First matching fuzzy rule matching the input value is applied and its result
@@ -274,9 +274,6 @@ def normalize(url: HttpUrl) -> ZimPath:
         query = ""
 
     fuzzified_url = apply_fuzzy_rules(f"{hostname}{path}{query}")
-
-    if not isinstance(fuzzified_url, str):
-        raise ValueError("Inappropriate value returned, should be str")
 
     return ZimPath(fuzzified_url)
 
