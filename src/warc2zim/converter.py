@@ -132,9 +132,9 @@ class Converter:
 
         self.custom_css = args.custom_css
 
-        self.indexed_urls = set({})
+        self.added_zim_items: set[ZimPath] = set()
         self.revisits: dict[ZimPath, ZimPath] = {}
-        self.existing_zim_paths: set[ZimPath] = set()
+        self.expected_zim_items: set[ZimPath] = set()
 
         # progress file handling
         self.stats_filename = (
@@ -272,7 +272,7 @@ class Converter:
 
         # process revisits
         for normalized_url, target_url in self.revisits.items():
-            if normalized_url not in self.indexed_urls:
+            if normalized_url not in self.added_zim_items:
                 logger.debug(f"Adding alias {normalized_url} -> {target_url}")
                 try:
                     self.creator.add_alias(
@@ -281,7 +281,7 @@ class Converter:
                 except RuntimeError as exc:
                     if not ALIAS_EXC_STR.match(str(exc)):
                         raise exc
-                self.indexed_urls.add(normalized_url)
+                self.added_zim_items.add(normalized_url)
 
         logger.debug(f"Found {self.total_records} records in WARCs")
 
@@ -306,7 +306,7 @@ class Converter:
             url = get_record_url(record)
             zim_path = normalize(HttpUrl(url))
 
-            self.existing_zim_paths.add(zim_path)
+            self.expected_zim_items.add(zim_path)
 
             if main_page_found:
                 continue
@@ -525,7 +525,7 @@ class Converter:
             logger.debug(f"Skipping record with empty WARC-Target-URI {record}")
             return
 
-        normalized_url = normalize(HttpUrl(url))
+        item_zim_path = normalize(HttpUrl(url))
 
         # if include_domains is set, only include urls from those domains
         if self.include_domains:
@@ -536,7 +536,7 @@ class Converter:
                 logger.debug(f"Skipping url {url}, outside included domains")
                 return
 
-        if normalized_url in self.indexed_urls:
+        if item_zim_path in self.added_zim_items:
             logger.debug(f"Skipping duplicate {url}, already added to ZIM")
             return
 
@@ -546,11 +546,11 @@ class Converter:
                 return
 
             payload_item = WARCPayloadItem(
-                normalized_url.value,
+                item_zim_path.value,
                 record,
                 self.head_template,
                 self.css_insert,
-                self.existing_zim_paths,
+                self.expected_zim_items,
             )
 
             if len(payload_item.content) != 0:
@@ -562,14 +562,14 @@ class Converter:
                 self.total_records += 1
                 self.update_stats()
 
-            self.indexed_urls.add(normalized_url)
+            self.added_zim_items.add(item_zim_path)
 
         elif (
             record.rec_type == "revisit"
             and record.rec_headers["WARC-Refers-To-Target-URI"] != url
-            and normalized_url not in self.revisits
+            and item_zim_path not in self.revisits
         ):  # pragma: no branch
-            self.revisits[normalized_url] = normalize(
+            self.revisits[item_zim_path] = normalize(
                 HttpUrl(record.rec_headers["WARC-Refers-To-Target-URI"])
             )
 
