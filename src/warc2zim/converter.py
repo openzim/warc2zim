@@ -134,6 +134,7 @@ class Converter:
         self.added_zim_items: set[ZimPath] = set()
         self.revisits: dict[ZimPath, ZimPath] = {}
         self.expected_zim_items: set[ZimPath] = set()
+        self.js_modules: set[ZimPath] = set()
 
         # progress file handling
         self.stats_filename = (
@@ -532,6 +533,7 @@ class Converter:
                 self.head_template,
                 self.css_insert,
                 self.expected_zim_items,
+                self.js_modules,
             )
 
             if len(payload_item.content) != 0:

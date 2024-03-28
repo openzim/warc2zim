@@ -42,7 +42,7 @@ def no_rewrite_content(request):
     yield request.param
 
 
-def test_no_rewrite(no_rewrite_content):
+def test_no_rewrite(no_rewrite_content, no_js_notify):
     assert (
         HtmlRewriter(
             ArticleUrlRewriter(
@@ -50,6 +50,7 @@ def test_no_rewrite(no_rewrite_content):
             ),
             "",
             "",
+            no_js_notify,
         )
         .rewrite(no_rewrite_content.input_str)
         .content
@@ -105,12 +106,13 @@ def escaped_content(request):
     yield request.param
 
 
-def test_escaped_content(escaped_content):
+def test_escaped_content(escaped_content, no_js_notify):
     transformed = (
         HtmlRewriter(
             ArticleUrlRewriter(HttpUrl(f"http://{escaped_content.article_url}"), set()),
             "",
             "",
+            no_js_notify,
         )
         .rewrite(escaped_content.input_str)
         .content
@@ -195,7 +197,7 @@ def rewrite_url(request):
     yield request.param
 
 
-def test_rewrite(rewrite_url):
+def test_rewrite(rewrite_url, no_js_notify):
     assert (
         HtmlRewriter(
             ArticleUrlRewriter(
@@ -204,6 +206,7 @@ def test_rewrite(rewrite_url):
             ),
             "",
             "",
+            no_js_notify,
         )
         .rewrite(rewrite_url.input_str)
         .content
@@ -211,7 +214,7 @@ def test_rewrite(rewrite_url):
     )
 
 
-def test_extract_title():
+def test_extract_title(no_js_notify):
     content = """<html>
       <head>
         <title>Page title</title>
@@ -227,6 +230,7 @@ def test_extract_title():
             lambda _: "kiwix.org",  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
             "",
             "",
+            no_js_notify,
         )
         .rewrite(content)
         .title
@@ -234,11 +238,12 @@ def test_extract_title():
     )
 
 
-def test_rewrite_attributes():
+def test_rewrite_attributes(no_js_notify):
     rewriter = HtmlRewriter(
         ArticleUrlRewriter(HttpUrl("http://kiwix.org/"), {ZimPath("kiwix.org/foo")}),
         "",
         "",
+        no_js_notify,
     )
 
     assert (
@@ -260,9 +265,14 @@ def test_rewrite_attributes():
     )
 
 
-def test_rewrite_css():
+def test_rewrite_css(no_js_notify):
     output = (
-        HtmlRewriter(ArticleUrlRewriter(HttpUrl("http://kiwix.org/"), set()), "", "")
+        HtmlRewriter(
+            ArticleUrlRewriter(HttpUrl("http://kiwix.org/"), set()),
+            "",
+            "",
+            no_js_notify,
+        )
         .rewrite(
             "<style>p { /* A comment with a http://link.org/ */ "
             "background: url('some/image.png') ; }</style>",
@@ -275,7 +285,7 @@ def test_rewrite_css():
     )
 
 
-def test_head_insert():
+def test_head_insert(no_js_notify):
     content = """<html>
     <head>
         <title>A test content</title>
@@ -286,16 +296,118 @@ def test_head_insert():
     content = dedent(content)
 
     url_rewriter = ArticleUrlRewriter(HttpUrl("http://kiwix.org/"), set())
-    assert HtmlRewriter(url_rewriter, "", "").rewrite(content).content == content
+    assert (
+        HtmlRewriter(url_rewriter, "", "", no_js_notify).rewrite(content).content
+        == content
+    )
 
-    assert HtmlRewriter(url_rewriter, "PRE_HEAD_INSERT", "").rewrite(
+    assert HtmlRewriter(url_rewriter, "PRE_HEAD_INSERT", "", no_js_notify).rewrite(
         content
     ).content == content.replace("<head>", "<head>PRE_HEAD_INSERT")
-    assert HtmlRewriter(url_rewriter, "", "POST_HEAD_INSERT").rewrite(
+    assert HtmlRewriter(url_rewriter, "", "POST_HEAD_INSERT", no_js_notify).rewrite(
         content
     ).content == content.replace("</head>", "POST_HEAD_INSERT</head>")
-    assert HtmlRewriter(url_rewriter, "PRE_HEAD_INSERT", "POST_HEAD_INSERT").rewrite(
-        content
-    ).content == content.replace("<head>", "<head>PRE_HEAD_INSERT").replace(
+    assert HtmlRewriter(
+        url_rewriter, "PRE_HEAD_INSERT", "POST_HEAD_INSERT", no_js_notify
+    ).rewrite(content).content == content.replace(
+        "<head>", "<head>PRE_HEAD_INSERT"
+    ).replace(
         "</head>", "POST_HEAD_INSERT</head>"
     )
+
+
+@pytest.mark.parametrize(
+    "js_src,expected_js_module_path",
+    [
+        ("my-module-script.js", "kiwix.org/my_folder/my-module-script.js"),
+        ("./my-module-script.js", "kiwix.org/my_folder/my-module-script.js"),
+        ("../my-module-script.js", "kiwix.org/my-module-script.js"),
+        ("../../../my-module-script.js", "kiwix.org/my-module-script.js"),
+        ("/my-module-script.js", "kiwix.org/my-module-script.js"),
+        ("//myserver.com/my-module-script.js", "myserver.com/my-module-script.js"),
+        (
+            "https://myserver.com/my-module-script.js",
+            "myserver.com/my-module-script.js",
+        ),
+    ],
+)
+def test_js_module_detected_script(js_src, expected_js_module_path):
+
+    js_modules = []
+
+    def custom_notify(zim_path: ZimPath):
+        js_modules.append(zim_path)
+
+    HtmlRewriter(
+        url_rewriter=ArticleUrlRewriter(
+            HttpUrl("http://kiwix.org/my_folder/my_article.html"), set()
+        ),
+        pre_head_insert="",
+        post_head_insert="",
+        notify_js_module=custom_notify,
+    ).rewrite(f'<script type="module" src="{js_src}"></script>')
+
+    assert len(js_modules) == 1
+    assert js_modules[0].value == expected_js_module_path
+
+
+@pytest.mark.parametrize(
+    "js_src,expected_js_module_path",
+    [
+        ("my-module-script.js", "kiwix.org/my_folder/my-module-script.js"),
+        ("./my-module-script.js", "kiwix.org/my_folder/my-module-script.js"),
+        ("../my-module-script.js", "kiwix.org/my-module-script.js"),
+        ("../../../my-module-script.js", "kiwix.org/my-module-script.js"),
+        ("/my-module-script.js", "kiwix.org/my-module-script.js"),
+        ("//myserver.com/my-module-script.js", "myserver.com/my-module-script.js"),
+        (
+            "https://myserver.com/my-module-script.js",
+            "myserver.com/my-module-script.js",
+        ),
+    ],
+)
+def test_js_module_detected_module_preload(js_src, expected_js_module_path):
+
+    js_modules = []
+
+    def custom_notify(zim_path: ZimPath):
+        js_modules.append(zim_path)
+
+    HtmlRewriter(
+        url_rewriter=ArticleUrlRewriter(
+            HttpUrl("http://kiwix.org/my_folder/my_article.html"), set()
+        ),
+        pre_head_insert="",
+        post_head_insert="",
+        notify_js_module=custom_notify,
+    ).rewrite(f'<link rel="modulepreload" src="{js_src}"></script>')
+
+    assert len(js_modules) == 1
+    assert js_modules[0].value == expected_js_module_path
+
+
+@pytest.mark.parametrize(
+    "script_src",
+    [
+        ('<script src="whatever.js"></script>'),
+        ('<script>console.log("HELLO")</script>'),
+        ('<script type="json" src="whatever.json"></script>'),
+    ],
+)
+def test_no_js_module_detected(script_src):
+
+    js_modules = []
+
+    def custom_notify(zim_path: ZimPath):
+        js_modules.append(zim_path)
+
+    HtmlRewriter(
+        url_rewriter=ArticleUrlRewriter(
+            HttpUrl("http://kiwix.org/my_folder/my_article.html"), set()
+        ),
+        pre_head_insert="",
+        post_head_insert="",
+        notify_js_module=custom_notify,
+    ).rewrite(script_src)
+
+    assert len(js_modules) == 0

@@ -253,6 +253,13 @@ class ArticleUrlRewriter:
         self.existing_zim_paths = existing_zim_paths
         self.missing_zim_paths: set[ZimPath] = set()
 
+    def get_item_path(self, item_url: str) -> ZimPath:
+        """Utility to transform an item URL into a ZimPath"""
+
+        item_absolute_url = urljoin(self.article_url.value, item_url)
+        item_path = normalize(HttpUrl(item_absolute_url))
+        return item_path
+
     def __call__(self, item_url: str, *, rewrite_all_url: bool = True) -> str:
         """Rewrite a url contained in a article.
 

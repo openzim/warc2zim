@@ -31,14 +31,15 @@ class WARCPayloadItem(StaticItem):
         head_template: Template,
         css_insert: str | None,
         existing_zim_paths: set[ZimPath],
+        js_modules: set[ZimPath],
     ):
         super().__init__()
 
         self.path = path
         self.mimetype = get_record_mime_type(record)
-        (self.title, self.content) = Rewriter(path, record, existing_zim_paths).rewrite(
-            head_template, css_insert
-        )
+        (self.title, self.content) = Rewriter(
+            path, record, existing_zim_paths, js_modules
+        ).rewrite(head_template, css_insert)
 
     def get_hints(self):
         is_front = self.mimetype.startswith("text/html")
