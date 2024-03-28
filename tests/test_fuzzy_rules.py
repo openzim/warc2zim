@@ -218,41 +218,67 @@ def test_fuzzyrules_youtube_embed(youtube_embed_case):
 @pytest.fixture(
     params=[
         ContentForTests(
-            "gcs-vimeo.akamaized.net/123.mp4",
-            "vimeo-cdn.fuzzy.replayweb.page/123.mp4",
+            "gcs-vimeo.akamaized.net/123.mp4?range=123-456",
+            "vimeo-cdn.fuzzy.replayweb.page/123.mp4?range=123-456",
         ),
         ContentForTests(
-            "vod.akamaized.net/123.mp4",
-            "vimeo-cdn.fuzzy.replayweb.page/123.mp4",
+            "vod.akamaized.net/123.mp4?range=123-456",
+            "vimeo-cdn.fuzzy.replayweb.page/123.mp4?range=123-456",
         ),
         ContentForTests(
-            "vod-progressive.akamaized.net/123.mp4",
-            "vimeo-cdn.fuzzy.replayweb.page/123.mp4",
+            "vod-progressive.akamaized.net/123.mp4?range=123-456",
+            "vimeo-cdn.fuzzy.replayweb.page/123.mp4?range=123-456",
         ),
         ContentForTests(
-            "foovod.akamaized.net/123.mp4",
-            "vimeo-cdn.fuzzy.replayweb.page/123.mp4",
+            "vod-adaptive.akamaized.net/123.mp4?range=123-456",
+            "vimeo-cdn.fuzzy.replayweb.page/123.mp4?range=123-456",
         ),
         ContentForTests(
-            "vod.akamaized.net/1/23.mp4",
-            "vimeo-cdn.fuzzy.replayweb.page/1/23.mp4",
+            "vod.akamaized.net/123.mp4?foo=bar&range=123-456",
+            "vimeo-cdn.fuzzy.replayweb.page/123.mp4?range=123-456",
         ),
         ContentForTests(
-            "vod.akamaized.net/a/23.mp4",
+            "vod.akamaized.net/123.mp4?foo=bar&range=123-456&bar=foo",
+            "vimeo-cdn.fuzzy.replayweb.page/123.mp4?range=123-456",
+        ),
+        ContentForTests(
+            "vod.akamaized.net/123.mp4?range=123-456&bar=foo",
+            "vimeo-cdn.fuzzy.replayweb.page/123.mp4?range=123-456",
+        ),
+        ContentForTests(
+            "foovod.akamaized.net/123.mp4?range=123-456",
+            "vimeo-cdn.fuzzy.replayweb.page/123.mp4?range=123-456",
+        ),
+        ContentForTests(
+            "vod.akamaized.net/1/23.mp4?range=123-456",
+            "vimeo-cdn.fuzzy.replayweb.page/23.mp4?range=123-456",
+        ),
+        ContentForTests(
+            "vod.akamaized.net/a/23.mp4?range=123-456",
+            "vimeo-cdn.fuzzy.replayweb.page/23.mp4?range=123-456",
+        ),
+        ContentForTests(
+            "vod.akamaized.net/foo/bar/23.mp4?range=123-456",
+            "vimeo-cdn.fuzzy.replayweb.page/23.mp4?range=123-456",
+        ),
+        ContentForTests(
+            "foo.akamaized.net/123.mp4?range=123-456",
+        ),
+        ContentForTests(
+            "vod.akamaized.net/23.mp4",
             "vimeo-cdn.fuzzy.replayweb.page/23.mp4",
         ),
         ContentForTests(
-            "vod.akamaized.net/foo/bar/23.mp4",
-            "vimeo-cdn.fuzzy.replayweb.page/23.mp4",
+            "vod.akamaized.net/23/12332.mp4",
+            "vimeo-cdn.fuzzy.replayweb.page/23/12332.mp4",
         ),
         ContentForTests(
-            "foo.akamaized.net/123.mp4",
-        ),
-        ContentForTests(
-            "vod.akamaized.net/23.mp4?foo",
-        ),
-        ContentForTests(
-            "vod.akamaized.net/23.mp3",
+            "https://vod-progressive.akamaized.net/exp=1635528595"
+            "~acl=%2Fvimeo-prod-skyfire-std-us"
+            "%2F01%2F4423%2F13%2F347119375%2F1398505169.mp4"
+            "~hmac=27c31f1990aab5e5429f7f7db5b2dcbcf8d2f5c92184d53102da36920d33d53e"
+            "/vimeo-prod-skyfire-std-us/01/4423/13/347119375/1398505169.mp4",
+            "vimeo-cdn.fuzzy.replayweb.page/01/4423/13/347119375/1398505169.mp4",
         ),
     ]
 )

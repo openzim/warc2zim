@@ -21,6 +21,10 @@
             "replace": "youtube.fuzzy.replayweb.page/embed/\\1"
         },
         {
+            "pattern": ".*(?:gcs-vimeo|vod|vod-progressive|vod-adaptive)\\.akamaized\\.net.*/(.+?.mp4)\\?.*range=(.*?)(?:&|$)",
+            "replace": "vimeo-cdn.fuzzy.replayweb.page/\\1?range=\\2"
+        },
+        {
             "pattern": ".*(?:gcs-vimeo|vod|vod-progressive)\\.akamaized\\.net.*?/([\\d/]+.mp4)$",
             "replace": "vimeo-cdn.fuzzy.replayweb.page/\\1"
         },
