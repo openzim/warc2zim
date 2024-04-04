@@ -1,0 +1,32 @@
+name: Publish Docker dev image
+
+on:
+  push:
+    tags:
+      - test-website
+
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build and push Docker image
+        uses: openzim/docker-publish-action@v10
+        with:
+          image-name: openzim/test-website
+          manual-tag: latest
+          latest-on-tag: false
+          restrict-to: openzim/warc2zim
+          registries: ghcr.io
+          credentials:
+            GHCRIO_USERNAME=${{ secrets.GHCR_USERNAME }}
+            GHCRIO_TOKEN=${{ secrets.GHCR_TOKEN }}
+          repo_description: auto
+          repo_overview: auto
+          platforms: |
+            linux/amd64
+            linux/amd64
+
+    # TODO: update test website automatically

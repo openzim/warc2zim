@@ -1,0 +1,21 @@
+{$SITE_ADDRESS} {
+    tls {$TLS_CONFIG}
+
+    header {
+        Access-Control-Allow-Origin *
+    }
+
+    file_server {
+        root /var/www/html
+    }
+
+    handle /dynimages {
+        @hasPathParam query "path=*"
+        handle @hasPathParam {
+            rewrite * /images/{http.request.uri.query.path}
+        }
+        handle {
+            respond 500 "Bad Request"
+        }
+    }
+}
