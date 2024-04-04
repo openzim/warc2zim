@@ -1,6 +1,4 @@
 {$SITE_ADDRESS} {
-    tls {$TLS_CONFIG}
-
     header {
         Access-Control-Allow-Origin *
     }
