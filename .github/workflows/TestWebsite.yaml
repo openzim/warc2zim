@@ -19,6 +19,7 @@ jobs:
           manual-tag: latest
           latest-on-tag: false
           restrict-to: openzim/warc2zim
+          context: test-website
           registries: ghcr.io
           credentials:
             GHCRIO_USERNAME=${{ secrets.GHCR_USERNAME }}
