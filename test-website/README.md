@@ -26,7 +26,7 @@ docker build -t test-website .
 Start the test website with appropriate environment variables.
 
 ```
-docker run -p 8888:80 --rm --name test-website -e SITE_ADDRESS="test-website.local.oviles.info:80, xn--jdacents-v0aqb.local.oviles.info:80" -e STANDARD_HOSTNAME="http:\/\/test-website.local.oviles.info:8888" -e ACCENTUATED_HOSTNAME="http:\/\/jédéacçents.local.oviles.info:8888" test-website
+docker run -p 8888:80 --rm --name test-website -e SITE_ADDRESS="test-website.local.oviles.info:80, xn--jdacents-v0aqb.local.oviles.info:80" -e STANDARD_HOSTNAME="http:\/\/test-website.local.oviles.info:8888" -e NOT_STANDARD_HOSTNAME_NOT_ENCODED="http:\/\/jédéacçents.local.oviles.info:8888" -e NOT_STANDARD_HOSTNAME_PUNNY_ENCODED="http:\/\/xn--jdacents-v0aqb.local.oviles.info:8888" test-website
 ```
 
 In the example above, the trick is that we have the following DNS records in place : `local.oviles.info A 127.0.0.1` and `*.local.oviles.info CNAME local.oviles.info`, meaning that any request to local.oviles.info or one of its subdomain will resolve to localhost IP 127.0.0.1 ; we use local ports 8080 for HTTP and 8443 for HTTPS.
@@ -35,6 +35,11 @@ You can then open https://test-website.local.oviles.info:8888 in your favorite b
 
 ## Environments variables needed in Docker image
 
-- SITE_ADDRESS: the site address for Caddy operation ; should contain a non-accentuated and an accentuated hostnames for proper testing
-- STANDARD_HOSTNAME: the full hostname to the non-accentuated / standard hostname as seen from the browser (will be used in HTML/JS/... files) ; will be used by `sed` as replacement, so few chars (e.g. `/`) must be escaped
-- ACCENTUATED_HOSTNAME: the full hostname to the accentuated hostname as seen from the browser (will be used in HTML/JS/... files) ; will be used by `sed` as replacement, so few chars (e.g. `/`) must be escaped
+|Environment variable | Usage | Comment | Sample value |
+|--|--|--|--|
+| `SITE_ADDRESS` | Caddyfile | The site address for Caddy operation ; should contain a standard and a not-standard punny-encoded hostnames for proper testing | `test-website.local.oviles.info:80, xn--jdacents-v0aqb.local.oviles.info:80` |
+| `STANDARD_HOSTNAME` | sed in HTML/JS/... files ^1 | The URL to the standard hostname (no special characters) | `http:\/\/test-website.local.oviles.info:8888` |
+| `NOT_STANDARD_HOSTNAME_NOT_ENCODED` | sed in HTML/JS/... files ^1 | The URL to the not standard hostname (with special characters) but not encoded | `http:\/\/jédéacçents.local.oviles.info:8888` |
+| `NOT_STANDARD_HOSTNAME_PUNNY_ENCODED` | sed in HTML/JS/... files ^1 | The URL to the not standard hostname (with special characters) punny encoded | `http:\/\/xn--jdacents-v0aqb.local.oviles.info:8888` |
+
+1. variables that will be used by `sed` as replacement have to be be escaped for proper sed operations ; since they will be interpreted by the browser, they should contain the "user-visible" FQDN and port
