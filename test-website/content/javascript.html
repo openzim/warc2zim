@@ -16,9 +16,9 @@
         "javascript/resources": "./javascript/resources.js",
         "../javascript/resources": "./javascript/resources.js",
         "https://example.com/resources": "./javascript/resources.js",
-        "https://standard_hostname/resources": "./javascript/resources.js",
-        "https://not_standard_hostname_punny_encoded/resources": "./javascript/resources.js",
-        "https://not_standard_hostname_not_encoded/resources": "./javascript/resources.js"
+        "https://standard_netloc/resources": "./javascript/resources.js",
+        "https://not_standard_netloc_punny_encoded/resources": "./javascript/resources.js",
+        "https://not_standard_netloc_not_encoded/resources": "./javascript/resources.js"
       }
     }
   </script>
@@ -194,7 +194,7 @@
   </p>
 
   <script>
-    fetch("https://standard_hostname/javascript/content.txt")
+    fetch("https://standard_netloc/javascript/content.txt")
     .then(function(response) {
       response.text().then(function(text) {
         const span = document.getElementById("span01a");
@@ -204,7 +204,7 @@
     });
   </script>
   <script>
-    fetch("https://not_standard_hostname_punny_encoded/javascript/content.txt")
+    fetch("https://not_standard_netloc_punny_encoded/javascript/content.txt")
     .then(function(response) {
       response.text().then(function(text) {
         const span = document.getElementById("span01b");
@@ -214,7 +214,7 @@
     });
   </script>
   <script>
-    fetch("https://standard_hostname/javascript/contént.txt")
+    fetch("https://standard_netloc/javascript/contént.txt")
     .then(function(response) {
       response.text().then(function(text) {
         const span = document.getElementById("span01c");
@@ -224,7 +224,7 @@
     });
   </script>
   <script>
-    fetch("	https://not_standard_hostname_punny_encoded/javascript/cont%C3%A9nt.txt")
+    fetch("	https://not_standard_netloc_punny_encoded/javascript/cont%C3%A9nt.txt")
     .then(function(response) {
       response.text().then(function(text) {
         const span = document.getElementById("span01d");
@@ -234,7 +234,7 @@
     });
   </script>
   <script>
-    fetch("https://standard_hostname/javascript/cont%F0%9F%8E%81nt.txt")
+    fetch("https://standard_netloc/javascript/cont%F0%9F%8E%81nt.txt")
     .then(function(response) {
       response.text().then(function(text) {
         const span = document.getElementById("span01e");
@@ -244,7 +244,7 @@
     });
   </script>
   <script>
-    fetch("https://not_standard_hostname_punny_encoded/javascript/cont%F0%9F%8E%81nt.txt")
+    fetch("https://not_standard_netloc_punny_encoded/javascript/cont%F0%9F%8E%81nt.txt")
     .then(function(response) {
       response.text().then(function(text) {
         const span = document.getElementById("span01f");
@@ -254,7 +254,7 @@
     });
   </script>
   <script>
-    fetch("https://standard_hostname/javascript/contént.txt")
+    fetch("https://standard_netloc/javascript/contént.txt")
     .then(function(response) {
       response.text().then(function(text) {
         const span = document.getElementById("span01g");
@@ -264,7 +264,7 @@
     });
   </script>
   <script>
-    fetch("https://not_standard_hostname_punny_encoded/javascript/contént.txt")
+    fetch("https://not_standard_netloc_punny_encoded/javascript/contént.txt")
     .then(function(response) {
       response.text().then(function(text) {
         const span = document.getElementById("span01h");
@@ -274,7 +274,7 @@
     });
   </script>
   <script>
-    fetch("https://standard_hostname/javascript/cont🎁nt.txt")
+    fetch("https://standard_netloc/javascript/cont🎁nt.txt")
     .then(function(response) {
       response.text().then(function(text) {
         const span = document.getElementById("span01i");
@@ -284,7 +284,7 @@
     });
   </script>
   <script>
-    fetch("https://not_standard_hostname_punny_encoded/javascript/cont🎁nt.txt")
+    fetch("https://not_standard_netloc_punny_encoded/javascript/cont🎁nt.txt")
     .then(function(response) {
       response.text().then(function(text) {
         const span = document.getElementById("span01j");
@@ -294,7 +294,7 @@
     });
   </script>
   <script>
-    fetch("https://not_standard_hostname_not_encoded/javascript/content.txt")
+    fetch("https://not_standard_netloc_not_encoded/javascript/content.txt")
     .then(function(response) {
       response.text().then(function(text) {
         const span = document.getElementById("span01k");
