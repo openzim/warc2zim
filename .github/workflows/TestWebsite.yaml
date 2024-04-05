@@ -25,8 +25,5 @@ jobs:
             GHCRIO_TOKEN=${{ secrets.GHCR_TOKEN }}
           repo_description: auto
           repo_overview: auto
-          platforms: |
-            linux/amd64
-            linux/amd64
 
     # TODO: update test website automatically
