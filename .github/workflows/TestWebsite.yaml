@@ -1,9 +1,9 @@
-name: Publish Docker dev image
+name: Test website
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - test-website
 
 jobs:
   publish:
@@ -15,8 +15,8 @@ jobs:
       - name: Build and push Docker image
         uses: openzim/docker-publish-action@v10
         with:
-          image-name: openzim/warc2zim
-          manual-tag: dev
+          image-name: openzim/test-website
+          manual-tag: latest
           latest-on-tag: false
           restrict-to: openzim/warc2zim
           registries: ghcr.io
@@ -25,3 +25,5 @@ jobs:
             GHCRIO_TOKEN=${{ secrets.GHCR_TOKEN }}
           repo_description: auto
           repo_overview: auto
+
+    # TODO: update test website automatically
