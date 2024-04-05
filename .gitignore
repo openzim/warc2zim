@@ -213,3 +213,7 @@ pyrightconfig.json
 
 # installed at build time
 wombat.js
+
+# temporary directories using during development
+output
+tmp

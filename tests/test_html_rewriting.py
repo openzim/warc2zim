@@ -3,7 +3,7 @@ from textwrap import dedent
 import pytest
 
 from warc2zim.content_rewriting.html import HtmlRewriter
-from warc2zim.url_rewriting import ArticleUrlRewriter
+from warc2zim.url_rewriting import ArticleUrlRewriter, HttpUrl, ZimPath
 
 from .utils import ContentForTests
 
@@ -44,7 +44,13 @@ def no_rewrite_content(request):
 
 def test_no_rewrite(no_rewrite_content):
     assert (
-        HtmlRewriter(ArticleUrlRewriter(no_rewrite_content.article_url, set()), "", "")
+        HtmlRewriter(
+            ArticleUrlRewriter(
+                HttpUrl(f"http://{no_rewrite_content.article_url}"), set()
+            ),
+            "",
+            "",
+        )
         .rewrite(no_rewrite_content.input_str)
         .content
         == no_rewrite_content.expected_str
@@ -101,7 +107,11 @@ def escaped_content(request):
 
 def test_escaped_content(escaped_content):
     transformed = (
-        HtmlRewriter(ArticleUrlRewriter(escaped_content.article_url, set()), "", "")
+        HtmlRewriter(
+            ArticleUrlRewriter(HttpUrl(f"http://{escaped_content.article_url}"), set()),
+            "",
+            "",
+        )
         .rewrite(escaped_content.input_str)
         .content
     )
@@ -121,12 +131,12 @@ lprtc = long_path_replace_test_content
         # Normalized path is "exemple.com/a/long/path"
         lprtc(
             '<a href="http://exemple.com/a/long/path">A link to rewrite</a>',
-            "exemple.com/a/long/path",
+            "a/long/path",
             "exemple.com",
         ),
         lprtc(
             '<a href="http://exemple.com/a/long/path">A link to rewrite</a>',
-            "exemple.com/a/long/path",
+            "../exemple.com/a/long/path",
             "kiwix.org",
         ),
         lprtc(
@@ -188,7 +198,10 @@ def rewrite_url(request):
 def test_rewrite(rewrite_url):
     assert (
         HtmlRewriter(
-            ArticleUrlRewriter(rewrite_url.article_url, {"exemple.com/a/long/path"}),
+            ArticleUrlRewriter(
+                HttpUrl(f"http://{rewrite_url.article_url}"),
+                {ZimPath("exemple.com/a/long/path")},
+            ),
             "",
             "",
         )
@@ -222,7 +235,11 @@ def test_extract_title():
 
 
 def test_rewrite_attributes():
-    rewriter = HtmlRewriter(ArticleUrlRewriter("kiwix.org/", {"kiwix.org/foo"}), "", "")
+    rewriter = HtmlRewriter(
+        ArticleUrlRewriter(HttpUrl("http://kiwix.org/"), {ZimPath("kiwix.org/foo")}),
+        "",
+        "",
+    )
 
     assert (
         rewriter.rewrite("<a href='https://kiwix.org/foo'>A link</a>").content
@@ -245,7 +262,7 @@ def test_rewrite_attributes():
 
 def test_rewrite_css():
     output = (
-        HtmlRewriter(ArticleUrlRewriter("", set()), "", "")
+        HtmlRewriter(ArticleUrlRewriter(HttpUrl("http://kiwix.org/"), set()), "", "")
         .rewrite(
             "<style>p { /* A comment with a http://link.org/ */ "
             "background: url('some/image.png') ; }</style>",
@@ -268,7 +285,7 @@ def test_head_insert():
 
     content = dedent(content)
 
-    url_rewriter = ArticleUrlRewriter("foo", set())
+    url_rewriter = ArticleUrlRewriter(HttpUrl("http://kiwix.org/"), set())
     assert HtmlRewriter(url_rewriter, "", "").rewrite(content).content == content
 
     assert HtmlRewriter(url_rewriter, "PRE_HEAD_INSERT", "").rewrite(

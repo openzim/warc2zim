@@ -15,6 +15,7 @@ from zimscraperlib.types import get_mime_for_name
 from zimscraperlib.zim.items import StaticItem
 
 from warc2zim.content_rewriting.generic import Rewriter
+from warc2zim.url_rewriting import ZimPath
 from warc2zim.utils import get_record_mime_type
 
 
@@ -29,13 +30,13 @@ class WARCPayloadItem(StaticItem):
         record: ArcWarcRecord,
         head_template: Template,
         css_insert: str | None,
-        known_urls: set[str],
+        existing_zim_paths: set[ZimPath],
     ):
         super().__init__()
 
         self.path = path
         self.mimetype = get_record_mime_type(record)
-        (self.title, self.content) = Rewriter(path, record, known_urls).rewrite(
+        (self.title, self.content) = Rewriter(path, record, existing_zim_paths).rewrite(
             head_template, css_insert
         )
 
