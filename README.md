@@ -38,7 +38,9 @@ warc2zim --help
 deactivate  # unloads virtualenv from shell
 ```
 
-## URL Filtering
+## Usage
+
+### URL Filtering
 
 By default, all URLs found in the WARC files are included unless the `--include-domains`/ `-i` flag is set.
 
@@ -66,37 +68,17 @@ If main page is on a subdomain, `https://subdomain1.example.com/` and only URLs 
 warc2zim myarchive.warc --name myarchive -i subdomain1.example.com -i subdomain2.example.com -u https://subdomain1.example.com/starting/page.html
 ```
 
-## Custom CSS
+### Custom CSS
 
 `--custom-css` allows passing an URL or a path to a CSS file that gets added to the ZIM and gets included on **every HTML article** at the very end of `</head>` (if it exists).
 
+### Other options
 
 See `warc2zim -h` for other options.
 
+## Documentation
 
-## ZIM Entry Layout
-
-The WARC to ZIM conversion is performed by splitting the WARC (and HTTP) headers from the payload.
-
-For `response` records, the WARC + HTTP headers are stored under `H/<url>` while the payload is stored under `A/<url>`
-
-For `resource` records, the WARC headers are stored under `H/<url>` while the payload is stored under `A/<url>`. (Three are no HTTP headers for resource records).
-
-For `revisit` records, the WARC + optional HTTP headers are stored under `H/<url>`, while no payload record is created.
-
-
-If the payload `A/<url>` is zero-length, the record is omitted to conform to ZIM specifications of not storing empty records.
-
-
-## Duplicate URIs
-
-WARCs allow multiple records for the same URL, while ZIM does not. As a result, only the first encountered response or resource record is stored in the ZIM,
-and subsequent records are ignored.
-
-For revisit records, they are only added if pointing to a different URL, and are processed after response/revisit records. A revisit record to the same URL
-will always be ignored.
-
-All other WARC records are skipped.
+We have documentation about the [functional architecture](docs/functional_architecture.md), the [technical architecture](docs/technical_architecture.md) and the [software architecture](docs/software_architecture.md).
 
 ## Contributing
 
