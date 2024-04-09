@@ -1,0 +1,34 @@
+{
+  "name": "@openzim/wombat-setup",
+  "type": "module",
+  "version": "0.1.0",
+  "license": "GPL-3.0-or-later",
+  "author": "openZIM",
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "15.2.3",
+    "@rollup/plugin-terser": "0.4.4",
+    "ava": "^6.1.2",
+    "rollup": "4.14.1"
+  },
+  "scripts": {
+    "test": "ava --verbose",
+    "build-prod": "rollup -c rollup.config.prod.js",
+    "build-dev": "rollup -c rollup.config.dev.js",
+    "build-dev-watch": "rollup --watch -c rollup.config.dev.js"
+  },
+  "prettier": {
+    "singleQuote": true
+  },
+  "ava": {
+    "concurrency": 1,
+    "verbose": true,
+    "serial": true,
+    "files": [
+      "test/*.js"
+    ],
+    "sources": [
+      "src/**/*"
+    ]
+  },
+  "dependencies": {}
+}

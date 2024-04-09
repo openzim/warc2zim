@@ -1,5 +1,9 @@
 [files.assets.config]
 target_dir="src/warc2zim/statics"
+execute_after=[
+    "cd ../../../ && python rules/generate_rules.py", # generate Python and JS rules
+    "cd ../../../javascript && yarn build-prod", # generate wombatSetup.js configuration
+]
 
 [files.assets.actions."wombat.js"]
 action="get_file"

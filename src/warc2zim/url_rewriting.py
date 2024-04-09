@@ -43,7 +43,6 @@ and not url-encoded.
 
 from __future__ import annotations
 
-import logging
 import re
 from pathlib import PurePosixPath
 from urllib.parse import (
@@ -56,41 +55,10 @@ from urllib.parse import (
 
 import idna
 
-# Shared logger
-logger = logging.getLogger("warc2zim.url_rewriting")
+from warc2zim.constants import logger
+from warc2zim.rules import FUZZY_RULES
 
 known_bad_hostnames: set[str] = set()
-
-FUZZY_RULES = [
-    {
-        "pattern": r".*googlevideo.com/(videoplayback(?=\?)).*[?&](id=[^&]+).*",
-        "replace": r"youtube.fuzzy.replayweb.page/\1?\2",
-    },
-    {
-        "pattern": r"(?:www\.)?youtube(?:-nocookie)?\.com/(get_video_info\?).*(video_id"
-        r"=[^&]+).*",
-        "replace": r"youtube.fuzzy.replayweb.page/\1\2",
-    },
-    {"pattern": r"([^?]+)\?[\d]+$", "replace": r"\1"},
-    {
-        "pattern": r"(?:www\.)?youtube(?:-nocookie)?\.com\/(youtubei\/[^?]+).*(videoId["
-        r"^&]+).*",
-        "replace": r"youtube.fuzzy.replayweb.page/\1?\2",
-    },
-    {
-        "pattern": r"(?:www\.)?youtube(?:-nocookie)?\.com/embed/([^?]+).*",
-        "replace": r"youtube.fuzzy.replayweb.page/embed/\1",
-    },
-    {
-        "pattern": r".*(?:gcs-vimeo|vod|vod-progressive)\.akamaized\.net.*?/([\d/]+"
-        r".mp4)$",
-        "replace": r"vimeo-cdn.fuzzy.replayweb.page/\1",
-    },
-    {
-        "pattern": r".*player.vimeo.com/(video/[\d]+)\?.*",
-        "replace": r"vimeo.fuzzy.replayweb.page/\1",
-    },
-]
 
 
 COMPILED_FUZZY_RULES = [

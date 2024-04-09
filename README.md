@@ -82,6 +82,10 @@ We have documentation about the [functional architecture](docs/functional_archit
 
 ## Contributing
 
+Requirements:
+- proper Python version (see pyproject.toml) with pip
+- Node LTS version (20 recommended)
+
 First, clone this repository.
 
 If you do not already have it on your system, install hatch to build the software and manage virtual environments (you might be interested by our detailed [Developer Setup](https://github.com/openzim/_python-bootstrap/wiki/Developer-Setup) as well).

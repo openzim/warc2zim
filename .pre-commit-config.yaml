@@ -25,3 +25,17 @@ repos:
     'types_or': [python, pyi]
     require_serial: true
     minimum_pre_commit_version: '2.9.2'
+- repo: https://github.com/pre-commit/mirrors-prettier
+  rev: v3.1.0
+  hooks:
+  - id: prettier
+    files: javascript\/.*$ # files in javascript folder
+    args:
+      - --config
+      - javascript/.prettierrc.json
+- repo: https://github.com/pre-commit/mirrors-eslint
+  rev: v8.51.0
+  hooks:
+  - id: eslint
+    types: [file]
+    files: javascript\/src\/.*(?:\.[jt]sx?|\.vue)$ # *.js, *.jsx, *.ts, *.tsx, *.vue in javascript/src folder
