@@ -33,6 +33,16 @@ In the example above, the trick is that we have the following DNS records in pla
 
 You can then open https://test-website.local.oviles.info:8888 in your favorite browser and run manual tests on this website (which uses the other one as sub-site for few resources on special domains with special characters).
 
+If you wanna develop the test-website locally, you might want as well to mount the `content` folder inside the container
+
+```
+docker run -v $PWD/content:/var/www/html -p 8888:80 --rm --name test-website -e SITE_ADDRESS="test-website.local.oviles.info:80, xn--jdacents-v0aqb.local.oviles.info:80" -e STANDARD_NETLOC="http:\/\/test-website.local.oviles.info:8888" -e NOT_STANDARD_NETLOC_NOT_ENCODED="http:\/\/jédéacçents.local.oviles.info:8888" -e NOT_STANDARD_NETLOC_PUNNY_ENCODED="http:\/\/xn--jdacents-v0aqb.local.oviles.info:8888" test-website
+```
+
+This will have the adverse effect that local files will be modified as well by the `entrypoint.sh` to replace placeholders by environment variables value. And it means that you have to use "real" netloc from the environment in your modifications for test.
+
+Once done, there is a utility script at `entrypoint-reverse.sh` which can be used to reverse these modifications once you are about to commit to Github (this will break the test-website inside Docker container, but you will be able to commit with proper modifications and then just restart the container to reapply needed modification).
+
 ## Environments variables needed in Docker image
 
 |Environment variable | Usage | Comment | Sample value |
