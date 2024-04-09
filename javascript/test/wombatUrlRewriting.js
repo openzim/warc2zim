@@ -1,7 +1,6 @@
 import test from 'ava';
 
 import { urlRewriteFunction } from '../src/wombatSetup.js';
-import { createGzip } from 'zlib';
 
 test.beforeEach((t) => {
   t.context.prefix = 'http://library.kiwix.org/content/myzim_yyyy-mm/';
@@ -34,24 +33,6 @@ test('undefined', (t) => {
   );
 });
 
-// Why? I don't get it ... this is not supposed to be a valid URL ...
-test('originalHost', (t) => {
-  t.is(
-    urlRewriteFunction(
-      t.context.currentUrl,
-      t.context.originalHost,
-      t.context.originalScheme,
-      t.context.originalUrl,
-      t.context.prefix,
-      'www.example.com/javascript/content.txt',
-      undefined,
-      undefined,
-      undefined,
-    ),
-    'www.example.com/javascript/content.txt',
-  );
-});
-
 test('simpleContentCompleteUrl', (t) => {
   t.is(
     urlRewriteFunction(
@@ -69,7 +50,7 @@ test('simpleContentCompleteUrl', (t) => {
   );
 });
 
-test.skip('simpleContentFullUrl', (t) => {
+test('simpleContentFullUrl', (t) => {
   t.is(
     urlRewriteFunction(
       t.context.currentUrl,
@@ -205,7 +186,7 @@ test('contentWithSpaceNotEncoded', (t) => {
   );
 });
 
-test.skip('contentWithPlusNotEncoded', (t) => {
+test('contentWithPlusNotEncoded', (t) => {
   t.is(
     urlRewriteFunction(
       t.context.currentUrl,
@@ -273,7 +254,7 @@ test('contentWithUnderscore', (t) => {
   );
 });
 
-test.skip('contentWithEncodedTilde', (t) => {
+test('contentWithEncodedTilde', (t) => {
   t.is(
     urlRewriteFunction(
       t.context.currentUrl,
@@ -290,7 +271,7 @@ test.skip('contentWithEncodedTilde', (t) => {
   );
 });
 
-test.skip('contentWithEncodedApostrophe', (t) => {
+test('contentWithEncodedApostrophe', (t) => {
   t.is(
     urlRewriteFunction(
       t.context.currentUrl,
@@ -307,7 +288,7 @@ test.skip('contentWithEncodedApostrophe', (t) => {
   );
 });
 
-test.skip('contentWithEncodedExclamationMark', (t) => {
+test('contentWithEncodedExclamationMark', (t) => {
   t.is(
     urlRewriteFunction(
       t.context.currentUrl,
@@ -358,7 +339,7 @@ test('contentWithEncodedQuestionMarkAndQueryParam', (t) => {
   );
 });
 
-test.skip('contentWithEncodedStar', (t) => {
+test('contentWithEncodedStar', (t) => {
   t.is(
     urlRewriteFunction(
       t.context.currentUrl,
@@ -375,7 +356,7 @@ test.skip('contentWithEncodedStar', (t) => {
   );
 });
 
-test.skip('contentWithEncodedParentheses', (t) => {
+test('contentWithEncodedParentheses', (t) => {
   t.is(
     urlRewriteFunction(
       t.context.currentUrl,
@@ -392,7 +373,7 @@ test.skip('contentWithEncodedParentheses', (t) => {
   );
 });
 
-test.skip('contentWithEncodedHyphen1', (t) => {
+test('contentWithEncodedHyphen1', (t) => {
   t.is(
     urlRewriteFunction(
       t.context.currentUrl,
@@ -409,7 +390,7 @@ test.skip('contentWithEncodedHyphen1', (t) => {
   );
 });
 
-test.skip('contentWithEncodedHyphen2', (t) => {
+test('contentWithEncodedHyphen2', (t) => {
   t.is(
     urlRewriteFunction(
       t.context.currentUrl,
@@ -426,7 +407,7 @@ test.skip('contentWithEncodedHyphen2', (t) => {
   );
 });
 
-test.skip('contentWithEncodedUnderscore', (t) => {
+test('contentWithEncodedUnderscore', (t) => {
   t.is(
     urlRewriteFunction(
       t.context.currentUrl,
@@ -443,7 +424,7 @@ test.skip('contentWithEncodedUnderscore', (t) => {
   );
 });
 
-test.skip('contentWithEncodedPeriod', (t) => {
+test('contentWithEncodedPeriod', (t) => {
   t.is(
     urlRewriteFunction(
       t.context.currentUrl,
@@ -477,7 +458,7 @@ test('contentWithSimpleQueryString', (t) => {
   );
 });
 
-test.skip('contentWithQueryValueEqualSign', (t) => {
+test('contentWithQueryValueEqualSign', (t) => {
   t.is(
     urlRewriteFunction(
       t.context.currentUrl,
@@ -494,7 +475,7 @@ test.skip('contentWithQueryValueEqualSign', (t) => {
   );
 });
 
-test.skip('contentWithQueryValuePercentSign', (t) => {
+test('contentWithQueryValuePercentSign', (t) => {
   t.is(
     urlRewriteFunction(
       t.context.currentUrl,
@@ -511,7 +492,7 @@ test.skip('contentWithQueryValuePercentSign', (t) => {
   );
 });
 
-test.skip('contentWithQueryParamPercentSign', (t) => {
+test('contentWithQueryParamPercentSign', (t) => {
   t.is(
     urlRewriteFunction(
       t.context.currentUrl,
@@ -528,7 +509,7 @@ test.skip('contentWithQueryParamPercentSign', (t) => {
   );
 });
 
-test.skip('contentWithQueryParamPlusSign', (t) => {
+test('contentWithQueryParamPlusSign', (t) => {
   t.is(
     urlRewriteFunction(
       t.context.currentUrl,
@@ -545,7 +526,7 @@ test.skip('contentWithQueryParamPlusSign', (t) => {
   );
 });
 
-test.skip('fqdnWithSpecialCharsEncoded', (t) => {
+test('fqdnWithSpecialCharsEncoded', (t) => {
   t.is(
     urlRewriteFunction(
       t.context.currentUrl,
@@ -562,7 +543,7 @@ test.skip('fqdnWithSpecialCharsEncoded', (t) => {
   );
 });
 
-test.skip('fqdnWithSpecialCharsNotEncoded', (t) => {
+test('fqdnWithSpecialCharsNotEncoded', (t) => {
   t.is(
     urlRewriteFunction(
       t.context.currentUrl,
@@ -579,7 +560,7 @@ test.skip('fqdnWithSpecialCharsNotEncoded', (t) => {
   );
 });
 
-test.skip('fqdnWithSpecialCharsEncodedContentWithSpecialCharsEncoded', (t) => {
+test('fqdnWithSpecialCharsEncodedContentWithSpecialCharsEncoded', (t) => {
   t.is(
     urlRewriteFunction(
       t.context.currentUrl,
@@ -630,7 +611,7 @@ test('relSimpleContent2', (t) => {
   );
 });
 
-test.skip('relGoingUperThanHost', (t) => {
+test('relGoingUperThanHost', (t) => {
   t.is(
     urlRewriteFunction(
       t.context.currentUrl,
@@ -698,7 +679,7 @@ test('data', (t) => {
   );
 });
 
-test.skip('tel', (t) => {
+test('tel', (t) => {
   t.is(
     urlRewriteFunction(
       t.context.currentUrl,
@@ -715,7 +696,7 @@ test.skip('tel', (t) => {
   );
 });
 
-test.skip('ftp', (t) => {
+test('ftp', (t) => {
   t.is(
     urlRewriteFunction(
       t.context.currentUrl,
@@ -732,7 +713,7 @@ test.skip('ftp', (t) => {
   );
 });
 
-test.skip('blob', (t) => {
+test('blob', (t) => {
   t.is(
     urlRewriteFunction(
       t.context.currentUrl,
@@ -749,7 +730,7 @@ test.skip('blob', (t) => {
   );
 });
 
-test.skip('customprotocol', (t) => {
+test('customprotocol', (t) => {
   t.is(
     urlRewriteFunction(
       t.context.currentUrl,
@@ -834,7 +815,7 @@ test('youtubeFuzzyNotEncoded', (t) => {
   );
 });
 
-test.skip('youtubeFuzzyEncoded', (t) => {
+test('youtubeFuzzyEncoded', (t) => {
   t.is(
     urlRewriteFunction(
       t.context.currentUrl,
@@ -847,6 +828,6 @@ test.skip('youtubeFuzzyEncoded', (t) => {
       undefined,
       undefined,
     ),
-    'http://library.kiwix.org/content/myzim_yyyy-mm/www.example.com/path1/youtube.fuzzy.replayweb.page/get_video_info%3Fvideo_id%3D12%3D3',
+    'http://library.kiwix.org/content/myzim_yyyy-mm/www.example.com/path1/youtube.fuzzy.replayweb.page/get_video_info%3Fvideo_id%3D12%3D3ah',
   );
 });

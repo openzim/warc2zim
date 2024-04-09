@@ -1,4 +1,5 @@
 import { fuzzyRules } from './fuzzyRules.js';
+import URI from 'uri-js';
 
 export function applyFuzzyRules(path) {
   // Apply fuzzy rules to simplify the ZIM path. First matching rule is applied and
@@ -26,63 +27,62 @@ export function urlRewriteFunction(
 ) {
   if (!url) return url;
 
-  url = url.toString();
+  // Special stuff which is not really a URI but exists in the wild
+  if (['#', '{', '*'].includes(url.substring(0, 1))) return url;
 
-  if (url.startsWith(orig_host)) return url;
-
-  for (const prefix of [
-    '#',
-    'about:',
-    'data:',
-    'blob:',
-    'mailto:',
-    'javascript:',
-    '{',
-    '*',
-  ]) {
-    if (url.startsWith(prefix)) {
-      return url;
-    }
+  // This is a hack to detect improper URL encoding ; proper detection should be
+  // possible with chardet or other alternatives but did not worked so far ; we hence
+  // take benefit of the error below to detect improper URL encoding
+  // When improper URL encoding is detected, we try to encode URL as a best-effort;
+  // 'best-effort', because if some part of the URL is encoded and another part is not,
+  // this will fail ... but this is a weird edge case anyway
+  try {
+    decodeURIComponent(URI.parse(url).path);
+  } catch (e) {
+    url = encodeURI(url);
   }
 
-  var absolute_url;
-  if (url.startsWith('//')) {
-    absolute_url = orig_scheme + url;
-  } else if (url.startsWith('/')) {
-    // We have a absolute path without host.
-    // So it is a absolute path relative to the original host.
-    absolute_url = new URL(url, orig_url).toString();
-  } else {
-    // Relative path or full url.
-    // Let's build relative to our current url (`URL` will take care of relative vs full url)
-    absolute_url = new URL(url, current_url).toString();
-  }
+  // If URI scheme is defined but not http or https, we have to not rewrite the URL
+  const uri = URI.parse(url);
+  if (
+    typeof uri.scheme !== 'undefined' &&
+    !['http', 'https'].includes(uri.scheme)
+  )
+    return url;
 
-  var entry_path;
-  if (absolute_url.startsWith(prefix)) {
-    // The absolute_url start with our prefix.
-    // It means that `url` was a relative or already processed url.
-    // We can simply remove our prefix to found our entry's path.
-    entry_path = absolute_url.substring(prefix.length);
-  } else {
-    // Remove potential scheme.
-    entry_path = absolute_url.replace(/^\w+:?\/\//i, '');
-  }
+  // Compute the absolute URI, just like the browser would have resolved it hopefully
+  const original_absolute_url = URI.resolve(orig_url, url);
 
-  // Now we have a entry's path "as seen by the website".
-  // We need to reduce it to what we have stored in the zim file.
-  const reduced_path = applyFuzzyRules(entry_path);
+  // We now have to transform this absolute URI into a normalized ZIM path entry
+  const absolute_url_parts = URI.parse(original_absolute_url);
 
-  var final_url = prefix + reduced_path;
+  // Let's first compute the decode host
+  const serialized_host = URI.serialize(
+    URI.parse('http://' + absolute_url_parts.host), // fake URI to benefit from decoding
+    { iri: true }, // decode potentially puny-encoded host
+  );
+  const decoded_host = serialized_host.substring(7, serialized_host.length - 1);
 
-  final_url = new URL(final_url);
-  if (final_url.search) {
-    final_url.pathname =
-      final_url.pathname + encodeURIComponent(final_url.search);
-    final_url.search = '';
-  }
+  // And the decoded path, only exception is that an empty path must resolve to '/' path
+  const decoded_path =
+    !absolute_url_parts.path || absolute_url_parts.path.length === 0
+      ? '/'
+      : decodeURIComponent(absolute_url_parts.path);
 
-  return final_url.toString();
+  // And the decoded query, only exception is that + sign must resolve to ' ' to avoid confusion
+  const decoded_query =
+    !absolute_url_parts.query || absolute_url_parts.query.length === 0
+      ? ''
+      : '?' + decodeURIComponent(absolute_url_parts.query).replaceAll('+', ' ');
+
+  // combine all decode parts to get the ZIM path
+  const zimPath = decoded_host + decoded_path + decoded_query;
+
+  // apply the fuzzy rules to the ZIM path
+  const fuzzifiedPath = applyFuzzyRules(zimPath);
+
+  // Reencode everything but '/' (we decode it afterwards for simplicity)
+  return prefix + encodeURIComponent(fuzzifiedPath).replaceAll('%2F', '/');
 }
 
 export function getWombatInfo(

@@ -1,8 +1,9 @@
 import path from 'path';
 import url from 'url';
 
-import { nodeResolve } from '@rollup/plugin-node-resolve';
-import terser from '@rollup/plugin-terser';
+import { nodeResolve } from '@rollup/plugin-node-resolve'; // used to bundle node_modules code
+import commonjs from '@rollup/plugin-commonjs'; // used to bundle CommonJS node_modules
+import terser from '@rollup/plugin-terser'; // used to minify JS code
 
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,7 +24,12 @@ const watchOptions = {
   },
 };
 
-const wombatSetup = {
+const plugins = [nodeResolve({ preferBuiltins: false }), commonjs(), noStrict];
+if (!process.env.DEV) {
+  plugins.push(terser());
+}
+
+export default {
   input: 'src/wombatSetup.js',
   output: {
     name: 'wombatSetup',
@@ -33,7 +39,5 @@ const wombatSetup = {
     exports: 'named',
   },
   watch: watchOptions,
-  plugins: [nodeResolve(), noStrict, terser()],
+  plugins: plugins,
 };
-
-export default wombatSetup;

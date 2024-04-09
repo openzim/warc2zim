@@ -5,6 +5,7 @@
   "license": "GPL-3.0-or-later",
   "author": "openZIM",
   "devDependencies": {
+    "@rollup/plugin-commonjs": "25.0.7",
     "@rollup/plugin-node-resolve": "15.2.3",
     "@rollup/plugin-terser": "0.4.4",
     "ava": "^6.1.2",
@@ -12,9 +13,9 @@
   },
   "scripts": {
     "test": "ava --verbose",
-    "build-prod": "rollup -c rollup.config.prod.js",
-    "build-dev": "rollup -c rollup.config.dev.js",
-    "build-dev-watch": "rollup --watch -c rollup.config.dev.js"
+    "build-prod": "rollup -c rollup.config.js",
+    "build-dev": "DEV=1 rollup -c rollup.config.js",
+    "build-dev-watch": "DEV=1 rollup --watch -c rollup.config.js"
   },
   "prettier": {
     "singleQuote": true
@@ -30,5 +31,7 @@
       "src/**/*"
     ]
   },
-  "dependencies": {}
+  "dependencies": {
+    "uri-js": "^4.4.1"
+  }
 }
