@@ -27,4 +27,9 @@ jobs:
           repo_description: auto
           repo_overview: auto
 
-    # TODO: update test website automatically
+      - name: Deploy Test website changes to openzim.org
+        uses: actions-hub/kubectl@master
+        env:
+          KUBE_CONFIG: ${{ secrets.TEST_KUBE_CONFIG }}
+        with:
+          args: rollout restart deployments test-website-deployment -n test
