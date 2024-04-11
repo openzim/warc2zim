@@ -84,7 +84,8 @@ We have documentation about the [functional architecture](docs/functional_archit
 
 Requirements:
 - proper Python version (see pyproject.toml) with pip
-- Node LTS version (20 recommended)
+- optionally Docker
+- optionally Node LTS version (20 recommended)
 
 First, clone this repository.
 
@@ -99,6 +100,27 @@ Start a hatch shell: this will install software including dependencies in an iso
 ```bash
 hatch shell
 ```
+
+### Regenerate wombatSetup.js
+
+wombatSetup.js is the JS code used to setup wombat when the ZIM is used.
+
+It is normally retrieved by Python build process (see openzim.toml for details).
+
+Recommended solution to develop this JS code is to install Node.JS on your system, and then
+
+```bash
+cd javascript
+yarn build-dev # or yarn build-prod
+```
+
+Should you want to regenerate this code without install Node.JS, you might simply run following command.
+
+```bash
+docker run -v $PWD/src/warc2zim/statics:/output -v $PWD/rules:/src/rules -v $PWD/javascript:/src/javascript -v $PWD/build_js.sh:/src/build_js.sh -it --rm --entrypoint /src/build_js.sh node:20-bookworm
+```
+
+It will install Python3 on-top of Node.JS in a Docker container, generate JS fuzzy rules and bundle JS code straight to `/src/warc2zim/statics/wombatSetup.js` where the file is expected to be placed.
 
 ## License
 

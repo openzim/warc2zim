@@ -1,8 +1,15 @@
 import json
 import re
+import sys
 from pathlib import Path
 
 from jinja2 import Environment
+
+rules_src = Path(__file__).parent / "rules.json"
+if not rules_src.exists():
+    # This skip is usefull mostly for CI operations when installing only Python deps
+    print("Skipping rules generation, rule file is missing")
+    sys.exit()
 
 FUZZY_RULES = json.loads((Path(__file__).parent / "rules.json").read_text())[
     "fuzzyRules"
@@ -25,19 +32,22 @@ export const fuzzyRules = [
 ];
 """
 
-(
-    Path(__file__).parent.parent / "javascript" / "src" / "fuzzyRules.js"
-).absolute().write_text(
-    JINJA_ENV.from_string(js_code_template).render(
-        FUZZY_RULES=[
-            {
-                "match": rule["pattern"].replace("\\", "\\\\"),
-                "replace": PY2JS_RULE_RX.sub(r"$\1", rule["replace"]),
-            }
-            for rule in FUZZY_RULES
-        ]
+js_parent = Path(__file__).parent.parent / "javascript" / "src"
+if not js_parent.exists():
+    # This skip is usefull mostly for CI operations when working on the Python part
+    print("Skipping JS rules generation, target folder is missing")
+else:
+    (js_parent / "fuzzyRules.js").absolute().write_text(
+        JINJA_ENV.from_string(js_code_template).render(
+            FUZZY_RULES=[
+                {
+                    "match": rule["pattern"].replace("\\", "\\\\"),
+                    "replace": PY2JS_RULE_RX.sub(r"$\1", rule["replace"]),
+                }
+                for rule in FUZZY_RULES
+            ]
+        )
     )
-)
 
 py_code_template = """# THIS IS AN AUTOMATICALLY GENERATED FILE, DO NOT MODIFY DIRECTLY
 
@@ -50,6 +60,11 @@ FUZZY_RULES = [
 ]
 """
 
-(Path(__file__).parent.parent / "src" / "warc2zim" / "rules.py").absolute().write_text(
-    JINJA_ENV.from_string(py_code_template).render(FUZZY_RULES=FUZZY_RULES)
-)
+py_parent = Path(__file__).parent.parent / "src" / "warc2zim"
+if not py_parent.exists():
+    # This skip is usefull mostly for CI operations when working on the JS part
+    print("Skipping Python rules generation, target folder is missing")
+else:
+    (py_parent / "rules.py").absolute().write_text(
+        JINJA_ENV.from_string(py_code_template).render(FUZZY_RULES=FUZZY_RULES)
+    )
