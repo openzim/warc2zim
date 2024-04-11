@@ -21,6 +21,7 @@ and later entries are ignored. A warning is printed as well.
 """
 
 import os
+import sys
 import json
 import pathlib
 import logging
@@ -123,9 +124,28 @@ class Converter:
         self.zim_file = self.zim_file.format(period=time.strftime("%Y-%m"))
         self.full_filename = os.path.join(self.output, self.zim_file)
 
-        # ensure output file is writable
-        with tempfile.NamedTemporaryFile(dir=self.output, delete=True) as fh:
-            logger.debug(f"Confirming output is writable using {fh.name}")
+        # ensure output file exists
+        if not os.path.isdir(self.output):
+            logger.error(
+                f"Output directory {self.output} does not exist. Exiting with error code 1"
+            )
+            sys.exit(1)
+
+        logger.debug(
+            f"Attempting to confirm output is writable in directory {self.output}"
+        )
+
+        try:
+            # ensure output file is writable
+            with tempfile.NamedTemporaryFile(dir=self.output, delete=True) as fh:
+                logger.debug(
+                    f"Output is writable. Temporary file used for test: {fh.name}"
+                )
+        except Exception as e:
+            logger.error(
+                f"Failed to write to output directory {self.output}. Make sure output directory is writable. Exiting with error code 1"
+            )
+            sys.exit(1)
 
         self.inputs = args.inputs
         self.include_domains = args.include_domains

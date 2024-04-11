@@ -506,8 +506,9 @@ class TestWarc2Zim(object):
             assert e.code == 2
 
         # error, no such output directory
-        with pytest.raises(Exception) as e:
+        with pytest.raises(SystemExit) as e:
             main(["--name", "test", "--output", "/no-such-dir"])
+            assert e.code == 1
 
         # success, special error code for no output files
         assert main(["--name", "test", "--output", "./"]) == 100
