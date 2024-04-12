@@ -31,6 +31,10 @@
         {
             "pattern": ".*player.vimeo.com/(video/[\\d]+)\\?.*",
             "replace": "vimeo.fuzzy.replayweb.page/\\1"
+        },
+        {
+            "pattern": ".*i\\.vimeocdn\\.com\\/(.*)\\?.*",
+            "replace": "i.vimeocdn.fuzzy.replayweb.page/\\1"
         }
     ]
 }
