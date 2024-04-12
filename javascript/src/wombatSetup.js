@@ -88,7 +88,35 @@ export function urlRewriteFunction(
   const fuzzifiedPath = applyFuzzyRules(zimPath);
 
   // Reencode everything but '/' (we decode it afterwards for simplicity)
-  return prefix + encodeURIComponent(fuzzifiedPath).replaceAll('%2F', '/');
+  const finalUrl =
+    prefix + encodeURIComponent(fuzzifiedPath).replaceAll('%2F', '/');
+
+  /*
+  console.log(
+    'urlRewriten:\n\t- current_url: ' +
+      current_url +
+      '\n\t- orig_host: ' +
+      orig_host +
+      '\n\t- orig_scheme: ' +
+      orig_scheme +
+      '\n\t- orig_url: ' +
+      orig_url +
+      '\n\t- prefix: ' +
+      prefix +
+      '\n\t- url: ' +
+      url +
+      '\n\t- useRel: ' +
+      useRel +
+      '\n\t- mod: ' +
+      mod +
+      '\n\t- doc: ' +
+      doc +
+      '\n\t- finalUrl: ' +
+      finalUrl.toString() +
+      '\n\t',
+  );*/
+
+  return finalUrl;
 }
 
 export function getWombatInfo(
