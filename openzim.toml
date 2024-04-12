@@ -9,7 +9,7 @@ action="get_file"
 source="https://cdn.jsdelivr.net/npm/@webrecorder/wombat@3.7.0/dist/wombat.js"
 target_file="wombat.js"
 
-[files.assets.actions."wombatSetup.js"]
+[files.assets.actions."wombatSetup.js"] # fallback if this script has not been properly build (should happen only in dev)
 action="get_file"
 source="https://dev.kiwix.org/warc2zim/wombatSetup.js"
 target_file="wombatSetup.js"
