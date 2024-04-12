@@ -831,3 +831,54 @@ test('youtubeFuzzyEncoded', (t) => {
     'http://library.kiwix.org/content/myzim_yyyy-mm/www.example.com/path1/youtube.fuzzy.replayweb.page/get_video_info%3Fvideo_id%3D12%3D3ah',
   );
 });
+
+test('alreadyRewritenUrlSimple', (t) => {
+  t.is(
+    urlRewriteFunction(
+      t.context.currentUrl,
+      t.context.originalHost,
+      t.context.originalScheme,
+      t.context.originalUrl,
+      t.context.prefix,
+      'http://library.kiwix.org/content/myzim_yyyy-mm/www.example.com/javascript/content.txt',
+      undefined,
+      undefined,
+      undefined,
+    ),
+    'http://library.kiwix.org/content/myzim_yyyy-mm/www.example.com/javascript/content.txt',
+  );
+});
+
+test('alreadyRewritenUrlSpecialCharsNotEncoded', (t) => {
+  t.is(
+    urlRewriteFunction(
+      t.context.currentUrl,
+      t.context.originalHost,
+      t.context.originalScheme,
+      t.context.originalUrl,
+      t.context.prefix,
+      'http://library.kiwix.org/content/myzim_yyyy-mm/www.example.com/javascript/contént.txt',
+      undefined,
+      undefined,
+      undefined,
+    ),
+    'http://library.kiwix.org/content/myzim_yyyy-mm/www.example.com/javascript/cont%C3%A9nt.txt',
+  );
+});
+
+test('alreadyRewritenUrlUTF8CharsNotEncoded', (t) => {
+  t.is(
+    urlRewriteFunction(
+      t.context.currentUrl,
+      t.context.originalHost,
+      t.context.originalScheme,
+      t.context.originalUrl,
+      t.context.prefix,
+      'http://library.kiwix.org/content/myzim_yyyy-mm/www.example.com/javascript/cont🎁nt.txt',
+      undefined,
+      undefined,
+      undefined,
+    ),
+    'http://library.kiwix.org/content/myzim_yyyy-mm/www.example.com/javascript/cont%F0%9F%8E%81nt.txt',
+  );
+});

@@ -30,6 +30,20 @@ export function urlRewriteFunction(
   // Special stuff which is not really a URI but exists in the wild
   if (['#', '{', '*'].includes(url.substring(0, 1))) return url;
 
+  // If URI scheme is defined but not http or https, we have to not rewrite the URL
+  const uri = URI.parse(url);
+  if (
+    typeof uri.scheme !== 'undefined' &&
+    !['http', 'https'].includes(uri.scheme)
+  )
+    return url;
+
+  // If url starts with prefix, we need to remove this prefix before applying usual
+  // rewrite rules
+  if (url.startsWith(prefix)) {
+    url = uri.scheme + '://' + url.substring(prefix.length);
+  }
+
   // This is a hack to detect improper URL encoding ; proper detection should be
   // possible with chardet or other alternatives but did not worked so far ; we hence
   // take benefit of the error below to detect improper URL encoding
@@ -41,14 +55,6 @@ export function urlRewriteFunction(
   } catch (e) {
     url = encodeURI(url);
   }
-
-  // If URI scheme is defined but not http or https, we have to not rewrite the URL
-  const uri = URI.parse(url);
-  if (
-    typeof uri.scheme !== 'undefined' &&
-    !['http', 'https'].includes(uri.scheme)
-  )
-    return url;
 
   // Compute the absolute URI, just like the browser would have resolved it hopefully
   const original_absolute_url = URI.resolve(orig_url, url);
