@@ -25,11 +25,12 @@ js_code_template = """// THIS IS AN AUTOMATICALLY GENERATED FILE, DO NOT MODIFY 
 
 export const fuzzyRules = [
 {% for rule in FUZZY_RULES %}  {
-    match: "{{ rule['match'] }}",
-    replace: "{{ rule['replace'] }}",
+    match: '{{ rule['match'] }}',
+    replace: '{{ rule['replace'] }}',
   },
 {% endfor %}
 ];
+
 """
 
 js_parent = Path(__file__).parent.parent / "javascript" / "src"
