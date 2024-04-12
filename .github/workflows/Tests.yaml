@@ -24,6 +24,9 @@ jobs:
           pip install -U pip
           pip install -e .[test,scripts]
 
+      - name: Generate fuzzy rules
+        run: python rules/generate_rules.py
+
       - name: Run the tests
         run: inv coverage --args "-vvv"
 
@@ -31,6 +34,19 @@ jobs:
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Set up Node.JS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install JS dependencies
+        working-directory: javascript
+        run: yarn install
+
+      - name: Run JS tests
+        working-directory: javascript
+        run: yarn test
 
   build_python:
     runs-on: ubuntu-22.04
@@ -42,6 +58,14 @@ jobs:
         with:
           python-version-file: pyproject.toml
           architecture: x64
+
+      - name: Install dependencies (and project)
+        run: |
+          pip install -U pip build
+          pip install -e .
+
+      - name: Generate fuzzy rules
+        run: python rules/generate_rules.py
 
       - name: Ensure we can build Python targets
         run: |

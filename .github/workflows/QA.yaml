@@ -24,6 +24,9 @@ jobs:
           pip install -U pip
           pip install -e .[lint,scripts,test,check]
 
+      - name: Generate fuzzy rules
+        run: python rules/generate_rules.py
+
       - name: Check black formatting
         run: inv lint-black
 
@@ -32,3 +35,20 @@ jobs:
 
       - name: Check pyright
         run: inv check-pyright
+
+      - name: Set up Node.JS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install JS dependencies
+        working-directory: javascript
+        run: yarn install
+
+      - name: Check prettier formatting
+        working-directory: javascript
+        run: yarn prettier-check
+
+      - name: Check eslint rules
+        working-directory: javascript
+        run: yarn eslint

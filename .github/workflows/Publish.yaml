@@ -19,6 +19,9 @@ jobs:
           python-version-file: pyproject.toml
           architecture: x64
 
+      - name: Generate fuzzy rules
+        run: python rules/generate_rules.py
+
       - name: Build Javascript wombatSetup.js
         uses: addnab/docker-run-action@v3
         with:
