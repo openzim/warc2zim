@@ -99,9 +99,12 @@ class Converter:
             # set path
             parts[2] = "/"
             self.main_url = urlunsplit(parts)
+        logger.debug(f"Processing URL: {self.main_url}")
 
         self.name = args.name
+        logger.debug(f"Name: {self.name}")
         self.title = args.title
+        logger.debug(f"Title: {self.title}")
         self.favicon_url = args.favicon
         self.language = args.lang
         self.description = args.description
