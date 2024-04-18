@@ -147,6 +147,20 @@ class Converter:
             )
             sys.exit(1)
 
+        # ensure ZIM file is creatable with the given name
+        try:
+            file_path = pathlib.Path(self.full_filename)
+            file_path.touch()
+            file_path.unlink()
+            logger.debug(
+                f"Confirming ZIM file can be created using name: {self.zim_file}"
+            )
+        except Exception:
+            logger.error(
+                f"Failed to create ZIM file with name: {self.zim_file}. Make sure the file name is valid."
+            )
+            raise SystemExit(3)
+
         self.inputs = args.inputs
         self.include_domains = args.include_domains
 
