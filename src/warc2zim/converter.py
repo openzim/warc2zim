@@ -43,6 +43,7 @@ from zimscraperlib.image.transformation import resize_image
 from zimscraperlib.zim.creator import Creator
 from zimscraperlib.zim.items import URLItem
 
+
 from bs4 import BeautifulSoup
 
 from jinja2 import Environment, PackageLoader
@@ -99,12 +100,9 @@ class Converter:
             # set path
             parts[2] = "/"
             self.main_url = urlunsplit(parts)
-        logger.debug(f"Processing URL: {self.main_url}")
 
         self.name = args.name
-        logger.debug(f"Name: {self.name}")
         self.title = args.title
-        logger.debug(f"Title: {self.title}")
         self.favicon_url = args.favicon
         self.language = args.lang
         self.description = args.description
