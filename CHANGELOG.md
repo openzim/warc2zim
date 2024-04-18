@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Added checks in `converter.py` to verify output directory existence, logging appropriate error messages and cleanly exit if checks fail.
+- Added check for invalid zim file names
 - Changed default publisher metadata from 'Kiwix' to 'openZIM'
 
 ## [1.5.5] - 2024-01-18

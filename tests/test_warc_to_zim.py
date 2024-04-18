@@ -510,6 +510,11 @@ class TestWarc2Zim(object):
             main(["--name", "test", "--output", "/no-such-dir"])
             assert e.code == 1
 
+        # error, name has invalid characters for Linux filesystem
+        with pytest.raises(SystemExit) as e:
+            main(["--name", "te/st", "--output", "./"])
+            assert e.code == 3
+
         # success, special error code for no output files
         assert main(["--name", "test", "--output", "./"]) == 100
 
