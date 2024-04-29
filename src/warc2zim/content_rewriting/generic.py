@@ -60,6 +60,7 @@ class Rewriter:
         path: str,
         record: ArcWarcRecord,
         existing_zim_paths: set[ZimPath],
+        missing_zim_paths: set[ZimPath] | None,
         js_modules: set[ZimPath],
     ):
         self.content = get_record_content(record)
@@ -71,7 +72,7 @@ class Rewriter:
         self.path = path
         self.orig_url_str = get_record_url(record)
         self.url_rewriter = ArticleUrlRewriter(
-            HttpUrl(self.orig_url_str), existing_zim_paths
+            HttpUrl(self.orig_url_str), existing_zim_paths, missing_zim_paths
         )
 
         self.rewrite_mode = self.get_rewrite_mode(record, mimetype)

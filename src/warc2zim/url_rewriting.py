@@ -247,11 +247,16 @@ def get_without_fragment(url: str) -> str:
 class ArticleUrlRewriter:
     """Rewrite urls in article."""
 
-    def __init__(self, article_url: HttpUrl, existing_zim_paths: set[ZimPath]):
+    def __init__(
+        self,
+        article_url: HttpUrl,
+        existing_zim_paths: set[ZimPath],
+        missing_zim_paths: set[ZimPath] | None = None,
+    ):
         self.article_path = normalize(article_url)
         self.article_url = article_url
         self.existing_zim_paths = existing_zim_paths
-        self.missing_zim_paths: set[ZimPath] = set()
+        self.missing_zim_paths = missing_zim_paths
 
     def get_item_path(self, item_url: str) -> ZimPath:
         """Utility to transform an item URL into a ZimPath"""
@@ -280,7 +285,10 @@ class ArticleUrlRewriter:
         if rewrite_all_url or item_path in self.existing_zim_paths:
             return self.get_document_uri(item_path, item_fragment)
         else:
-            if item_path not in self.missing_zim_paths:
+            if (
+                isinstance(self.missing_zim_paths, set)
+                and item_path not in self.missing_zim_paths
+            ):
                 logger.debug(f"WARNING {item_path} ({item_url}) not in archive.")
                 # maintain a collection of missing Zim Path to not fill the logs with
                 # duplicate messages

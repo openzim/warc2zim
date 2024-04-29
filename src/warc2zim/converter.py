@@ -134,6 +134,7 @@ class Converter:
         self.added_zim_items: set[ZimPath] = set()
         self.revisits: dict[ZimPath, ZimPath] = {}
         self.expected_zim_items: set[ZimPath] = set()
+        self.missing_zim_paths: set[ZimPath] | None = set() if args.verbose else None
         self.js_modules: set[ZimPath] = set()
 
         # progress file handling
@@ -533,6 +534,7 @@ class Converter:
                 self.head_template,
                 self.css_insert,
                 self.expected_zim_items,
+                self.missing_zim_paths,
                 self.js_modules,
             )
 

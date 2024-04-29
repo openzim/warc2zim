@@ -31,6 +31,7 @@ class WARCPayloadItem(StaticItem):
         head_template: Template,
         css_insert: str | None,
         existing_zim_paths: set[ZimPath],
+        missing_zim_paths: set[ZimPath] | None,
         js_modules: set[ZimPath],
     ):
         super().__init__()
@@ -38,7 +39,7 @@ class WARCPayloadItem(StaticItem):
         self.path = path
         self.mimetype = get_record_mime_type(record)
         (self.title, self.content) = Rewriter(
-            path, record, existing_zim_paths, js_modules
+            path, record, existing_zim_paths, missing_zim_paths, js_modules
         ).rewrite(head_template, css_insert)
 
     def get_hints(self):
