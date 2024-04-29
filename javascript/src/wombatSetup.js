@@ -14,6 +14,51 @@ export function applyFuzzyRules(path) {
   return path;
 }
 
+export function hasAlreadyBeenRewritten(
+  original_absolute_url,
+  orig_url,
+  uri,
+  url,
+) {
+  // Detect (with a heuristic) that the path is most probably already rewritten and
+  // must be kept as-is. We just need to detect relative links (all statically rewritten
+  // links are relative) and contains a path including the hostname (which cannot be
+  // joined with the orig_url since if it includes the hostname, it means it is in
+  // another hostname than orig_url and will hence go one level too high in the path
+  // hierarchy, hence working only on ZIM paths / relative links).
+  // The heurisitic is:
+  // - the link must be relative and start by going at least one level up
+  // - the first non relative part of the path (i.e. not . or ..) looks like a hostname
+  // (i.e. it contains a dot)
+  // - the relative link, when merged with orig_url, is going exactly one "path level"
+  // too high in the hierarchy
+  if (typeof uri.scheme == 'undefined' && url.startsWith('../')) {
+    const urlParts = url.split('/');
+    const original_absolute_url1 = URI.resolve(
+      orig_url,
+      urlParts.slice(1).join('/'),
+    );
+    const original_absolute_url2 = URI.resolve(
+      orig_url,
+      urlParts.slice(2).join('/'),
+    );
+    // detect that relative link is going exactly one "path level" too high
+    if (
+      original_absolute_url1 == original_absolute_url &&
+      original_absolute_url2 != original_absolute_url
+    ) {
+      const firstNonRelativePart = urlParts.find((urlPart) => urlPart !== '..');
+      // detect that first non relative part of the path looks like a hostname
+      if (firstNonRelativePart.indexOf('.') > -1) {
+        // if all 3 conditions are true, then we assume it has already been rewritten
+        return true;
+      }
+    }
+  }
+  // otherwise we don't know and assume it can be safely rewritten
+  return false;
+}
+
 export function urlRewriteFunction(
   current_url, // The current (real) url we are on, e.g. http://library.kiwix.org/content/myzim_yyyy-mm/www.example.com/index.html
   orig_host, // The host of the original url, e.g. www.example.com
@@ -60,6 +105,48 @@ export function urlRewriteFunction(
   // We need to use the original URL for that to properly detect the hostname when
   // present ; current URL does not allow to do it easily
   const original_absolute_url = URI.resolve(orig_url, url);
+
+  // Detect if url has probably already been rewritten and return as-is in such a case
+  if (hasAlreadyBeenRewritten(original_absolute_url, orig_url, uri, url)) {
+    return url;
+  }
+
+  // Detect (with a heuristic) that the path is most probably already rewritten and
+  // must be kept as-is. We just need to detect relative links (all statically rewritten
+  // links are relative) and contains a path including the hostname (which cannot be
+  // joined with the orig_url since if it includes the hostname, it means it is in
+  // another hostname than orig_url and will hence go one level too high in the path
+  // hierarchy, hence working only on ZIM paths / relative links).
+  // The heurisitic is:
+  // - the link must be relative and start by going at least one level up
+  // - the first non relative part of the path (i.e. not . or ..) looks like a hostname
+  // (i.e. it contains a dot)
+  // - the relative link, when merged with orig_url, is going exactly one "path level"
+  // too high in the hierarchy
+  if (typeof uri.scheme == 'undefined' && url.startsWith('../')) {
+    const urlParts = url.split('/');
+    const original_absolute_url1 = URI.resolve(
+      orig_url,
+      urlParts.slice(1).join('/'),
+    );
+    const original_absolute_url2 = URI.resolve(
+      orig_url,
+      urlParts.slice(2).join('/'),
+    );
+    // detect that relative link is going exactly one "path level" too high
+    if (
+      original_absolute_url1 == original_absolute_url &&
+      original_absolute_url2 != original_absolute_url
+    ) {
+      const firstNonRelativePart = urlParts.find((urlPart) => urlPart !== '..');
+      // detect that first non relative part of the path looks like a hostname
+      if (firstNonRelativePart.indexOf('.') > -1) {
+        // if all 3 conditions are true, then we do not rewrite the link at all,
+        // otherwise we continue with normal rewritting
+        return url;
+      }
+    }
+  }
 
   // We now have to transform this absolute URI into a normalized ZIM path entry
   const absolute_url_parts = URI.parse(original_absolute_url);

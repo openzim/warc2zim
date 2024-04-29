@@ -882,3 +882,248 @@ test('alreadyRewritenUrlUTF8CharsNotEncoded', (t) => {
     'http://library.kiwix.org/content/myzim_yyyy-mm/www.example.com/javascript/cont%F0%9F%8E%81nt.txt',
   );
 });
+
+test('simpleContentDomainNameInPath1', (t) => {
+  t.is(
+    urlRewriteFunction(
+      t.context.currentUrl,
+      t.context.originalHost,
+      t.context.originalScheme,
+      t.context.originalUrl,
+      t.context.prefix,
+      'https://www.example.com/www.example.com/content.txt',
+      undefined,
+      undefined,
+      undefined,
+    ),
+    'http://library.kiwix.org/content/myzim_yyyy-mm/www.example.com/www.example.com/content.txt',
+  );
+});
+
+test('simpleContentDomainNameInPath2', (t) => {
+  t.is(
+    urlRewriteFunction(
+      t.context.currentUrl,
+      t.context.originalHost,
+      t.context.originalScheme,
+      t.context.originalUrl,
+      t.context.prefix,
+      'https://www.example.com/javascript/www.example.com',
+      undefined,
+      undefined,
+      undefined,
+    ),
+    'http://library.kiwix.org/content/myzim_yyyy-mm/www.example.com/javascript/www.example.com',
+  );
+});
+
+// URL has already been statically rewritten and originally had a query parameter
+test('relAlreadyEncoded', (t) => {
+  t.is(
+    urlRewriteFunction(
+      t.context.currentUrl,
+      t.context.originalHost,
+      t.context.originalScheme,
+      t.context.originalUrl,
+      t.context.prefix,
+      '../javascript/content.txt%3Fquery%3Dvalue',
+      undefined,
+      undefined,
+      undefined,
+    ),
+    'http://library.kiwix.org/content/myzim_yyyy-mm/www.example.com/javascript/content.txt%3Fquery%3Dvalue',
+  );
+});
+
+// this is an edge case where the URL has already been statically rewritten and is located
+// on a different domain name => we do not touch it at all
+test('relAnotherHostAlreadyRewritten', (t) => {
+  t.is(
+    urlRewriteFunction(
+      t.context.currentUrl,
+      t.context.originalHost,
+      t.context.originalScheme,
+      t.context.originalUrl,
+      t.context.prefix,
+      '../../anotherhost.com/javascript/content.txt',
+      undefined,
+      undefined,
+      undefined,
+    ),
+    '../../anotherhost.com/javascript/content.txt',
+  );
+});
+
+// this is an edge case where the URL has already been statically rewritten and is located
+// on a different domain name => we do not touch it at all
+test('relAnotherHostAlreadyRewrittenRootPath', (t) => {
+  const documentPath = '/';
+  const originalUrl =
+    t.context.originalScheme + '://' + t.context.originalHost + documentPath;
+  const currentUrl = t.context.prefix + t.context.originalHost + documentPath;
+  t.is(
+    urlRewriteFunction(
+      currentUrl,
+      t.context.originalHost,
+      t.context.originalScheme,
+      originalUrl,
+      t.context.prefix,
+      '../anotherhost.com/javascript/content.txt',
+      undefined,
+      undefined,
+      undefined,
+    ),
+    '../anotherhost.com/javascript/content.txt',
+  );
+});
+
+// this is an edge case where the URL has already been statically rewritten and is located
+// on a different domain name => we do not touch it at all
+test('relAnotherHostAlreadyRewrittenEmptyPath', (t) => {
+  const documentPath = '';
+  const originalUrl =
+    t.context.originalScheme + '://' + t.context.originalHost + documentPath;
+  const currentUrl = t.context.prefix + t.context.originalHost + documentPath;
+  t.is(
+    urlRewriteFunction(
+      currentUrl,
+      t.context.originalHost,
+      t.context.originalScheme,
+      originalUrl,
+      t.context.prefix,
+      '../anotherhost.com/javascript/content.txt',
+      undefined,
+      undefined,
+      undefined,
+    ),
+    '../anotherhost.com/javascript/content.txt',
+  );
+});
+
+// this is an edge case where the URL has already been statically rewritten and is located
+// on a different fuzzified domain name => we do not touch it at all
+test('relAnotherFuzzifiedHostAlreadyRewritten', (t) => {
+  t.is(
+    urlRewriteFunction(
+      t.context.currentUrl,
+      t.context.originalHost,
+      t.context.originalScheme,
+      t.context.originalUrl,
+      t.context.prefix,
+      '../../youtube.fuzzy.replayweb.page/get_video_info%3Fvideo_id%3D123ah',
+      undefined,
+      undefined,
+      undefined,
+    ),
+    '../../youtube.fuzzy.replayweb.page/get_video_info%3Fvideo_id%3D123ah',
+  );
+});
+
+// this is an edge case where the URL might looks like it has already been statically
+// rewritten since it is going too up exactly by one level but it does not looks like a
+// hostname at all => we rewrite it again
+test('relTooUpNotLookingLikeAHostname', (t) => {
+  t.is(
+    urlRewriteFunction(
+      t.context.currentUrl,
+      t.context.originalHost,
+      t.context.originalScheme,
+      t.context.originalUrl,
+      t.context.prefix,
+      '../../javascript/content.txt', // this is too many .. ; at this stage it means host home folder
+      undefined,
+      undefined,
+      undefined,
+    ),
+    'http://library.kiwix.org/content/myzim_yyyy-mm/www.example.com/javascript/content.txt',
+  );
+});
+
+// this is an edge case where the URL might looks like it has already been statically
+// rewritten since it is going too up exactly by one level but it does not looks like a
+// hostname at all => we rewrite it again
+test('relTooUpNotLookingLikeAHostnameRootPath', (t) => {
+  const documentPath = '/';
+  const originalUrl =
+    t.context.originalScheme + '://' + t.context.originalHost + documentPath;
+  const currentUrl = t.context.prefix + t.context.originalHost + documentPath;
+  t.is(
+    urlRewriteFunction(
+      currentUrl,
+      t.context.originalHost,
+      t.context.originalScheme,
+      originalUrl,
+      t.context.prefix,
+      '../javascript/content.txt',
+      undefined,
+      undefined,
+      undefined,
+    ),
+    'http://library.kiwix.org/content/myzim_yyyy-mm/www.example.com/javascript/content.txt',
+  );
+});
+
+// this is an edge case where the URL might looks like it has already been statically
+// rewritten since it is going too up exactly by one level but it does not looks like a
+// hostname at all => we rewrite it again
+test('relTooUpNotLookingLikeAHostnameEmptyPath', (t) => {
+  const documentPath = '';
+  const originalUrl =
+    t.context.originalScheme + '://' + t.context.originalHost + documentPath;
+  const currentUrl = t.context.prefix + t.context.originalHost + documentPath;
+  t.is(
+    urlRewriteFunction(
+      currentUrl,
+      t.context.originalHost,
+      t.context.originalScheme,
+      originalUrl,
+      t.context.prefix,
+      '../javascript/content.txt',
+      undefined,
+      undefined,
+      undefined,
+    ),
+    'http://library.kiwix.org/content/myzim_yyyy-mm/www.example.com/javascript/content.txt',
+  );
+});
+
+// this is an edge case where the URL might looks like it has already been statically
+// rewritten and is located on a different domain name but it is going to way up in the
+// hierarchy so it is most probably not really rewritten yet => we rewrite it again
+test('relNotReallyAnotherHostAlreadyRewrittenTooUp', (t) => {
+  t.is(
+    urlRewriteFunction(
+      t.context.currentUrl,
+      t.context.originalHost,
+      t.context.originalScheme,
+      t.context.originalUrl,
+      t.context.prefix,
+      '../../../anotherhost.com/javascript/content.txt',
+      undefined,
+      undefined,
+      undefined,
+    ),
+    'http://library.kiwix.org/content/myzim_yyyy-mm/www.example.com/anotherhost.com/javascript/content.txt',
+  );
+});
+
+// this is an edge case where the URL might looks like it has already been statically
+// rewritten and is located on a different domain name but it is going no enough way up
+// in the hierarchy so it is most probably not really rewritten yet => we rewrite it
+// again
+test('relNotReallyAnotherHostAlreadyRewrittenNotUpEnough', (t) => {
+  t.is(
+    urlRewriteFunction(
+      t.context.currentUrl,
+      t.context.originalHost,
+      t.context.originalScheme,
+      t.context.originalUrl,
+      t.context.prefix,
+      '../anotherhost.com/javascript/content.txt',
+      undefined,
+      undefined,
+      undefined,
+    ),
+    'http://library.kiwix.org/content/myzim_yyyy-mm/www.example.com/anotherhost.com/javascript/content.txt',
+  );
+});

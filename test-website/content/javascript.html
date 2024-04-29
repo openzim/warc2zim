@@ -205,6 +205,10 @@
     09d. Simple module Javascript with importmap required but nasty URL used in JS: <span class="status" id="span09d">This is not working</span>
   </p>
 
+  <p>
+    10. Rewritting image src dynamically based on already statically rewritten link: <img id="img10" src="https://not_standard_netloc_punny_encoded/javascript/not_working.png"></img>
+  </p>
+
   <script>
     fetch("https://standard_netloc/javascript/content.txt")
     .then(function(response) {
@@ -425,6 +429,7 @@
   <script type="module" src="./javascript/script09b.js"></script>
   <script type="module" src="./javascript/script09c.js"></script>
   <script type="module" src="./javascript/script09d.js"></script>
+  <script src="./javascript/script10.js"></script>
 
 </body>
 
