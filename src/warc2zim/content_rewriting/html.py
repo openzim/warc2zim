@@ -52,13 +52,13 @@ class HtmlRewriter(HTMLParser):
         self.output.write(value)  # pyright: ignore[reportOptionalMemberAccess]
 
     def handle_starttag(self, tag: str, attrs: AttrsList, *, auto_close: bool = False):
+        self.html_rewrite_context = tag  # default value if not overriden later on
         if tag == "script":
             script_type = self.extract_attr(attrs, "type")
             self.html_rewrite_context = {"json": "json", "module": "js-module"}.get(
                 script_type or "", "js-classic"
             )
         elif tag == "link":
-            self.html_rewrite_context = "link"
             link_rel = self.extract_attr(attrs, "rel")
             if link_rel == "modulepreload":
                 self.html_rewrite_context = "js-module"
@@ -66,8 +66,6 @@ class HtmlRewriter(HTMLParser):
                 preload_type = self.extract_attr(attrs, "as")
                 if preload_type == "script":
                     self.html_rewrite_context = "js-classic"
-        else:
-            self.html_rewrite_context = tag
 
         self.send(f"<{tag}")
         if attrs:
@@ -102,6 +100,11 @@ class HtmlRewriter(HTMLParser):
             self.title = data.strip()
         elif self.html_rewrite_context == "style":
             data = self.css_rewriter.rewrite(data)
+        elif self.html_rewrite_context == "json":
+            if data.strip():
+                rules = get_ds_rules(self.url_rewriter.article_url.value)
+                if rules:
+                    data = RxRewriter(rules).rewrite(data, {})
         elif self.html_rewrite_context and self.html_rewrite_context.startswith("js-"):
             if data.strip():
                 data = JsRewriter(
@@ -112,11 +115,6 @@ class HtmlRewriter(HTMLParser):
                     data,
                     opts={"isModule": self.html_rewrite_context == "js-module"},
                 )
-        elif self.html_rewrite_context == "json":
-            if data.strip():
-                rules = get_ds_rules(self.url_rewriter.article_url.value)
-                if rules:
-                    data = RxRewriter(rules).rewrite(data, {})
         self.send(data)
 
     def handle_entityref(self, name: str):
