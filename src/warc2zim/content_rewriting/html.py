@@ -139,28 +139,29 @@ class HtmlRewriter(HTMLParser):
 
     def process_attr(
         self,
-        attr: tuple[str, str | None],
+        attr_name: str,
+        attr_value: str | None,
         url_rewriter: UrlRewriterProto,
     ) -> tuple[str, str | None]:
-        if not attr[1]:
-            return attr
+        if not attr_value:
+            return (attr_name, attr_value)
 
-        if attr[0] in ("href", "src"):
+        if attr_name in ("href", "src"):
             if self.html_rewrite_context == "js-module":
-                self.notify_js_module(self.url_rewriter.get_item_path(attr[1]))
-            return (attr[0], url_rewriter(attr[1]))
-        if attr[0] == "srcset":
-            value_list = attr[1].split(",")
+                self.notify_js_module(self.url_rewriter.get_item_path(attr_value))
+            return (attr_name, url_rewriter(attr_value))
+        if attr_name == "srcset":
+            value_list = attr_value.split(",")
             new_value_list = []
             for value in value_list:
                 url, *other = value.strip().split(" ", maxsplit=1)
                 new_url = url_rewriter(url)
                 new_value = " ".join([new_url, *other])
                 new_value_list.append(new_value)
-            return (attr[0], ", ".join(new_value_list))
-        if attr[0] == "style":
-            return (attr[0], self.css_rewriter.rewrite_inline(attr[1]))
-        return attr
+            return (attr_name, ", ".join(new_value_list))
+        if attr_name == "style":
+            return (attr_name, self.css_rewriter.rewrite_inline(attr_value))
+        return (attr_name, attr_value)
 
     def format_attr(self, name: str, value: str | None) -> str:
         if value is None:
@@ -173,7 +174,10 @@ class HtmlRewriter(HTMLParser):
         attrs: AttrsList,
         url_rewriter: UrlRewriterProto,
     ) -> str:
-        processed_attrs = (self.process_attr(attr, url_rewriter) for attr in attrs)
+        processed_attrs = (
+            self.process_attr(attr_name, attr_value, url_rewriter)
+            for attr_name, attr_value in attrs
+        )
         return " ".join(self.format_attr(*attr) for attr in processed_attrs)
 
     def extract_attr(
