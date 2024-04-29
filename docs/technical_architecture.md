@@ -55,6 +55,14 @@ Below is an example case of the rewrite operation on an image URL found in an HT
 - Image rewritten URL: `../../../ex%C3%A9mple.com/a/resource/image.png%3Ffoo%3Dbar`
 - Image ZIM Path: `exémple.com/a/resource/image.png?foo=bar`
 
+### JS Rewriting
+
+JS Rewriting is a bit special because rules to apply are different wether we are using "classic" Javascript or "module" Javascript.
+
+Detection of Javascript modules starts at the HTML level where we have a `<script type="module"  src="...">` tag. This tells us that file at src location is a Javascript module. From there we now that its subresources are also Javascript module.
+
+Currently this detection is done on-the-fly, based on the fact that WARC items are processed in the same order that they have been fetched by the browser, and we hence do not need a multi-pass approach. Meaning that HTML will be processed first, then parent JS, then its dependencies, ... **This is a strong assumption**.
+
 ### Different kinds of WARC records
 
 The WARC to ZIM conversion is performed by transforming WARC records into ZIM records.
