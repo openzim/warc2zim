@@ -3,7 +3,7 @@ import test from 'ava';
 import utils from '../src/wombatSetup.js';
 
 test.beforeEach((t) => {
-  t.context.prefix = 'http://library.kiwix.org/content/www.example.com/';
+  t.context.prefix = 'http://library.kiwix.org/content/myzim_yyyy-mm/';
   t.context.originalHost = 'www.example.com';
   t.context.originalScheme = 'https';
 });

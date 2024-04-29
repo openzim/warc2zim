@@ -5,15 +5,13 @@ from pathlib import Path
 
 from jinja2 import Environment
 
-rules_src = Path(__file__).parent / "rules.json"
+rules_src = Path(__file__).with_name("rules.json")
 if not rules_src.exists():
     # This skip is usefull mostly for CI operations when installing only Python deps
     print("Skipping rules generation, rule file is missing")
     sys.exit()
 
-FUZZY_RULES = json.loads((Path(__file__).parent / "rules.json").read_text())[
-    "fuzzyRules"
-]
+FUZZY_RULES = json.loads(rules_src.read_text())["fuzzyRules"]
 
 PY2JS_RULE_RX = re.compile(r"\\(\d)", re.ASCII)
 
@@ -33,12 +31,12 @@ export const fuzzyRules = [
 
 """
 
-js_parent = Path(__file__).parent.parent / "javascript" / "src"
+js_parent = Path(__file__).joinpath("../../javascript/src").resolve()
 if not js_parent.exists():
     # This skip is usefull mostly for CI operations when working on the Python part
     print("Skipping JS rules generation, target folder is missing")
 else:
-    (js_parent / "fuzzyRules.js").absolute().write_text(
+    (js_parent / "fuzzyRules.js").write_text(
         JINJA_ENV.from_string(js_code_template).render(
             FUZZY_RULES=[
                 {
@@ -61,7 +59,7 @@ FUZZY_RULES = [
 ]
 """
 
-py_parent = Path(__file__).parent.parent / "src" / "warc2zim"
+py_parent = Path(__file__).joinpath("../../src/warc2zim").resolve()
 if not py_parent.exists():
     # This skip is usefull mostly for CI operations when working on the JS part
     print("Skipping Python rules generation, target folder is missing")

@@ -15,12 +15,12 @@ export function applyFuzzyRules(path) {
 }
 
 export function urlRewriteFunction(
-  current_url, // The current (real) url we are on
-  orig_host, // The host of the original url
-  orig_scheme, // The scheme of the original url
-  orig_url, // The original url
-  prefix, // The (absolute) prefix to add to all our urls (from where we are served))
-  url, // first argument passed by wombat.JS at each invocation
+  current_url, // The current (real) url we are on, e.g. http://library.kiwix.org/content/myzim_yyyy-mm/www.example.com/index.html
+  orig_host, // The host of the original url, e.g. www.example.com
+  orig_scheme, // The scheme of the original url, e.g. https
+  orig_url, // The original url, e.g. https://www.example.com/index.html
+  prefix, // The (absolute) prefix to add to all our urls (from where we are served), e.g. http://library.kiwix.org/content/myzim_yyyy-mm/
+  url, // first argument passed by wombat.JS at each invocation, current url to rewrite, e.g. http://library.kiwix.org/content/myzim_yyyy-mm/www.example.com/image.png
   useRel,
   mod,
   doc, // last argument passed by wombat.JS at each invocation
@@ -57,12 +57,14 @@ export function urlRewriteFunction(
   }
 
   // Compute the absolute URI, just like the browser would have resolved it hopefully
+  // We need to use the original URL for that to properly detect the hostname when
+  // present ; current URL does not allow to do it easily
   const original_absolute_url = URI.resolve(orig_url, url);
 
   // We now have to transform this absolute URI into a normalized ZIM path entry
   const absolute_url_parts = URI.parse(original_absolute_url);
 
-  // Let's first compute the decode host
+  // Let's first compute the decoded host
   const serialized_host = URI.serialize(
     URI.parse('http://' + absolute_url_parts.host), // fake URI to benefit from decoding
     { iri: true }, // decode potentially puny-encoded host
@@ -70,18 +72,20 @@ export function urlRewriteFunction(
   const decoded_host = serialized_host.substring(7, serialized_host.length - 1);
 
   // And the decoded path, only exception is that an empty path must resolve to '/' path
+  // (our convention, just like in Python)
   const decoded_path =
     !absolute_url_parts.path || absolute_url_parts.path.length === 0
       ? '/'
       : decodeURIComponent(absolute_url_parts.path);
 
-  // And the decoded query, only exception is that + sign must resolve to ' ' to avoid confusion
+  // And the decoded query, only exception is that + sign must resolve to ' ' to avoid
+  // confusion (our convention, just like in Python)
   const decoded_query =
     !absolute_url_parts.query || absolute_url_parts.query.length === 0
       ? ''
       : '?' + decodeURIComponent(absolute_url_parts.query).replaceAll('+', ' ');
 
-  // combine all decode parts to get the ZIM path
+  // combine all decoded parts to get the ZIM path
   const zimPath = decoded_host + decoded_path + decoded_query;
 
   // apply the fuzzy rules to the ZIM path
@@ -91,8 +95,7 @@ export function urlRewriteFunction(
   const finalUrl =
     prefix + encodeURIComponent(fuzzifiedPath).replaceAll('%2F', '/');
 
-  /*
-  console.log(
+  console.debug(
     'urlRewriten:\n\t- current_url: ' +
       current_url +
       '\n\t- orig_host: ' +
@@ -114,7 +117,7 @@ export function urlRewriteFunction(
       '\n\t- finalUrl: ' +
       finalUrl.toString() +
       '\n\t',
-  );*/
+  );
 
   return finalUrl;
 }
@@ -179,7 +182,7 @@ export function getWombatInfo(
 
     wombat_ts: '',
 
-    // A delay is sec to apply to all js time (`Date.now()`, ...)
+    // A delay in sec to apply to all js time (`Date.now()`, ...)
     wombat_sec: 0,
 
     // The scheme of the original url

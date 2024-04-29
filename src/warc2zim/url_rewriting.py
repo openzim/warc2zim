@@ -262,8 +262,7 @@ class ArticleUrlRewriter:
         """Utility to transform an item URL into a ZimPath"""
 
         item_absolute_url = urljoin(self.article_url.value, item_url)
-        item_path = normalize(HttpUrl(item_absolute_url))
-        return item_path
+        return normalize(HttpUrl(item_absolute_url))
 
     def __call__(self, item_url: str, *, rewrite_all_url: bool = True) -> str:
         """Rewrite a url contained in a article.
@@ -286,7 +285,7 @@ class ArticleUrlRewriter:
             return self.get_document_uri(item_path, item_fragment)
         else:
             if (
-                isinstance(self.missing_zim_paths, set)
+                self.missing_zim_paths is not None
                 and item_path not in self.missing_zim_paths
             ):
                 logger.debug(f"WARNING {item_path} ({item_url}) not in archive.")

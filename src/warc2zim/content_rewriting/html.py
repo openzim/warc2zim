@@ -54,12 +54,9 @@ class HtmlRewriter(HTMLParser):
     def handle_starttag(self, tag: str, attrs: AttrsList, *, auto_close: bool = False):
         if tag == "script":
             script_type = self.extract_attr(attrs, "type")
-            if script_type == "json":
-                self.html_rewrite_context = "json"
-            elif script_type == "module":
-                self.html_rewrite_context = "js-module"
-            else:
-                self.html_rewrite_context = "js-classic"
+            self.html_rewrite_context = {"json": "json", "module": "js-module"}.get(
+                script_type or "", "js-classic"
+            )
         elif tag == "link":
             self.html_rewrite_context = "link"
             link_rel = self.extract_attr(attrs, "rel")
