@@ -322,6 +322,7 @@ class Converter:
                 status_code = int(record.http_headers.get_statuscode())
                 if status_code in [
                     HTTPStatus.MOVED_PERMANENTLY,
+                    HTTPStatus.TEMPORARY_REDIRECT,
                     HTTPStatus.FOUND,
                 ]:
                     original_path = self.main_path
