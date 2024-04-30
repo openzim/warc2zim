@@ -2,7 +2,7 @@ from textwrap import dedent
 
 import pytest
 
-from warc2zim.content_rewriting.html import HtmlRewriter
+from warc2zim.content_rewriting.html import HtmlRewriter, extract_base_href
 from warc2zim.url_rewriting import ArticleUrlRewriter, HttpUrl, ZimPath
 
 from .utils import ContentForTests
@@ -411,3 +411,156 @@ def test_no_js_module_detected(script_src):
     ).rewrite(script_src)
 
     assert len(js_modules) == 0
+
+
+@pytest.mark.parametrize(
+    "html_content, expected_base_href",
+    [
+        pytest.param("", None, id="empty_content"),
+        pytest.param("<html></html>", None, id="empty_html"),
+        pytest.param(
+            "<html><head><title>Foo</title></head></html>", None, id="no_base"
+        ),
+        pytest.param(
+            '<html><head><base href="../.."></head></html>', "../..", id="standard_case"
+        ),
+        pytest.param(
+            '<html><head><base href="../..">', "../..", id="malformed_head"
+        ),  # malformed HTML is OK
+        pytest.param(
+            '<html><base href="../..">', "../..", id="very_malformed_head"
+        ),  # even very malformed HTML is OK
+        pytest.param(
+            '<base href="../..">', "../..", id="base_at_root"
+        ),  # even very malformed HTML is OK
+        pytest.param(
+            '<html><body><base href="../.."></body></html>', None, id="base_in_body"
+        ),  # but base in body is ignored
+        pytest.param(
+            '<html><head><base target="_blank" href="../.."></head></html>',
+            "../..",
+            id="base_with_target_before",
+        ),
+        pytest.param(
+            '<html><head><base href="../.." target="_blank" ></head></html>',
+            "../..",
+            id="base_with_target_after",
+        ),
+        pytest.param(
+            '<html><head><base href="../.." href=".."></head></html>',
+            "../..",
+            id="base_with_two_href",
+        ),
+        pytest.param(
+            '<html><head><base href="../.."><base href=".."></head></html>',
+            "../..",
+            id="two_bases_with_href",
+        ),
+        pytest.param(
+            '<html><head><base target="_blank"><base href="../.."></head></html>',
+            "../..",
+            id="href_in_second_base",
+        ),
+        pytest.param(
+            '<html><head><base target="_blank"><base href="../.."><base href="..">'
+            "</head></html>",
+            "../..",
+            id="href_in_second_base_second_href_ignored",
+        ),
+    ],
+)
+def test_extract_base_href(html_content, expected_base_href):
+    assert extract_base_href(html_content) == expected_base_href
+
+
+@pytest.fixture(
+    params=[
+        ContentForTests(
+            '<html><head><base href="./"></head>'
+            '<body><a href="foo.html"></a></body></html>',
+            '<html><head></head><body><a href="foo.html"></a></body></html>',
+        ),
+        ContentForTests(
+            '<html><head><base href="../"></head>'
+            '<body><a href="foo.html"></a></body></html>',
+            '<html><head></head><body><a href="../foo.html"></a></body></html>',
+            "kiwix.org/a/index.html",
+        ),
+        ContentForTests(
+            '<html><head><base href="./" target="_blank"></head>'
+            '<body><a href="foo.html"></a></body></html>',
+            '<html><head><base target="_blank"></head>'
+            '<body><a href="foo.html"></a></body></html>',
+        ),
+        ContentForTests(
+            '<html><head><base href="./"><base target="_blank"></head>'
+            '<body><a href="foo.html"></a></body></html>',
+            '<html><head><base target="_blank"></head>'
+            '<body><a href="foo.html"></a></body></html>',
+        ),
+        ContentForTests(
+            '<html><head><base href="./"><base href="../" target="_blank"></head>'
+            '<body><a href="foo.html"></a></body></html>',
+            '<html><head><base target="_blank"></head>'
+            '<body><a href="foo.html"></a></body></html>',
+        ),
+        ContentForTests(
+            '<html><head><base target="_blank"><base href="./"></head>'
+            '<body><a href="foo.html"></a></body></html>',
+            '<html><head><base target="_blank"></head>'
+            '<body><a href="foo.html"></a></body></html>',
+        ),
+        ContentForTests(
+            '<html><head><base href="./"><base target="_blank"><base target="_foo">'
+            "</head>"
+            '<body><a href="foo.html"></a></body></html>',
+            '<html><head><base target="_blank"><base target="_foo"></head>'
+            '<body><a href="foo.html"></a></body></html>',
+        ),
+        ContentForTests(
+            '<html><head><base href="../"></head>'
+            '<body><script src="foo.js"></script></body></html>',
+            '<html><head></head><body><script src="../foo.js"></script></body></html>',
+            "kiwix.org/a/index.html",
+        ),
+        ContentForTests(
+            '<html><head><base href="../"></head>'
+            '<body><style>background: url("foo.css");}</style></body></html>',
+            '<html><head></head><body><style>background: url("../foo.css");}</style>'
+            "</body></html>",
+            "kiwix.org/a/index.html",
+        ),
+        ContentForTests(
+            '<html><head> <link rel="shortcut icon" href="favicon.ico">'
+            '<base href="../"></head><body></body></html>',
+            '<html><head> <link rel="shortcut icon" href="../favicon.ico">'
+            "</head><body></body></html>",
+            "kiwix.org/a/index.html",
+        ),
+    ]
+)
+def rewrite_base_href_content(request):
+    yield request.param
+
+
+def test_rewrite_base_href(rewrite_base_href_content, no_js_notify):
+    assert (
+        HtmlRewriter(
+            ArticleUrlRewriter(
+                HttpUrl(f"http://{rewrite_base_href_content.article_url}"),
+                {
+                    ZimPath("kiwix.org/foo.html"),
+                    ZimPath("kiwix.org/foo.js"),
+                    ZimPath("kiwix.org/foo.css"),
+                    ZimPath("kiwix.org/foo.png"),
+                    ZimPath("kiwix.org/favicon.png"),
+                },
+            ),
+            "",
+            "",
+            no_js_notify,
+        )
+        .rewrite(rewrite_base_href_content.input_str)
+        .content
+        == rewrite_base_href_content.expected_str
+    )

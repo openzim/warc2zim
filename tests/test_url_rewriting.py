@@ -232,7 +232,7 @@ def test_relative_url(
         {ZimPath(path) for path in know_paths},
     )
     assert (
-        rewriter(original_content_url, rewrite_all_url=rewrite_all_url)
+        rewriter(original_content_url, base_href=None, rewrite_all_url=rewrite_all_url)
         == expected_rewriten_content_url
     )
 
@@ -277,7 +277,7 @@ def test_absolute_path_url(
         {ZimPath(path) for path in know_paths},
     )
     assert (
-        rewriter(original_content_url, rewrite_all_url=rewrite_all_url)
+        rewriter(original_content_url, base_href=None, rewrite_all_url=rewrite_all_url)
         == expected_rewriten_content_url
     )
 
@@ -357,7 +357,7 @@ def test_absolute_scheme_url(
         {ZimPath(path) for path in know_paths},
     )
     assert (
-        rewriter(original_content_url, rewrite_all_url=rewrite_all_url)
+        rewriter(original_content_url, base_href=None, rewrite_all_url=rewrite_all_url)
         == expected_rewriten_content_url
     )
 
@@ -437,7 +437,7 @@ def test_absolute_url(
         {ZimPath(path) for path in know_paths},
     )
     assert (
-        rewriter(original_content_url, rewrite_all_url=rewrite_all_url)
+        rewriter(original_content_url, base_href=None, rewrite_all_url=rewrite_all_url)
         == expected_rewriten_content_url
     )
 
@@ -463,6 +463,55 @@ def test_no_rewrite_other_schemes(original_content_url, rewrite_all_url):
         set(),
     )
     assert (
-        rewriter(original_content_url, rewrite_all_url=rewrite_all_url)
+        rewriter(original_content_url, base_href=None, rewrite_all_url=rewrite_all_url)
         == original_content_url
+    )
+
+
+@pytest.mark.parametrize(
+    "original_content_url, know_path, base_href, expected_rewriten_content_url",
+    [
+        pytest.param(
+            "foo.html",
+            "kiwix.org/a/article/foo.html",
+            None,
+            "foo.html",
+            id="no_base",
+        ),
+        pytest.param(
+            "foo.html",
+            "kiwix.org/a/foo.html",
+            "../",
+            "../foo.html",
+            id="parent_base",
+        ),
+        pytest.param(
+            "foo.html",
+            "kiwix.org/a/bar/foo.html",
+            "../bar/",
+            "../bar/foo.html",
+            id="base_in_another_folder",
+        ),
+        pytest.param(
+            "foo.html",
+            "www.example.com/foo.html",
+            "https://www.example.com/",
+            "../../../www.example.com/foo.html",
+            id="base_on_absolute_url",
+        ),
+    ],
+)
+def test_base_href(
+    original_content_url,
+    know_path,
+    base_href,
+    expected_rewriten_content_url,
+):
+    rewriter = ArticleUrlRewriter(
+        HttpUrl("https://kiwix.org/a/article/document.html"),
+        {ZimPath(path) for path in [know_path]},
+    )
+    assert (
+        rewriter(original_content_url, base_href=base_href, rewrite_all_url=False)
+        == expected_rewriten_content_url
     )

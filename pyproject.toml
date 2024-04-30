@@ -18,6 +18,7 @@ dependencies = [
   "brotlipy==0.7.0",
   "cdxj_indexer==1.4.5",
   "tinycss2==1.2.1",
+  "beautifulsoup4==4.9.3",
 ]
 dynamic = ["authors", "classifiers", "keywords", "license", "version", "urls"]
 

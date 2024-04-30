@@ -1,8 +1,11 @@
 import io
 from collections import namedtuple
 from collections.abc import Callable
+from functools import partial
 from html import escape
 from html.parser import HTMLParser
+
+from bs4 import BeautifulSoup
 
 from warc2zim.content_rewriting import UrlRewriterProto
 from warc2zim.content_rewriting.css import CssRewriter
@@ -16,6 +19,22 @@ AttrsList = list[tuple[str, str | None]]
 RewritenHtml = namedtuple("RewritenHmtl", ["title", "content"])
 
 
+def extract_base_href(content: str) -> str | None:
+    """Extract base href value from HTML content
+
+    This is done in a specific function before real parsing / rewriting of any HTML
+    because we need this information before rewriting any link since we might have stuff
+    before the <base> tag in html head (e.g. <link> for favicons)
+    """
+    soup = BeautifulSoup(content, features="lxml")
+    if not soup.head:
+        return None
+    for base in soup.head.find_all("base"):
+        if base.has_attr("href"):
+            return base["href"]
+    return None
+
+
 class HtmlRewriter(HTMLParser):
     def __init__(
         self,
@@ -26,7 +45,6 @@ class HtmlRewriter(HTMLParser):
     ):
         super().__init__(convert_charrefs=False)
         self.url_rewriter = url_rewriter
-        self.css_rewriter = CssRewriter(url_rewriter)
         self.title = None
         self.output = None
         # This works only for tag without children.
@@ -40,6 +58,15 @@ class HtmlRewriter(HTMLParser):
         if self.output is not None:
             raise Exception("ouput should not already be set")  # pragma: no cover
         self.output = io.StringIO()
+
+        self.base_href = extract_base_href(content)
+        self.url_rewriter_all = partial(
+            self.url_rewriter, base_href=self.base_href, rewrite_all_url=True
+        )
+        self.url_rewriter_existing = partial(
+            self.url_rewriter, base_href=self.base_href, rewrite_all_url=False
+        )
+        self.css_rewriter = CssRewriter(self.url_rewriter, self.base_href)
 
         self.feed(content)
         self.close()
@@ -67,16 +94,31 @@ class HtmlRewriter(HTMLParser):
                 if preload_type == "script":
                     self.html_rewrite_context = "js-classic"
 
+        # Handle special case of <base> tag which have to be simplified (remove href)
+        # and hence write only if not empty
+        if tag == "base":
+            values = " ".join(
+                self.format_attr(*attr)
+                for attr in [
+                    (attr_name, attr_value)
+                    for (attr_name, attr_value) in attrs
+                    if attr_name != "href"
+                ]
+            )
+            if values:
+                self.send(f"<base {values}>")
+                self.base_written = True
+            return
+
         self.send(f"<{tag}")
         if attrs:
             self.send(" ")
-        if tag == "a":
-            url_rewriter = lambda url: self.url_rewriter(  # noqa: E731
-                url, rewrite_all_url=False
+        self.send(
+            self.transform_attrs(
+                attrs,
+                self.url_rewriter_existing if tag == "a" else self.url_rewriter_all,
             )
-        else:
-            url_rewriter = self.url_rewriter
-        self.send(self.transform_attrs(attrs, url_rewriter))
+        )
 
         if auto_close:
             self.send(" />")
@@ -109,6 +151,7 @@ class HtmlRewriter(HTMLParser):
             if data.strip():
                 data = JsRewriter(
                     url_rewriter=self.url_rewriter,
+                    base_href=self.base_href,
                     extra_rules=get_ds_rules(self.url_rewriter.article_url.value),
                     notify_js_module=self.notify_js_module,
                 ).rewrite(

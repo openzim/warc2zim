@@ -7,8 +7,12 @@ from .utils import ContentForTests
 
 
 @pytest.fixture
-def simple_js_rewriter(no_js_notify) -> JsRewriter:
-    return JsRewriter(url_rewriter=lambda x: x, notify_js_module=no_js_notify)
+def simple_js_rewriter(simple_url_rewriter, no_js_notify) -> JsRewriter:
+    return JsRewriter(
+        url_rewriter=simple_url_rewriter("http://www.example.com"),
+        base_href=None,
+        notify_js_module=no_js_notify,
+    )
 
 
 @pytest.fixture(
@@ -227,9 +231,9 @@ def test_import_rewrite(no_js_notify, rewrite_import_content):
         HttpUrl(rewrite_import_content.article_url), set()
     )
     assert (
-        JsRewriter(url_rewriter=url_rewriter, notify_js_module=no_js_notify).rewrite(
-            rewrite_import_content.input_str, opts={"isModule": True}
-        )
+        JsRewriter(
+            url_rewriter=url_rewriter, base_href=None, notify_js_module=no_js_notify
+        ).rewrite(rewrite_import_content.input_str, opts={"isModule": True})
         == rewrite_import_content.expected_str
     )
 
@@ -307,9 +311,9 @@ def test_js_rewrite_nested_module_detected(js_src, expected_js_module_path):
         HttpUrl("http://kiwix.org/my_folder/my_article.html"), set()
     )
 
-    JsRewriter(url_rewriter=url_rewriter, notify_js_module=custom_notify).rewrite(
-        f'import * from "{js_src}"', opts={"isModule": True}
-    )
+    JsRewriter(
+        url_rewriter=url_rewriter, base_href=None, notify_js_module=custom_notify
+    ).rewrite(f'import * from "{js_src}"', opts={"isModule": True})
 
     assert len(js_modules) == 1
     assert js_modules[0].value == expected_js_module_path
