@@ -47,11 +47,14 @@ from warc2zim.constants import logger
 from warc2zim.items import StaticArticle, WARCPayloadItem
 from warc2zim.url_rewriting import HttpUrl, ZimPath, normalize
 from warc2zim.utils import (
+    can_process_status_code,
     get_record_content,
     get_record_mime_type,
     get_record_url,
+    get_status_code,
     get_version,
     parse_title,
+    status_code_is_processable_redirect,
 )
 
 # HTML mime types
@@ -134,6 +137,7 @@ class Converter:
         self.added_zim_items: set[ZimPath] = set()
         self.revisits: dict[ZimPath, ZimPath] = {}
         self.expected_zim_items: set[ZimPath] = set()
+        self.redirections: dict[ZimPath, ZimPath] = {}
         self.missing_zim_paths: set[ZimPath] | None = set() if args.verbose else None
         self.js_modules: set[ZimPath] = set()
 
@@ -253,6 +257,13 @@ class Converter:
         for record in self.iter_all_warc_records():
             self.add_items_for_warc_record(record)
 
+        # process redirects
+        for redirect_source, redirect_target in self.redirections.items():
+            self.creator.add_redirect(
+                redirect_source.value, redirect_target.value, is_front=False
+            )
+            self.added_zim_items.add(redirect_source)
+
         # process revisits
         for normalized_url, target_url in self.revisits.items():
             if normalized_url not in self.added_zim_items:
@@ -289,7 +300,22 @@ class Converter:
             url = get_record_url(record)
             zim_path = normalize(HttpUrl(url))
 
-            self.expected_zim_items.add(zim_path)
+            status_code = get_status_code(record)
+            if not status_code or not can_process_status_code(status_code):
+                continue
+
+            if status_code_is_processable_redirect(status_code):
+                # check for duplicates, might happen due to fuzzy rules
+                if zim_path not in self.redirections:
+                    if redirect_location := record.http_headers.get("Location"):
+                        redirection_zim_path = normalize(
+                            HttpUrl(urljoin(url, redirect_location))
+                        )
+                        self.redirections[zim_path] = redirection_zim_path
+                    else:
+                        logger.warning(f"Redirection target is empty for {zim_path}")
+            else:
+                self.expected_zim_items.add(zim_path)
 
             if main_page_found:
                 continue
@@ -366,6 +392,35 @@ class Converter:
             raise KeyError(
                 f"Unable to find WARC record for main page: {self.main_path}, aborting"
             )
+
+        redirections_to_ignore = set()
+        for redirect_source, redirect_target in self.redirections.items():
+            # if the URL is already expected, then just ignore the redirection
+            if redirect_source in self.expected_zim_items:
+                redirections_to_ignore.add(redirect_source)
+
+            final_redirect_target = redirect_target
+            # process redirection iteratively since the target of the redirection
+            # might be a redirection itself
+            while (
+                final_redirect_target in self.redirections
+                and final_redirect_target != redirect_source
+            ):
+                final_redirect_target = self.redirections[final_redirect_target]
+
+            if final_redirect_target in self.expected_zim_items:
+                # if final redirection target is including inside the ZIM, simply add
+                # the redirection source to the list of expected ZIM items so that URLs
+                # are properly rewritten
+                self.expected_zim_items.add(redirect_source)
+            else:
+                # otherwise add it to a temporary list of items that will have to be
+                # dropped from the list of redirections to create
+                redirections_to_ignore.add(redirect_source)
+
+        # update the list of redirections to create
+        for redirect_source in redirections_to_ignore:
+            self.redirections.pop(redirect_source)
 
     def find_icon_and_language(self, record, content):
         soup = BeautifulSoup(content, "html.parser")
@@ -525,6 +580,18 @@ class Converter:
             return
 
         if record.rec_type == "response":
+            status_code = get_status_code(record)
+            if not status_code or not can_process_status_code(status_code):
+                logger.debug(
+                    f"Skipping record with bad HTTP return code {status_code} "
+                    f"{item_zim_path}"
+                )
+                return
+
+            if status_code_is_processable_redirect(status_code):
+                # no log, we will process it afterwards
+                return
+
             if self.is_self_redirect(record, url):
                 logger.debug("Skipping self-redirect: " + url)
                 return

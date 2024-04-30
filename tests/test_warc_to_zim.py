@@ -106,6 +106,18 @@ class TestWarc2Zim:
         zim_fh = Archive(zimfile)
         return zim_fh.get_item(path)
 
+    def assert_item_exist(self, zimfile, path):
+        zim_fh = Archive(zimfile)
+        assert zim_fh.get_item(path)
+
+    def assert_item_does_not_exist(self, zimfile, path):
+        zim_fh = Archive(zimfile)
+        try:
+            payload = zim_fh.get_item(path)
+        except KeyError:
+            payload = None
+        assert payload is None
+
     def verify_warc_and_zim(self, warcfile, zimfile, verify_scraper_suffix):
         assert os.path.isfile(warcfile)
         assert os.path.isfile(zimfile)
@@ -178,7 +190,10 @@ class TestWarc2Zim:
                 payload = None
 
             if record.http_headers and record.http_headers.get("Content-Length") == "0":
-                assert not payload
+                if record.http_headers.get("Location"):
+                    assert payload  # this is a redirect, it must be handled
+                else:
+                    assert not payload
             elif record.rec_type == "revisit":
                 # We must have a payload
                 # We should check with the content of the targeted record...
@@ -665,3 +680,67 @@ class TestWarc2Zim:
 
         res = self.get_article(zim_output, "warc2zim.kiwix.app/custom.css")
         assert res == requests.get(url, timeout=10).content
+
+    def test_http_return_codes(self, tmp_path):
+        zim_output = "test-http-return-codes.zim"
+
+        main(
+            [
+                os.path.join(TEST_DATA_DIR, "http-return-codes.warc.gz"),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "test-http-return-codes",
+            ]
+        )
+        zim_output = tmp_path / zim_output
+
+        for exising_website_items in [
+            "200-response",
+            "201-response",
+            "202-response",
+            "301-internal-redirect-ok",
+            "301-external-redirect-ok",
+            "302-internal-redirect-ok",
+            "302-external-redirect-ok",
+            "307-internal-redirect-ok",
+            "307-external-redirect-ok",
+            "308-internal-redirect-ok",
+            "308-external-redirect-ok",
+        ]:
+            self.assert_item_exist(
+                zim_output, f"website.test.openzim.org/{exising_website_items}"
+            )
+
+        self.assert_item_exist(zim_output, "www.example.com/")
+
+        for ignored_website_items in [
+            "204-response",
+            "206-response",
+            "300-response",
+            "303-response",
+            "304-response",
+            "305-response",
+            "306-response",
+            "400-response",
+            "401-response",
+            "402-response",
+            "403-response",
+            "404-response",
+            "500-response",
+            "501-response",
+            "502-response",
+            "301-internal-redirect-ko",
+            "301-external-redirect-ko",
+            "302-internal-redirect-ko",
+            "302-external-redirect-ko",
+            "307-internal-redirect-ko",
+            "307-external-redirect-ko",
+            "308-internal-redirect-ko",
+            "308-external-redirect-ko",
+        ]:
+            self.assert_item_does_not_exist(
+                zim_output, f"website.test.openzim.org/{ignored_website_items}"
+            )
