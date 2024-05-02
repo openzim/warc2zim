@@ -346,7 +346,7 @@ class TestWarc2Zim:
             "example.com/": "Example Domain",
             "_zim_static/__wb_module_decl.js": "_zim_static/__wb_module_decl.js",
             "_zim_static/wombat.js": "_zim_static/wombat.js",
-            "_zim_static/wombat_setup.js": "_zim_static/wombat_setup.js",
+            "_zim_static/wombatSetup.js": "_zim_static/wombatSetup.js",
         }
 
         zim_fh = Archive(zim_output)

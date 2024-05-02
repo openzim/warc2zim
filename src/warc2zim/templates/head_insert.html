@@ -3,7 +3,7 @@
 
 <!-- WB Insert -->
 <script src="{{ static_prefix }}wombat.js"></script>
-<script src="{{ static_prefix }}wombat_setup.js"></script>
+<script src="{{ static_prefix }}wombatSetup.js"></script>
 <script>
   // Get the current url we are serving from.
   // We cannot know it at zim creation as it depends of our server.
@@ -14,7 +14,7 @@
     return href.toString();
   })();
 
-  const wbinfo = getWombatInfo(
+  const wbinfo = wombatSetup.getWombatInfo(
     current_url,
     "{{ orig_host }}",
     "{{ orig_scheme }}",

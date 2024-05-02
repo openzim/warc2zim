@@ -1,5 +1,5 @@
 import re
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from typing import Any
 
 from warc2zim.content_rewriting import UrlRewriterProto
@@ -13,13 +13,6 @@ from warc2zim.content_rewriting.rx_replacer import (
     replace_prefix_from,
 )
 from warc2zim.url_rewriting import ZimPath
-
-# Regex used to check if we ar import or exporting things in the string
-# ie : If we are a module
-IMPORT_RX = re.compile(r"""^\s*?import\s*?[{"'*]""")
-EXPORT_RX = re.compile(
-    r"^\s*?export\s*?({([\s\w,$\n]+?)}[\s;]*|default|class)\s+", re.M
-)
 
 # The regex used to rewrite `import ...` in module code.
 IMPORT_MATCH_RX = re.compile(
@@ -188,13 +181,6 @@ def create_js_rules() -> list[TransformationRule]:
 REWRITE_JS_RULES = create_js_rules()
 
 
-def js_rewriter_builder(url_rewriter: UrlRewriterProto):
-    def build_js_rewriter(extra_rules):
-        return JsRewriter(url_rewriter, extra_rules)
-
-    return build_js_rewriter
-
-
 class JsRewriter(RxRewriter):
     """
     JsRewriter is in charge of rewriting the js code stored in our zim file.
@@ -203,6 +189,7 @@ class JsRewriter(RxRewriter):
     def __init__(
         self,
         url_rewriter: UrlRewriterProto,
+        notify_js_module: Callable[[ZimPath], None],
         extra_rules: Iterable[TransformationRule] | None = None,
     ):
         super().__init__(None)
@@ -210,6 +197,7 @@ class JsRewriter(RxRewriter):
         self.first_buff = self._init_local_declaration(GLOBAL_OVERRIDES)
         self.last_buff = "\n}"
         self.url_rewriter = url_rewriter
+        self.notify_js_module = notify_js_module
 
     def _init_local_declaration(self, local_decls: Iterable[str]) -> str:
         """
@@ -244,24 +232,17 @@ class JsRewriter(RxRewriter):
             f"""import {{ {", ".join(local_decls)} }} from "{wb_module_decl_url}";\n"""
         )
 
-    def _detect_is_module(self, text: str) -> bool:
-        if "import" in text and IMPORT_RX.search(text):
-            return True
-        if "export" in text and EXPORT_RX.search(text):
-            return True
-        return False
-
     def rewrite(self, text: str, opts: dict[str, Any] | None = None) -> str:
         """
         Rewrite the js code in `text`.
         """
         opts = opts or {}
-        if not opts.get("isModule"):
-            opts["isModule"] = self._detect_is_module(text)
+
+        is_module = opts.get("isModule", False)
 
         rules = REWRITE_JS_RULES[:]
 
-        if opts["isModule"]:
+        if is_module:
             rules.append(self._get_esm_import_rule())
 
         rules += self.extra_rules
@@ -270,7 +251,7 @@ class JsRewriter(RxRewriter):
 
         new_text = super().rewrite(text, opts)
 
-        if opts["isModule"]:
+        if is_module:
             return self._get_module_decl(GLOBAL_OVERRIDES) + new_text
 
         if GLOBALS_RX.search(text):
@@ -282,11 +263,27 @@ class JsRewriter(RxRewriter):
         return new_text
 
     def _get_esm_import_rule(self) -> TransformationRule:
+        def get_rewriten_import_url(url):
+            """Rewrite the import URL
+
+            This takes into account that the result must be a relative URL, i.e. it
+            cannot be 'vendor.module.js' but must be './vendor.module.js'.
+            """
+            url = self.url_rewriter(url)
+            if not (
+                url.startswith("/") or url.startswith("./") or url.startswith("../")
+            ):
+                url = "./" + url
+            return url
+
         def rewrite_import():
             def func(m_object, _opts):
                 def sub_funct(match):
+                    self.notify_js_module(
+                        self.url_rewriter.get_item_path(match.group(2))
+                    )
                     return (
-                        f"{match.group(1)}{self.url_rewriter(match.group(2))}"
+                        f"{match.group(1)}{get_rewriten_import_url(match.group(2))}"
                         f"{match.group(3)}"
                     )
 

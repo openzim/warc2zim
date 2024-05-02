@@ -1,5 +1,6 @@
 import io
 from collections import namedtuple
+from collections.abc import Callable
 from html import escape
 from html.parser import HTMLParser
 
@@ -8,55 +9,9 @@ from warc2zim.content_rewriting.css import CssRewriter
 from warc2zim.content_rewriting.ds import get_ds_rules
 from warc2zim.content_rewriting.js import JsRewriter
 from warc2zim.content_rewriting.rx_replacer import RxRewriter
-from warc2zim.url_rewriting import ArticleUrlRewriter
+from warc2zim.url_rewriting import ArticleUrlRewriter, ZimPath
 
 AttrsList = list[tuple[str, str | None]]
-
-
-def process_attr(
-    attr: tuple[str, str | None],
-    url_rewriter: UrlRewriterProto,
-    css_rewriter: CssRewriter,
-) -> tuple[str, str | None]:
-    if not attr[1]:
-        return attr
-
-    if attr[0] in ("href", "src"):
-        return (attr[0], url_rewriter(attr[1]))
-    if attr[0] == "srcset":
-        value_list = attr[1].split(",")
-        new_value_list = []
-        for value in value_list:
-            url, *other = value.strip().split(" ", maxsplit=1)
-            new_url = url_rewriter(url)
-            new_value = " ".join([new_url, *other])
-            new_value_list.append(new_value)
-        return (attr[0], ", ".join(new_value_list))
-    if attr[0] == "style":
-        return (attr[0], css_rewriter.rewrite_inline(attr[1]))
-    return attr
-
-
-def format_attr(name: str, value: str | None) -> str:
-    if value is None:
-        return name
-    html_escaped_value = escape(value, quote=True)
-    return f'{name}="{html_escaped_value}"'
-
-
-def transform_attrs(
-    attrs: AttrsList, url_rewriter: UrlRewriterProto, css_rewriter: CssRewriter
-) -> str:
-    processed_attrs = (process_attr(attr, url_rewriter, css_rewriter) for attr in attrs)
-    return " ".join(format_attr(*attr) for attr in processed_attrs)
-
-
-def extract_attr(attrs: AttrsList, name: str, default: str | None = None) -> str | None:
-    for attr_name, value in attrs:
-        if attr_name == name:
-            return value
-    return default
-
 
 RewritenHtml = namedtuple("RewritenHmtl", ["title", "content"])
 
@@ -67,6 +22,7 @@ class HtmlRewriter(HTMLParser):
         url_rewriter: ArticleUrlRewriter,
         pre_head_insert: str,
         post_head_insert: str | None,
+        notify_js_module: Callable[[ZimPath], None],
     ):
         super().__init__(convert_charrefs=False)
         self.url_rewriter = url_rewriter
@@ -75,9 +31,10 @@ class HtmlRewriter(HTMLParser):
         self.output = None
         # This works only for tag without children.
         # But as we use it to get the title, we are ok
-        self._active_tag = None
+        self.html_rewrite_context = None
         self.pre_head_insert = pre_head_insert
         self.post_head_insert = post_head_insert
+        self.notify_js_module = notify_js_module
 
     def rewrite(self, content: str) -> RewritenHtml:
         if self.output is not None:
@@ -95,10 +52,20 @@ class HtmlRewriter(HTMLParser):
         self.output.write(value)  # pyright: ignore[reportOptionalMemberAccess]
 
     def handle_starttag(self, tag: str, attrs: AttrsList, *, auto_close: bool = False):
-        self._active_tag = tag
+        self.html_rewrite_context = tag  # default value if not overriden later on
         if tag == "script":
-            if "json" in (extract_attr(attrs, "type") or ""):
-                self._active_tag = "json"
+            script_type = self.extract_attr(attrs, "type")
+            self.html_rewrite_context = {"json": "json", "module": "js-module"}.get(
+                script_type or "", "js-classic"
+            )
+        elif tag == "link":
+            link_rel = self.extract_attr(attrs, "rel")
+            if link_rel == "modulepreload":
+                self.html_rewrite_context = "js-module"
+            elif link_rel == "preload":
+                preload_type = self.extract_attr(attrs, "as")
+                if preload_type == "script":
+                    self.html_rewrite_context = "js-classic"
 
         self.send(f"<{tag}")
         if attrs:
@@ -109,7 +76,7 @@ class HtmlRewriter(HTMLParser):
             )
         else:
             url_rewriter = self.url_rewriter
-        self.send(transform_attrs(attrs, url_rewriter, self.css_rewriter))
+        self.send(self.transform_attrs(attrs, url_rewriter))
 
         if auto_close:
             self.send(" />")
@@ -119,29 +86,35 @@ class HtmlRewriter(HTMLParser):
             self.send(self.pre_head_insert)
 
     def handle_endtag(self, tag: str):
-        self._active_tag = None
+        self.html_rewrite_context = None
         if tag == "head" and self.post_head_insert:
             self.send(self.post_head_insert)
         self.send(f"</{tag}>")
 
     def handle_startendtag(self, tag: str, attrs: AttrsList):
         self.handle_starttag(tag, attrs, auto_close=True)
-        self._active_tag = None
+        self.html_rewrite_context = None
 
     def handle_data(self, data: str):
-        if self._active_tag == "title" and self.title is None:
+        if self.html_rewrite_context == "title" and self.title is None:
             self.title = data.strip()
-        elif self._active_tag == "style":
+        elif self.html_rewrite_context == "style":
             data = self.css_rewriter.rewrite(data)
-        elif self._active_tag == "script":
-            rules = get_ds_rules(self.url_rewriter.article_url.value)
-            if data.strip():
-                data = JsRewriter(self.url_rewriter, rules).rewrite(data)
-        elif self._active_tag == "json":
+        elif self.html_rewrite_context == "json":
             if data.strip():
                 rules = get_ds_rules(self.url_rewriter.article_url.value)
                 if rules:
                     data = RxRewriter(rules).rewrite(data, {})
+        elif self.html_rewrite_context and self.html_rewrite_context.startswith("js-"):
+            if data.strip():
+                data = JsRewriter(
+                    url_rewriter=self.url_rewriter,
+                    extra_rules=get_ds_rules(self.url_rewriter.article_url.value),
+                    notify_js_module=self.notify_js_module,
+                ).rewrite(
+                    data,
+                    opts={"isModule": self.html_rewrite_context == "js-module"},
+                )
         self.send(data)
 
     def handle_entityref(self, name: str):
@@ -161,3 +134,54 @@ class HtmlRewriter(HTMLParser):
 
     def unknown_decl(self, data: str):
         self.handle_decl(data)
+
+    def process_attr(
+        self,
+        attr_name: str,
+        attr_value: str | None,
+        url_rewriter: UrlRewriterProto,
+    ) -> tuple[str, str | None]:
+        if not attr_value:
+            return (attr_name, attr_value)
+
+        if attr_name in ("href", "src"):
+            if self.html_rewrite_context == "js-module":
+                self.notify_js_module(self.url_rewriter.get_item_path(attr_value))
+            return (attr_name, url_rewriter(attr_value))
+        if attr_name == "srcset":
+            value_list = attr_value.split(",")
+            new_value_list = []
+            for value in value_list:
+                url, *other = value.strip().split(" ", maxsplit=1)
+                new_url = url_rewriter(url)
+                new_value = " ".join([new_url, *other])
+                new_value_list.append(new_value)
+            return (attr_name, ", ".join(new_value_list))
+        if attr_name == "style":
+            return (attr_name, self.css_rewriter.rewrite_inline(attr_value))
+        return (attr_name, attr_value)
+
+    def format_attr(self, name: str, value: str | None) -> str:
+        if value is None:
+            return name
+        html_escaped_value = escape(value, quote=True)
+        return f'{name}="{html_escaped_value}"'
+
+    def transform_attrs(
+        self,
+        attrs: AttrsList,
+        url_rewriter: UrlRewriterProto,
+    ) -> str:
+        processed_attrs = (
+            self.process_attr(attr_name, attr_value, url_rewriter)
+            for attr_name, attr_value in attrs
+        )
+        return " ".join(self.format_attr(*attr) for attr in processed_attrs)
+
+    def extract_attr(
+        self, attrs: AttrsList, name: str, default: str | None = None
+    ) -> str | None:
+        for attr_name, value in attrs:
+            if attr_name == name:
+                return value
+        return default

@@ -114,6 +114,13 @@ from warc2zim.url_rewriting import ArticleUrlRewriter, HttpUrl, ZimPath
         ),
         (
             "https://kiwix.org/a/article/document.html",
+            "foo?param=value",
+            "foo%3Fparam%3Dvalue",
+            ["kiwix.org/a/article/foo?param=value"],
+            False,
+        ),
+        (
+            "https://kiwix.org/a/article/document.html",
             "foo?param=value%2F",
             "foo%3Fparam%3Dvalue/",
             ["kiwix.org/a/article/foo?param=value/"],
@@ -131,6 +138,83 @@ from warc2zim.url_rewriting import ArticleUrlRewriter, HttpUrl, ZimPath
             "foo/",
             "foo/",
             ["kiwix.org/a/article/foo/"],
+            False,
+        ),
+        (
+            "https://kiwix.org/a/article/document.html",
+            "/fo o.html",
+            "../../fo%20o.html",
+            ["kiwix.org/fo o.html"],
+            False,
+        ),
+        (
+            "https://kiwix.org/a/article/document.html",
+            "/fo+o.html",
+            "../../fo%2Bo.html",
+            ["kiwix.org/fo+o.html"],
+            False,
+        ),
+        (
+            "https://kiwix.org/a/article/document.html",
+            "/fo%2Bo.html",
+            "../../fo%2Bo.html",
+            ["kiwix.org/fo+o.html"],
+            False,
+        ),
+        (
+            "https://kiwix.org/a/article/document.html",
+            "/foo.html?param=val+ue",
+            "../../foo.html%3Fparam%3Dval%20ue",
+            ["kiwix.org/foo.html?param=val ue"],
+            False,
+        ),
+        (
+            "https://kiwix.org/a/article/document.html",
+            "/fo~o.html",
+            "../../fo~o.html",
+            ["kiwix.org/fo~o.html"],
+            False,
+        ),
+        (
+            "https://kiwix.org/a/article/document.html",
+            "/fo-o.html",
+            "../../fo-o.html",
+            ["kiwix.org/fo-o.html"],
+            False,
+        ),
+        (
+            "https://kiwix.org/a/article/document.html",
+            "/fo_o.html",
+            "../../fo_o.html",
+            ["kiwix.org/fo_o.html"],
+            False,
+        ),
+        (
+            "https://kiwix.org/a/article/document.html",
+            "/fo%7Eo.html",  # must not be encoded / must be decoded (RFC 3986 #2.3)
+            "../../fo~o.html",
+            ["kiwix.org/fo~o.html"],
+            False,
+        ),
+        (
+            "https://kiwix.org/a/article/document.html",
+            "/fo%2Do.html",  # must not be encoded / must be decoded (RFC 3986 #2.3)
+            "../../fo-o.html",
+            ["kiwix.org/fo-o.html"],
+            False,
+        ),
+        (
+            "https://kiwix.org/a/article/document.html",
+            "/fo%5Fo.html",  # must not be encoded / must be decoded (RFC 3986 #2.3)
+            "../../fo_o.html",
+            ["kiwix.org/fo_o.html"],
+            False,
+        ),
+        (
+            "https://kiwix.org/a/article/document.html",
+            "/foo%2Ehtml",  # must not be encoded / must be decoded (RFC 3986 #2.3)
+            "../../foo.html",
+            ["kiwix.org/foo.html"],
             False,
         ),
     ],

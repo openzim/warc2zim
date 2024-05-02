@@ -60,6 +60,8 @@ class Rewriter:
         path: str,
         record: ArcWarcRecord,
         existing_zim_paths: set[ZimPath],
+        missing_zim_paths: set[ZimPath] | None,
+        js_modules: set[ZimPath],
     ):
         self.content = get_record_content(record)
 
@@ -70,10 +72,11 @@ class Rewriter:
         self.path = path
         self.orig_url_str = get_record_url(record)
         self.url_rewriter = ArticleUrlRewriter(
-            HttpUrl(self.orig_url_str), existing_zim_paths
+            HttpUrl(self.orig_url_str), existing_zim_paths, missing_zim_paths
         )
 
         self.rewrite_mode = self.get_rewrite_mode(record, mimetype)
+        self.js_modules = js_modules
 
     @property
     def content_str(self):
@@ -94,6 +97,8 @@ class Rewriter:
             return self.rewrite_css()
 
         if self.rewrite_mode == "javascript":
+            if any(path.value == self.path for path in self.js_modules):
+                opts["isModule"] = True
             return self.rewrite_js(opts)
 
         if self.rewrite_mode == "jsonp":
@@ -132,6 +137,14 @@ class Rewriter:
 
         return None
 
+    def js_module_found(self, zim_path: ZimPath):
+        """Notification helper, for rewriters to call when they have found a JS module
+
+        They call it with the JS module expected ZIM path since they are the only one
+        to know the current document URL/path + the JS module URL.
+        """
+        self.js_modules.add(zim_path)
+
     def rewrite_html(self, head_template: Template, css_insert: str | None):
         orig_url = urlsplit(self.orig_url_str)
 
@@ -145,9 +158,12 @@ class Rewriter:
             orig_scheme=orig_url.scheme,
             orig_host=orig_url.netloc,
         )
-        return HtmlRewriter(self.url_rewriter, head_insert, css_insert).rewrite(
-            self.content_str
-        )
+        return HtmlRewriter(
+            url_rewriter=self.url_rewriter,
+            pre_head_insert=head_insert,
+            post_head_insert=css_insert,
+            notify_js_module=self.js_module_found,
+        ).rewrite(self.content_str)
 
     @no_title
     def rewrite_css(self) -> str | bytes:
@@ -156,7 +172,11 @@ class Rewriter:
     @no_title
     def rewrite_js(self, opts: dict[str, Any]) -> str | bytes:
         ds_rules = get_ds_rules(self.orig_url_str)
-        rewriter = JsRewriter(self.url_rewriter, ds_rules)
+        rewriter = JsRewriter(
+            url_rewriter=self.url_rewriter,
+            extra_rules=ds_rules,
+            notify_js_module=self.js_module_found,
+        )
         return rewriter.rewrite(self.content.decode(), opts)
 
     @no_title

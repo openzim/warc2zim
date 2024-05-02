@@ -13,12 +13,14 @@ WORKDIR /output
 
 # Copy pyproject.toml and its dependencies
 COPY pyproject.toml openzim.toml README.md /src/
+COPY rules/generate_rules.py /src/rules/generate_rules.py
 COPY src/warc2zim/__about__.py /src/src/warc2zim/__about__.py
 
 # Install Python dependencies
 RUN pip install --no-cache-dir /src
 
 # Copy code + associated artifacts
+COPY rules /src/rules
 COPY src /src/src
 COPY *.md /src/
 

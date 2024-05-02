@@ -22,6 +22,8 @@ Static JS rewriting is simply a matter of pure textual manipulation with regular
 
 Dynamic JS rewriting is done with [wombat JS library](https://github.com/webrecorder/wombat). The same fuzzy rules that are used for static rewritting are injected into wombat configuration. Code to rewrite URLs is an adapted version of the code used to compute ZIM paths.
 
+For wombat setup, including the URL rewriting part, we need to pass wombat configuration info. This code is developed in the `javascript` folder. For URL parsing, it relies on the [uri-js library](https://www.npmjs.com/package/uri-js). This javascript code is bundled into a single `wombatSetup.js` file with [rollup bundler](https://rollupjs.org), the same bundler used by webrecorder team to bundle wombat.
+
 ## cdxj_indexer and warcio
 
 [cdxj_indexer Python library](https://pypi.org/project/cdxj-indexer/) is a thin wrapper over [warcio Python library](https://pypi.org/project/warcio/). It used to iterate all record in WARCs.

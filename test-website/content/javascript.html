@@ -74,39 +74,51 @@
   </p>
 
   <p>
-    01i. Simple inline Javascript with content on "normal" FQDN and improperly escaped utf-8 char in path: <span class="status" id="span01i">This is not working</span>
+    01i. Simple inline Javascript with content on improperly escaped "special chars" FQDN: <span class="status" id="span01i">This is not working</span>
   </p>
 
   <p>
-    01j. Simple inline Javascript with content on "special chars" FQDN and improperly escaped utf-8 char in path: <span class="status" id="span01j">This is not working</span>
+    01j. Simple inline Javascript with content accessed with query parameter: <span class="status" id="span01j">This is not working</span>
   </p>
 
   <p>
-    01k. Simple inline Javascript with content on improperly escaped "special chars" FQDN: <span class="status" id="span01k">This is not working</span>
+    01k. Simple inline Javascript with content accessed with query parameter and query value containing an equal sign : <span class="status" id="span01k">This is not working</span>
   </p>
 
   <p>
-    01l. Simple inline Javascript with content accessed with query parameter: <span class="status" id="span01l">This is not working</span>
+    01l. Simple inline Javascript with content accessed with query parameter and query value containing a percent sign: <span class="status" id="span01l">This is not working</span>
   </p>
 
   <p>
-    01m. Simple inline Javascript with content accessed with query parameter and query value containing an equal sign : <span class="status" id="span01m">This is not working</span>
+    01m. Simple inline Javascript with content URL containing an interogation point sign: <span class="status" id="span01m">This is not working</span>
   </p>
 
   <p>
-    01n. Simple inline Javascript with content accessed with query parameter and query value containing a percent sign: <span class="status" id="span01n">This is not working</span>
+    01n. Simple inline Javascript with content URL containing an interogation point sign and a query parameter: <span class="status" id="span01n">This is not working</span>
   </p>
 
   <p>
-    01o. Simple inline Javascript with content URL containing an interogation point sign: <span class="status" id="span01o">This is not working</span>
+    01o. Simple inline Javascript with content on "normal" FQDN and improperly escaped utf-8 char in path: <span class="status" id="span01o">This is not working</span>
   </p>
 
   <p>
-    01p. Simple inline Javascript with content URL containing an interogation point sign and a query parameter: <span class="status" id="span01p">This is not working</span>
+    01p. Simple inline Javascript with content on "special chars" FQDN and improperly escaped utf-8 char in path: <span class="status" id="span01p">This is not working</span>
   </p>
 
   <p>
-    02. Simple classic Javascript with src: <span class="status" id="span02">This is not working</span>
+    01q. Simple inline Javascript with content on relative path and improperly escaped utf-8 char in path: <span class="status" id="span01q">This is not working</span>
+  </p>
+
+  <p>
+    01r. Simple inline Javascript with content on relative path and exclamation mark in path: <span class="status" id="span01r">This is not working</span>
+  </p>
+
+  <p>
+    02a. Simple classic Javascript with simple src: <span class="status" id="span02a">This is not working</span>
+  </p>
+
+  <p>
+    02b. Simple classic Javascript with src and exclamation mark in path: <span class="status" id="span02b">This is not working</span>
   </p>
 
   <p>
@@ -193,9 +205,14 @@
     09d. Simple module Javascript with importmap required but nasty URL used in JS: <span class="status" id="span09d">This is not working</span>
   </p>
 
+  <p>
+    10. Rewritting image src dynamically based on already statically rewritten link: <img id="img10" src="https://not_standard_netloc_punny_encoded/javascript/not_working.png"></img>
+  </p>
+
   <script>
     fetch("https://standard_netloc/javascript/content.txt")
     .then(function(response) {
+      if (response.status !== 200) { return; }
       response.text().then(function(text) {
         const span = document.getElementById("span01a");
         span.innerHTML=text;
@@ -206,6 +223,7 @@
   <script>
     fetch("https://not_standard_netloc_punny_encoded/javascript/content.txt")
     .then(function(response) {
+      if (response.status !== 200) { return; }
       response.text().then(function(text) {
         const span = document.getElementById("span01b");
         span.innerHTML=text;
@@ -216,6 +234,7 @@
   <script>
     fetch("https://standard_netloc/javascript/contént.txt")
     .then(function(response) {
+      if (response.status !== 200) { return; }
       response.text().then(function(text) {
         const span = document.getElementById("span01c");
         span.innerHTML=text;
@@ -224,8 +243,9 @@
     });
   </script>
   <script>
-    fetch("	https://not_standard_netloc_punny_encoded/javascript/cont%C3%A9nt.txt")
+    fetch("https://not_standard_netloc_punny_encoded/javascript/cont%C3%A9nt.txt")
     .then(function(response) {
+      if (response.status !== 200) { return; }
       response.text().then(function(text) {
         const span = document.getElementById("span01d");
         span.innerHTML=text;
@@ -236,6 +256,7 @@
   <script>
     fetch("https://standard_netloc/javascript/cont%F0%9F%8E%81nt.txt")
     .then(function(response) {
+      if (response.status !== 200) { return; }
       response.text().then(function(text) {
         const span = document.getElementById("span01e");
         span.innerHTML=text;
@@ -246,6 +267,7 @@
   <script>
     fetch("https://not_standard_netloc_punny_encoded/javascript/cont%F0%9F%8E%81nt.txt")
     .then(function(response) {
+      if (response.status !== 200) { return; }
       response.text().then(function(text) {
         const span = document.getElementById("span01f");
         span.innerHTML=text;
@@ -256,6 +278,7 @@
   <script>
     fetch("https://standard_netloc/javascript/contént.txt")
     .then(function(response) {
+      if (response.status !== 200) { return; }
       response.text().then(function(text) {
         const span = document.getElementById("span01g");
         span.innerHTML=text;
@@ -266,6 +289,7 @@
   <script>
     fetch("https://not_standard_netloc_punny_encoded/javascript/contént.txt")
     .then(function(response) {
+      if (response.status !== 200) { return; }
       response.text().then(function(text) {
         const span = document.getElementById("span01h");
         span.innerHTML=text;
@@ -274,8 +298,9 @@
     });
   </script>
   <script>
-    fetch("https://standard_netloc/javascript/cont🎁nt.txt")
+    fetch("https://not_standard_netloc_not_encoded/javascript/content.txt")
     .then(function(response) {
+      if (response.status !== 200) { return; }
       response.text().then(function(text) {
         const span = document.getElementById("span01i");
         span.innerHTML=text;
@@ -284,8 +309,9 @@
     });
   </script>
   <script>
-    fetch("https://not_standard_netloc_punny_encoded/javascript/cont🎁nt.txt")
+    fetch("https://standard_netloc/javascript/content.txt?query=value")
     .then(function(response) {
+      if (response.status !== 200) { return; }
       response.text().then(function(text) {
         const span = document.getElementById("span01j");
         span.innerHTML=text;
@@ -294,8 +320,9 @@
     });
   </script>
   <script>
-    fetch("https://not_standard_netloc_not_encoded/javascript/content.txt")
+    fetch("https://standard_netloc/javascript/content.txt?query=valu%3De")
     .then(function(response) {
+      if (response.status !== 200) { return; }
       response.text().then(function(text) {
         const span = document.getElementById("span01k");
         span.innerHTML=text;
@@ -304,30 +331,11 @@
     });
   </script>
   <script>
-    fetch("https://standard_netloc/javascript/content.txt?query=value")
-    .then(function(response) {
-      response.text().then(function(text) {
-        const span = document.getElementById("span01l");
-        span.innerHTML=text;
-        span.classList.add("green");
-      });
-    });
-  </script>
-  <script>
-    fetch("https://standard_netloc/javascript/content.txt?query=valu%3De")
-    .then(function(response) {
-      response.text().then(function(text) {
-        const span = document.getElementById("span01l");
-        span.innerHTML=text;
-        span.classList.add("green");
-      });
-    });
-  </script>
-  <script>
     fetch("https://standard_netloc/javascript/content.txt?query=valu%25e")
     .then(function(response) {
+      if (response.status !== 200) { return; }
       response.text().then(function(text) {
-        const span = document.getElementById("span01m");
+        const span = document.getElementById("span01l");
         span.innerHTML=text;
         span.classList.add("green");
       });
@@ -336,8 +344,9 @@
   <script>
     fetch("https://standard_netloc/javascript/cont%3Fnt.txt")
     .then(function(response) {
+      if (response.status !== 200) { return; }
       response.text().then(function(text) {
-        const span = document.getElementById("span01n");
+        const span = document.getElementById("span01m");
         span.innerHTML=text;
         span.classList.add("green");
       });
@@ -346,6 +355,18 @@
   <script>
     fetch("https://standard_netloc/javascript/cont%3Fnt.txt?query=value")
     .then(function(response) {
+      if (response.status !== 200) { return; }
+      response.text().then(function(text) {
+        const span = document.getElementById("span01n");
+        span.innerHTML=text;
+        span.classList.add("green");
+      });
+    });
+  </script>
+  <script>
+    fetch("https://standard_netloc/javascript/cont🎁nt.txt")
+    .then(function(response) {
+      if (response.status !== 200) { return; }
       response.text().then(function(text) {
         const span = document.getElementById("span01o");
         span.innerHTML=text;
@@ -354,8 +375,9 @@
     });
   </script>
   <script>
-    fetch("./javascript/cont🎁nt.txt")
+    fetch("https://not_standard_netloc_punny_encoded/javascript/cont🎁nt.txt")
     .then(function(response) {
+      if (response.status !== 200) { return; }
       response.text().then(function(text) {
         const span = document.getElementById("span01p");
         span.innerHTML=text;
@@ -363,7 +385,30 @@
       });
     });
   </script>
-  <script src="./javascript/script02.js"></script>
+  <script>
+    fetch("./javascript/cont🎁nt.txt")
+    .then(function(response) {
+      if (response.status !== 200) { return; }
+      response.text().then(function(text) {
+        const span = document.getElementById("span01q");
+        span.innerHTML=text;
+        span.classList.add("green");
+      });
+    });
+  </script>
+  <script>
+    fetch("./javascript/cont!nt.txt")
+    .then(function(response) {
+      if (response.status !== 200) { return; }
+      response.text().then(function(text) {
+        const span = document.getElementById("span01r");
+        span.innerHTML=text;
+        span.classList.add("green");
+      });
+    });
+  </script>
+  <script src="./javascript/script02a.js"></script>
+  <script src="./javascript/script02!b.js"></script>
   <script type="text/javascript" src="./javascript/script03.js"></script>
   <script src="./javascript/script05.js" defer></script>
   <script type="module" src="./javascript/script06a.js"></script>
@@ -384,6 +429,7 @@
   <script type="module" src="./javascript/script09b.js"></script>
   <script type="module" src="./javascript/script09c.js"></script>
   <script type="module" src="./javascript/script09d.js"></script>
+  <script src="./javascript/script10.js"></script>
 
 </body>
 

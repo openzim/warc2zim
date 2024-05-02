@@ -19,6 +19,17 @@ jobs:
           python-version-file: pyproject.toml
           architecture: x64
 
+      - name: Generate fuzzy rules
+        run: python rules/generate_rules.py
+
+      - name: Build Javascript wombatSetup.js
+        uses: addnab/docker-run-action@v3
+        with:
+          image: node:20-bookworm
+          options: -v ${{ github.workspace }}/src/warc2zim/statics:/output -v ${{ github.workspace }}/rules:/src/rules -v ${{ github.workspace }}/javascript:/src/javascript -v ${{ github.workspace }}/build_js.sh:/src/build_js.sh
+          run: |
+            /src/build_js.sh
+
       - name: Build packages
         run: |
           pip install -U pip build

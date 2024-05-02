@@ -42,11 +42,10 @@ from zimscraperlib.i18n import get_language_details
 from zimscraperlib.image.convertion import convert_image
 from zimscraperlib.image.transformation import resize_image
 from zimscraperlib.zim.creator import Creator
-from zimscraperlib.zim.items import StaticItem
 
 from warc2zim.constants import logger
 from warc2zim.items import StaticArticle, WARCPayloadItem
-from warc2zim.url_rewriting import FUZZY_RULES, HttpUrl, ZimPath, normalize
+from warc2zim.url_rewriting import HttpUrl, ZimPath, normalize
 from warc2zim.utils import (
     get_record_content,
     get_record_mime_type,
@@ -135,6 +134,8 @@ class Converter:
         self.added_zim_items: set[ZimPath] = set()
         self.revisits: dict[ZimPath, ZimPath] = {}
         self.expected_zim_items: set[ZimPath] = set()
+        self.missing_zim_paths: set[ZimPath] | None = set() if args.verbose else None
+        self.js_modules: set[ZimPath] = set()
 
         # progress file handling
         self.stats_filename = (
@@ -146,20 +147,6 @@ class Converter:
         self.written_records = self.total_records = 0
 
         self.scraper_suffix = args.scraper_suffix
-
-    def init_env(self):
-        # autoescape=False to allow injecting html entities from translated text
-        env = Environment(
-            loader=PackageLoader("warc2zim", "templates"),
-            autoescape=False,  # noqa: S701
-        )
-
-        env.filters["urlsplit"] = urlsplit
-        env.filters["tobool"] = lambda val: "true" if val else "false"
-
-        env.filters["py2jsregex"] = lambda py_reg: PY2JS_RULE_RX.sub(r"$\1", py_reg)
-
-        return env
 
     def update_stats(self):
         """write progress as JSON to self.stats_filename if requested"""
@@ -219,7 +206,14 @@ class Converter:
             logger.error(f"Invalid language setting `{self.language}`. Using `eng`.")
             self.language = "eng"
 
-        self.env = self.init_env()
+        # autoescape=False to allow injecting html entities from translated text
+        self.env = Environment(
+            loader=PackageLoader("warc2zim", "templates"),
+            autoescape=False,  # noqa: S701
+        )
+
+        self.env.filters["urlsplit"] = urlsplit
+        self.env.filters["tobool"] = lambda val: "true" if val else "false"
 
         # init head insert
         self.head_template = self.env.get_template(HEAD_INSERT_FILE)
@@ -255,17 +249,6 @@ class Converter:
                 self.creator.add_item(
                     StaticArticle(filename=file, main_path=self.main_path.value)
                 )
-
-        # Add wombat_setup.js
-        wombat_setup_template = self.env.get_template("wombat_setup.js")
-        wombat_setup_content = wombat_setup_template.render(FUZZY_RULES=FUZZY_RULES)
-        self.creator.add_item(
-            StaticItem(
-                path="_zim_static/wombat_setup.js",  # pyright: ignore [reportArgumentType, reportGeneralTypeIssues]
-                content=wombat_setup_content,  # pyright: ignore [reportArgumentType, reportGeneralTypeIssues]
-                mimetype="text/javascript",  # pyright: ignore [reportArgumentType, reportGeneralTypeIssues]
-            )
-        )
 
         for record in self.iter_all_warc_records():
             self.add_items_for_warc_record(record)
@@ -339,6 +322,7 @@ class Converter:
                 status_code = int(record.http_headers.get_statuscode())
                 if status_code in [
                     HTTPStatus.MOVED_PERMANENTLY,
+                    HTTPStatus.TEMPORARY_REDIRECT,
                     HTTPStatus.FOUND,
                 ]:
                     original_path = self.main_path
@@ -551,6 +535,8 @@ class Converter:
                 self.head_template,
                 self.css_insert,
                 self.expected_zim_items,
+                self.missing_zim_paths,
+                self.js_modules,
             )
 
             if len(payload_item.content) != 0:

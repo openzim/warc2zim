@@ -1,9 +1,14 @@
 import pytest
 
 from warc2zim.content_rewriting.js import JsRewriter
-from warc2zim.url_rewriting import ArticleUrlRewriter, HttpUrl
+from warc2zim.url_rewriting import ArticleUrlRewriter, HttpUrl, ZimPath
 
 from .utils import ContentForTests
+
+
+@pytest.fixture
+def simple_js_rewriter(no_js_notify) -> JsRewriter:
+    return JsRewriter(url_rewriter=lambda x: x, notify_js_module=no_js_notify)
 
 
 @pytest.fixture(
@@ -24,9 +29,9 @@ def rewrite_this_js_content(request):
     )
 
 
-def test_this_js_rewrite(rewrite_this_js_content):
+def test_this_js_rewrite(simple_js_rewriter: JsRewriter, rewrite_this_js_content):
     assert (
-        JsRewriter(lambda x: x).rewrite(rewrite_this_js_content.input_str)
+        simple_js_rewriter.rewrite(rewrite_this_js_content.input_str)
         == rewrite_this_js_content.expected_str
     )
 
@@ -103,9 +108,9 @@ def rewrite_wrapped_content(request):
     yield request.param
 
 
-def test_wrapped_rewrite(rewrite_wrapped_content):
+def test_wrapped_rewrite(simple_js_rewriter: JsRewriter, rewrite_wrapped_content):
     assert (
-        JsRewriter(lambda x: x).rewrite(rewrite_wrapped_content.input_str)
+        simple_js_rewriter.rewrite(rewrite_wrapped_content.input_str)
         == rewrite_wrapped_content.expected_str
     )
 
@@ -187,7 +192,7 @@ B = await import(somefile);
 import * from "../../../example.com/file.js"
 import A from "../../../example.com/path/file2.js";
 
-import {C, D} from "abc.js";
+import {C, D} from "./abc.js";
 import {X, Y} from "../parent.js";
 import {E, F, G} from "../../path.js";
 import { Z } from "../../path.js";
@@ -217,12 +222,14 @@ def rewrite_import_content(request):
     yield request.param
 
 
-def test_import_rewrite(rewrite_import_content):
+def test_import_rewrite(no_js_notify, rewrite_import_content):
     url_rewriter = ArticleUrlRewriter(
         HttpUrl(rewrite_import_content.article_url), set()
     )
     assert (
-        JsRewriter(url_rewriter).rewrite(rewrite_import_content.input_str)
+        JsRewriter(url_rewriter=url_rewriter, notify_js_module=no_js_notify).rewrite(
+            rewrite_import_content.input_str, opts={"isModule": True}
+        )
         == rewrite_import_content.expected_str
     )
 
@@ -271,7 +278,38 @@ def no_rewrite_js_content(request):
     yield request.param
 
 
-def test_no_rewrite(no_rewrite_js_content):
-    assert (
-        JsRewriter(lambda x: x).rewrite(no_rewrite_js_content) == no_rewrite_js_content
+def test_no_rewrite(simple_js_rewriter: JsRewriter, no_rewrite_js_content):
+    assert simple_js_rewriter.rewrite(no_rewrite_js_content) == no_rewrite_js_content
+
+
+@pytest.mark.parametrize(
+    "js_src,expected_js_module_path",
+    [
+        ("./my-module-script.js", "kiwix.org/my_folder/my-module-script.js"),
+        ("../my-module-script.js", "kiwix.org/my-module-script.js"),
+        ("../../../my-module-script.js", "kiwix.org/my-module-script.js"),
+        ("/my-module-script.js", "kiwix.org/my-module-script.js"),
+        ("//myserver.com/my-module-script.js", "myserver.com/my-module-script.js"),
+        (
+            "https://myserver.com/my-module-script.js",
+            "myserver.com/my-module-script.js",
+        ),
+    ],
+)
+def test_js_rewrite_nested_module_detected(js_src, expected_js_module_path):
+
+    js_modules = []
+
+    def custom_notify(zim_path: ZimPath):
+        js_modules.append(zim_path)
+
+    url_rewriter = ArticleUrlRewriter(
+        HttpUrl("http://kiwix.org/my_folder/my_article.html"), set()
     )
+
+    JsRewriter(url_rewriter=url_rewriter, notify_js_module=custom_notify).rewrite(
+        f'import * from "{js_src}"', opts={"isModule": True}
+    )
+
+    assert len(js_modules) == 1
+    assert js_modules[0].value == expected_js_module_path

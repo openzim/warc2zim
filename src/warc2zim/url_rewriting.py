@@ -43,7 +43,6 @@ and not url-encoded.
 
 from __future__ import annotations
 
-import logging
 import re
 from pathlib import PurePosixPath
 from urllib.parse import (
@@ -56,41 +55,10 @@ from urllib.parse import (
 
 import idna
 
-# Shared logger
-logger = logging.getLogger("warc2zim.url_rewriting")
+from warc2zim.constants import logger
+from warc2zim.rules import FUZZY_RULES
 
 known_bad_hostnames: set[str] = set()
-
-FUZZY_RULES = [
-    {
-        "pattern": r".*googlevideo.com/(videoplayback(?=\?)).*[?&](id=[^&]+).*",
-        "replace": r"youtube.fuzzy.replayweb.page/\1?\2",
-    },
-    {
-        "pattern": r"(?:www\.)?youtube(?:-nocookie)?\.com/(get_video_info\?).*(video_id"
-        r"=[^&]+).*",
-        "replace": r"youtube.fuzzy.replayweb.page/\1\2",
-    },
-    {"pattern": r"([^?]+)\?[\d]+$", "replace": r"\1"},
-    {
-        "pattern": r"(?:www\.)?youtube(?:-nocookie)?\.com\/(youtubei\/[^?]+).*(videoId["
-        r"^&]+).*",
-        "replace": r"youtube.fuzzy.replayweb.page/\1?\2",
-    },
-    {
-        "pattern": r"(?:www\.)?youtube(?:-nocookie)?\.com/embed/([^?]+).*",
-        "replace": r"youtube.fuzzy.replayweb.page/embed/\1",
-    },
-    {
-        "pattern": r".*(?:gcs-vimeo|vod|vod-progressive)\.akamaized\.net.*?/([\d/]+"
-        r".mp4)$",
-        "replace": r"vimeo-cdn.fuzzy.replayweb.page/\1",
-    },
-    {
-        "pattern": r".*player.vimeo.com/(video/[\d]+)\?.*",
-        "replace": r"vimeo.fuzzy.replayweb.page/\1",
-    },
-]
 
 
 COMPILED_FUZZY_RULES = [
@@ -279,11 +247,22 @@ def get_without_fragment(url: str) -> str:
 class ArticleUrlRewriter:
     """Rewrite urls in article."""
 
-    def __init__(self, article_url: HttpUrl, existing_zim_paths: set[ZimPath]):
+    def __init__(
+        self,
+        article_url: HttpUrl,
+        existing_zim_paths: set[ZimPath],
+        missing_zim_paths: set[ZimPath] | None = None,
+    ):
         self.article_path = normalize(article_url)
         self.article_url = article_url
         self.existing_zim_paths = existing_zim_paths
-        self.missing_zim_paths: set[ZimPath] = set()
+        self.missing_zim_paths = missing_zim_paths
+
+    def get_item_path(self, item_url: str) -> ZimPath:
+        """Utility to transform an item URL into a ZimPath"""
+
+        item_absolute_url = urljoin(self.article_url.value, item_url)
+        return normalize(HttpUrl(item_absolute_url))
 
     def __call__(self, item_url: str, *, rewrite_all_url: bool = True) -> str:
         """Rewrite a url contained in a article.
@@ -305,7 +284,10 @@ class ArticleUrlRewriter:
         if rewrite_all_url or item_path in self.existing_zim_paths:
             return self.get_document_uri(item_path, item_fragment)
         else:
-            if item_path not in self.missing_zim_paths:
+            if (
+                self.missing_zim_paths is not None
+                and item_path not in self.missing_zim_paths
+            ):
                 logger.debug(f"WARNING {item_path} ({item_url}) not in archive.")
                 # maintain a collection of missing Zim Path to not fill the logs with
                 # duplicate messages
