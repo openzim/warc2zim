@@ -12,6 +12,13 @@ warc2zim provides a way to convert WARC files to ZIM, storing the WARC payload a
 Additionally, the [ReplayWeb.page](https://replayweb.page) is also added to the ZIM, creating a self-contained ZIM
 that can render its content in a modern browser.
 
+## Known limitations
+
+- HTTP return codes have known limitations:
+  - in the `2xx` range, only `200`, `201`, `202` and `203` are supported ; others are simply ignored
+  - in the `3xx` range, only `301`, `302`, `306` and `307` are supported if they redirect to a payload which is present in the WARC ; others are simply ignored
+  - all payloads with HTTP return codes in the `1xx` (not supposed to exist in WARC files anyway), `4xx` and `5xx` ranges are ignored
+
 ## Usage
 
 Example:

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import re
+from http import HTTPStatus
 
 import chardet
 from bs4 import BeautifulSoup
@@ -27,6 +28,70 @@ def get_record_url(record):
     if hasattr(record, "urlkey"):
         return record.urlkey
     return record.rec_headers["WARC-Target-URI"]
+
+
+def get_status_code(record: ArcWarcRecord) -> HTTPStatus | None:
+    """Get the HTTP status status of a given ArcWarcRecord
+
+    Returns HTTPStatus value or None if status code is not found / supported
+    """
+    if record.rec_type == "response":
+        status_code = record.http_headers.get_statuscode()
+    else:
+        status_code = record.rec_headers.get_statuscode()
+
+    if not status_code or int(status_code) == 0:
+        # null/empty http status found, ignore it (happens when content is empty indeed,
+        # e.g. 204, seems to be a WARC convention - or maybe an old bug)
+        return None
+
+    try:
+        status_code = HTTPStatus(int(status_code))
+    except ValueError:
+        # invalid http status found, ignore it (happens when bad http status is
+        # returned, e.g 306)
+        return None
+
+    return status_code
+
+
+def can_process_status_code(status_code: HTTPStatus) -> bool:
+    """Return a boolean indicating if this status code is a processable redirect"""
+    return not (
+        status_code.is_informational  # not supposed to exist in WARC files
+        or status_code.is_client_error
+        or status_code.is_server_error
+        or (
+            status_code.is_success
+            and status_code
+            not in [
+                HTTPStatus.OK,
+                HTTPStatus.CREATED,
+                HTTPStatus.ACCEPTED,
+                HTTPStatus.NON_AUTHORITATIVE_INFORMATION,
+            ]
+        )
+        or (
+            status_code.is_redirection
+            and status_code
+            not in [
+                HTTPStatus.MOVED_PERMANENTLY,
+                HTTPStatus.FOUND,
+                HTTPStatus.TEMPORARY_REDIRECT,
+                HTTPStatus.PERMANENT_REDIRECT,
+            ]
+        )
+    )
+
+
+def status_code_is_processable_redirect(status_code: HTTPStatus) -> bool:
+    """Return a boolean indicating if this status code is processable redirect"""
+    return status_code.is_redirection and status_code in [
+        HTTPStatus.MOVED_PERMANENTLY,
+        HTTPStatus.FOUND,
+        HTTPStatus.TEMPORARY_REDIRECT,
+        HTTPStatus.PERMANENT_REDIRECT,
+    ]
 
 
 def get_record_content_type(record: ArcWarcRecord) -> str:
