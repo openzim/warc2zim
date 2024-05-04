@@ -264,7 +264,13 @@ class ArticleUrlRewriter:
         item_absolute_url = urljoin(self.article_url.value, item_url)
         return normalize(HttpUrl(item_absolute_url))
 
-    def __call__(self, item_url: str, *, rewrite_all_url: bool = True) -> str:
+    def __call__(
+        self,
+        item_url: str,
+        base_href: str | None,
+        *,
+        rewrite_all_url: bool = True,
+    ) -> str:
         """Rewrite a url contained in a article.
 
         The url is "fully" rewrited to point to a normalized entry path
@@ -276,7 +282,9 @@ class ArticleUrlRewriter:
         if item_scheme and item_scheme not in ("http", "https"):
             return item_url
 
-        item_absolute_url = urljoin(self.article_url.value, item_url)
+        item_absolute_url = urljoin(
+            urljoin(self.article_url.value, base_href), item_url
+        )
         item_fragment = urlsplit(item_absolute_url).fragment
 
         item_path = normalize(HttpUrl(item_absolute_url))

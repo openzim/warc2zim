@@ -167,7 +167,7 @@ class Rewriter:
 
     @no_title
     def rewrite_css(self) -> str | bytes:
-        return CssRewriter(self.url_rewriter).rewrite(self.content)
+        return CssRewriter(self.url_rewriter, base_href=None).rewrite(self.content)
 
     @no_title
     def rewrite_js(self, opts: dict[str, Any]) -> str | bytes:
@@ -176,6 +176,7 @@ class Rewriter:
             url_rewriter=self.url_rewriter,
             extra_rules=ds_rules,
             notify_js_module=self.js_module_found,
+            base_href=None,
         )
         return rewriter.rewrite(self.content.decode(), opts)
 

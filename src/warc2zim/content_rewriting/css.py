@@ -11,12 +11,12 @@ from tinycss2 import (
 from tinycss2.serializer import serialize_url
 
 from warc2zim.constants import logger
-from warc2zim.content_rewriting import UrlRewriterProto
 from warc2zim.content_rewriting.rx_replacer import RxRewriter
+from warc2zim.url_rewriting import ArticleUrlRewriter
 
 
 class FallbackRegexCssRewriter(RxRewriter):
-    def __init__(self, url_rewriter: UrlRewriterProto):
+    def __init__(self, url_rewriter: ArticleUrlRewriter, base_href: str | None):
         rules = [
             (
                 re.compile(r"""url\((?P<quote>['"])?(?P<url>.+?)(?P=quote)(?<!\\)\)"""),
@@ -24,7 +24,7 @@ class FallbackRegexCssRewriter(RxRewriter):
                     [
                         "url(",
                         m_object["quote"],
-                        url_rewriter(m_object["url"]),
+                        url_rewriter(m_object["url"], base_href),
                         m_object["quote"],
                         ")",
                     ]
@@ -35,9 +35,10 @@ class FallbackRegexCssRewriter(RxRewriter):
 
 
 class CssRewriter:
-    def __init__(self, url_rewriter: UrlRewriterProto):
+    def __init__(self, url_rewriter: ArticleUrlRewriter, base_href: str | None):
         self.url_rewriter = url_rewriter
-        self.fallback_rewriter = FallbackRegexCssRewriter(url_rewriter)
+        self.base_href = base_href
+        self.fallback_rewriter = FallbackRegexCssRewriter(url_rewriter, base_href)
 
     def rewrite(self, content: str | bytes) -> str:
         try:
@@ -98,7 +99,7 @@ class CssRewriter:
         elif isinstance(component, ast.FunctionBlock):
             if component.lower_name == "url":
                 url_component = component.arguments[0]
-                new_url = self.url_rewriter(url_component.value)
+                new_url = self.url_rewriter(url_component.value, self.base_href)
                 url_component.value = new_url
                 url_component.representation = f'"{serialize_url(new_url)}"'
             else:
@@ -109,6 +110,6 @@ class CssRewriter:
         elif isinstance(component, ast.Declaration):
             self.process_list(component.value)
         elif isinstance(component, ast.URLToken):
-            new_url = self.url_rewriter(component.value)
+            new_url = self.url_rewriter(component.value, self.base_href)
             component.value = new_url
             component.representation = f"url({serialize_url(new_url)})"

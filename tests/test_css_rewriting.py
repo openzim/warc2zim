@@ -40,7 +40,8 @@ def test_no_rewrite(no_rewrite_content):
         CssRewriter(
             ArticleUrlRewriter(
                 HttpUrl(f"http://{no_rewrite_content.article_url}"), set()
-            )
+            ),
+            base_href=None,
         ).rewrite(no_rewrite_content.input_bytes)
         == no_rewrite_content.expected_bytes.decode()
     )
@@ -68,7 +69,8 @@ def test_invalid_css_inline(invalid_content_inline):
         CssRewriter(
             ArticleUrlRewriter(
                 HttpUrl(f"http://{invalid_content_inline.article_url}"), set()
-            )
+            ),
+            base_href=None,
         ).rewrite_inline(invalid_content_inline.input_str)
         == invalid_content_inline.expected_str
     )
@@ -98,7 +100,8 @@ def invalid_content(request):
 def test_invalid_cssl(invalid_content):
     assert (
         CssRewriter(
-            ArticleUrlRewriter(HttpUrl(f"http://{invalid_content.article_url}"), set())
+            ArticleUrlRewriter(HttpUrl(f"http://{invalid_content.article_url}"), set()),
+            base_href=None,
         ).rewrite(invalid_content.input_bytes)
         == invalid_content.expected_bytes.decode()
     )
@@ -148,7 +151,8 @@ p, input {
 
     assert (
         CssRewriter(
-            ArticleUrlRewriter(HttpUrl("http://kiwix.org/article"), set())
+            ArticleUrlRewriter(HttpUrl("http://kiwix.org/article"), set()),
+            base_href=None,
         ).rewrite(content)
         == expected
     )

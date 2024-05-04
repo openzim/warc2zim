@@ -2,7 +2,6 @@ import re
 from collections.abc import Callable, Iterable
 from typing import Any
 
-from warc2zim.content_rewriting import UrlRewriterProto
 from warc2zim.content_rewriting.rx_replacer import (
     RxRewriter,
     TransformationAction,
@@ -12,7 +11,7 @@ from warc2zim.content_rewriting.rx_replacer import (
     replace,
     replace_prefix_from,
 )
-from warc2zim.url_rewriting import ZimPath
+from warc2zim.url_rewriting import ArticleUrlRewriter, ZimPath
 
 # The regex used to rewrite `import ...` in module code.
 IMPORT_MATCH_RX = re.compile(
@@ -188,7 +187,8 @@ class JsRewriter(RxRewriter):
 
     def __init__(
         self,
-        url_rewriter: UrlRewriterProto,
+        url_rewriter: ArticleUrlRewriter,
+        base_href: str | None,
         notify_js_module: Callable[[ZimPath], None],
         extra_rules: Iterable[TransformationRule] | None = None,
     ):
@@ -198,6 +198,7 @@ class JsRewriter(RxRewriter):
         self.last_buff = "\n}"
         self.url_rewriter = url_rewriter
         self.notify_js_module = notify_js_module
+        self.base_href = base_href
 
     def _init_local_declaration(self, local_decls: Iterable[str]) -> str:
         """
@@ -269,7 +270,7 @@ class JsRewriter(RxRewriter):
             This takes into account that the result must be a relative URL, i.e. it
             cannot be 'vendor.module.js' but must be './vendor.module.js'.
             """
-            url = self.url_rewriter(url)
+            url = self.url_rewriter(url, base_href=self.base_href)
             if not (
                 url.startswith("/") or url.startswith("./") or url.startswith("../")
             ):
