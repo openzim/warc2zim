@@ -85,6 +85,20 @@ def main(raw_args=None):
         "addition to regular warc2zim value",
     )
 
+    parser.add_argument(
+        "--continue-on-error",
+        help="Dev feature: do not stop on WARC record processing issue, continue with "
+        "next record",
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--failed-items",
+        help="Directory where failed item(s) will be stored. Either absolute path or "
+        "relative to output directory",
+        default="fails",
+    )
+
     args = parser.parse_args(args=raw_args)
     converter = Converter(args)
     return converter.run()
