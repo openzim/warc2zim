@@ -276,32 +276,55 @@ class ArticleUrlRewriter:
         The url is "fully" rewrited to point to a normalized entry path
         """
 
-        item_url = item_url.strip()
+        try:
+            item_url = item_url.strip()
 
-        item_scheme = urlsplit(item_url).scheme
-        if item_scheme and item_scheme not in ("http", "https"):
+            item_scheme = urlsplit(item_url).scheme
+            if item_scheme and item_scheme not in ("http", "https"):
+                return item_url
+
+            item_absolute_url = urljoin(
+                urljoin(self.article_url.value, base_href), item_url
+            )
+
+            item_fragment = urlsplit(item_absolute_url).fragment
+
+            item_path = normalize(HttpUrl(item_absolute_url))
+
+            if rewrite_all_url or item_path in self.existing_zim_paths:
+                return self.get_document_uri(item_path, item_fragment)
+            else:
+                if (
+                    self.missing_zim_paths is not None
+                    and item_path not in self.missing_zim_paths
+                ):
+                    logger.debug(f"WARNING {item_path} ({item_url}) not in archive.")
+                    # maintain a collection of missing Zim Path to not fill the logs
+                    # with duplicate messages
+                    self.missing_zim_paths.add(item_path)
+                # The url doesn't point to a known entry
+                return item_absolute_url
+
+        except Exception as exc:
+            item_scheme = item_scheme if "item_scheme" in locals() else "<not_set>"
+            item_absolute_url = (
+                item_absolute_url if "item_absolute_url" in locals() else "<not_set>"
+            )
+            item_fragment = (
+                item_fragment if "item_fragment" in locals() else "<not_set>"
+            )
+            item_path = item_path if "item_path" in locals() else "<not_set>"
+            logger.debug(
+                f"Invalid URL value found in {self.article_url.value}, kept as-is. "
+                f"(item_url: {item_url}, "
+                f"item_scheme: {item_scheme}, "
+                f"item_absolute_url: {item_absolute_url}, "
+                f"item_fragment: {item_fragment}, "
+                f"item_path: {item_path}, "
+                f"rewrite_all_url: {rewrite_all_url}",
+                exc_info=exc,
+            )
             return item_url
-
-        item_absolute_url = urljoin(
-            urljoin(self.article_url.value, base_href), item_url
-        )
-        item_fragment = urlsplit(item_absolute_url).fragment
-
-        item_path = normalize(HttpUrl(item_absolute_url))
-
-        if rewrite_all_url or item_path in self.existing_zim_paths:
-            return self.get_document_uri(item_path, item_fragment)
-        else:
-            if (
-                self.missing_zim_paths is not None
-                and item_path not in self.missing_zim_paths
-            ):
-                logger.debug(f"WARNING {item_path} ({item_url}) not in archive.")
-                # maintain a collection of missing Zim Path to not fill the logs with
-                # duplicate messages
-                self.missing_zim_paths.add(item_path)
-            # The url doesn't point to a known entry
-            return item_absolute_url
 
     def get_document_uri(self, item_path: ZimPath, item_fragment: str) -> str:
         """Given an ZIM item path and its fragment, get the URI to use in document
