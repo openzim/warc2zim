@@ -189,7 +189,11 @@ class HtmlRewriter(HTMLParser):
 
         if attr_name in ("href", "src"):
             if self.html_rewrite_context == "js-module":
-                self.notify_js_module(self.url_rewriter.get_item_path(attr_value))
+                self.notify_js_module(
+                    self.url_rewriter.get_item_path(
+                        attr_value, base_href=self.base_href
+                    )
+                )
             return (attr_name, url_rewriter(attr_value))
         if attr_name == "srcset":
             value_list = attr_value.split(",")

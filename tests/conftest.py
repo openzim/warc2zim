@@ -28,7 +28,9 @@ class SimpleUrlRewriter(ArticleUrlRewriter):
     ) -> str:
         return item_url
 
-    def get_item_path(self, item_url: str) -> ZimPath:  # noqa: ARG002
+    def get_item_path(
+        self, item_url: str, base_href: str | None  # noqa: ARG002
+    ) -> ZimPath:
         return ZimPath("")
 
     def get_document_uri(
