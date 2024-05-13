@@ -58,9 +58,6 @@ import idna
 from warc2zim.constants import logger
 from warc2zim.rules import FUZZY_RULES
 
-known_bad_hostnames: set[str] = set()
-
-
 COMPILED_FUZZY_RULES = [
     {"match": re.compile(rule["pattern"]), "replace": rule["replace"]}
     for rule in FUZZY_RULES
@@ -194,18 +191,15 @@ def normalize(url: HttpUrl) -> ZimPath:
 
     url_parts = urlsplit(url.value)
 
-    hostname = url_parts.hostname
+    if not url_parts.hostname:
+        raise Exception("Hostname is missing")
 
-    if hostname and hostname not in known_bad_hostnames:
-        try:
-            # try to decode the hostname
-            hostname = idna.decode(hostname)
-        except idna.IDNAError as exc:
-            # exception might happen if illegal character are found in hostname like the
-            # `_` in `host_ip` ; we keep the set of bad hostname in memory to not fill
-            # the logs with these warnings
-            logger.warning(f"Bad hostname found, kept as-is: {hostname}", exc_info=exc)
-            known_bad_hostnames.add(hostname)
+    # decode the hostname if it is punny-encoded
+    hostname = (
+        idna.decode(url_parts.hostname)
+        if url_parts.hostname.startswith("xn--")
+        else url_parts.hostname
+    )
 
     path = url_parts.path
 
