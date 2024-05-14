@@ -413,6 +413,56 @@ def test_no_js_module_detected(script_src):
     assert len(js_modules) == 0
 
 
+def test_js_module_base_href_src():
+
+    js_modules = []
+
+    def custom_notify(zim_path: ZimPath):
+        js_modules.append(zim_path)
+
+    HtmlRewriter(
+        url_rewriter=ArticleUrlRewriter(
+            HttpUrl("http://kiwix.org/my_folder/my_article.html"), set()
+        ),
+        pre_head_insert="",
+        post_head_insert="",
+        notify_js_module=custom_notify,
+    ).rewrite(
+        """<head>
+                <base href="../my_other_folder/">
+                <script type="module" src="my-module-script.js"></script>"""
+    )
+
+    assert len(js_modules) == 1
+    assert js_modules[0].value == "kiwix.org/my_other_folder/my-module-script.js"
+
+
+def test_js_module_base_href_inline():
+
+    js_modules = []
+
+    def custom_notify(zim_path: ZimPath):
+        js_modules.append(zim_path)
+
+    HtmlRewriter(
+        url_rewriter=ArticleUrlRewriter(
+            HttpUrl("http://kiwix.org/my_folder/my_article.html"), set()
+        ),
+        pre_head_insert="",
+        post_head_insert="",
+        notify_js_module=custom_notify,
+    ).rewrite(
+        """<head><base href="../my_other_folder/">
+            <script type="module">
+                import * from "./my-module-script.js";
+            </script>
+        """
+    )
+
+    assert len(js_modules) == 1
+    assert js_modules[0].value == "kiwix.org/my_other_folder/my-module-script.js"
+
+
 @pytest.mark.parametrize(
     "html_content, expected_base_href",
     [

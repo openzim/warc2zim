@@ -281,7 +281,9 @@ class JsRewriter(RxRewriter):
             def func(m_object, _opts):
                 def sub_funct(match):
                     self.notify_js_module(
-                        self.url_rewriter.get_item_path(match.group(2))
+                        self.url_rewriter.get_item_path(
+                            match.group(2), base_href=self.base_href
+                        )
                     )
                     return (
                         f"{match.group(1)}{get_rewriten_import_url(match.group(2))}"
