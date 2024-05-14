@@ -293,8 +293,11 @@ class TestWarc2Zim:
             ("https://xn--exmple-cva.com/resource", "exémple.com/resource"),
             ("https://exémple.com/", "exémple.com/"),
             ("https://exémple.com/resource", "exémple.com/resource"),
+            # host_ip is an invalid hostname according to spec
             ("https://host_ip/", "host_ip/"),
             ("https://host_ip/resource", "host_ip/resource"),
+            ("https://192.168.1.1/", "192.168.1.1/"),
+            ("https://192.168.1.1/resource", "192.168.1.1/resource"),
             ("http://example.com/res%24urce", "example.com/res$urce"),
             (
                 "http://example.com/resource?foo=b%24r",
