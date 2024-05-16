@@ -301,7 +301,7 @@ class Converter:
             zim_path = normalize(HttpUrl(url))
 
             status_code = get_status_code(record)
-            if not status_code or not can_process_status_code(status_code):
+            if not can_process_status_code(status_code):
                 continue
 
             if status_code_is_processable_redirect(status_code):
@@ -581,10 +581,17 @@ class Converter:
 
         if record.rec_type == "response":
             status_code = get_status_code(record)
-            if not status_code or not can_process_status_code(status_code):
-                logger.debug(
-                    f"Skipping record with bad HTTP return code {status_code} "
+            if not isinstance(status_code, HTTPStatus):
+                logger.warning(
+                    f"Skipping record with unexpected HTTP return code {status_code} "
                     f"{item_zim_path}"
+                )
+                return
+
+            if not can_process_status_code(status_code):
+                logger.debug(
+                    f"Skipping record with unprocessable HTTP return code {status_code}"
+                    f" {item_zim_path}"
                 )
                 return
 
