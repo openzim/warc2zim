@@ -18,6 +18,13 @@ that can render its content in a modern browser.
   - in the `2xx` range, only `200`, `201`, `202` and `203` are supported ; others are simply ignored
   - in the `3xx` range, only `301`, `302`, `306` and `307` are supported if they redirect to a payload which is present in the WARC ; others are simply ignored
   - all payloads with HTTP return codes in the `1xx` (not supposed to exist in WARC files anyway), `4xx` and `5xx` ranges are ignored
+- HTML documents are always interpreted since we have to rewrite all URLs as well as inline documents (JS, CSS). This has some side-effects even if we try to minimize them.
+  - HTML tag attributes values are always surrounded by double quotes in the ZIM HTML documents
+  - HTML tag attributes are always unescaped from any named or numeric character references (e.g. &gt;, &#62;, &#x3e;) for proper processing when they have to be adapted. Only mandatorily escaped characters (`&`, `<`, `>`, `'` and `"`) are escaped-back.
+    - Numeric character references are replaced by their named character references equivalence
+    - Named character references are always lower-cased
+    - This processing has some bad side-effects when attribute values were not escaped in the original HTML document. E.g. `<img src="image.png?param1=value1&param2=value2">` is transformed into `<img src="image.png%3Fparam1%3Dvalue1%C2%B6m2%3Dvalue2">` because URL was supposed to be `image.png?param1=value1¶m2=value2` because `&para` has been decoded to `¶`. HTML should have been `<img src="image.png?param1=value1&amp;param2=value2">` for the URL to be `image.png?param1=value1&param2=value2`
+    - See https://github.com/openzim/warc2zim/issues/219 for more discussions / details / pointers
 
 ## Usage
 
