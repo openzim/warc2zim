@@ -1,7 +1,7 @@
 import re
 from collections.abc import Callable
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 from jinja2.environment import Template
 from warcio.recordloader import ArcWarcRecord
@@ -152,7 +152,7 @@ class Rewriter:
             ZimPath("_zim_static/"), ""
         )
         head_insert = head_template.render(
-            path=self.path,
+            path=quote(self.path),
             static_prefix=rel_static_prefix,
             orig_url=self.orig_url_str,
             orig_scheme=orig_url.scheme,
