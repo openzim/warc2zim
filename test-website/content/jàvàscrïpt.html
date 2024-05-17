@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Test website</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16x16.png">
+  <link rel="manifest" href="./icons/site.webmanifest">
+  <link rel="shortcut icon" href="./icons/favicon.ico">
+  <style>
+    .status {
+        color: red;
+    }
+    .status.green {
+        color: green;
+    }
+</style>
+</head>
+
+<body>
+
+  <h2>Javascript acting on file with special chars in its path</h2>
+
+  <p>On every lines below, you should see written "This is working OK"</p>
+
+  <p>
+    Test: <span class="status" id="span01">This is not working</span>
+  </p>
+
+  <script>
+    fetch("https://standard_netloc/javascript/content.txt")
+    .then(function(response) {
+      if (response.status !== 200) { return; }
+      response.text().then(function(text) {
+        const span = document.getElementById("span01");
+        span.innerHTML=text;
+        span.classList.add("green");
+      });
+    });
+  </script>
+
+</body>
+
+</html>
