@@ -620,7 +620,7 @@ class Converter:
                 return
 
             payload_item = WARCPayloadItem(
-                item_zim_path.value,
+                item_zim_path,
                 record,
                 self.pre_head_template,
                 self.post_head_template,
