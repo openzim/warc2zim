@@ -115,7 +115,11 @@ class Converter:
         self.long_description = args.long_description
         self.creator_metadata = args.creator
         self.publisher = args.publisher
-        self.tags = DEFAULT_TAGS + (args.tags or [])
+        self.tags = {
+            tag
+            for tag in DEFAULT_TAGS + [tag.strip() for tag in args.tags.split(";")]
+            if tag  # ignore empty tag
+        }
         self.source: str | None = str(args.source) if args.source else None or main_url
         self.scraper = "warc2zim " + get_version()
         self.illustration = b""
@@ -260,7 +264,7 @@ class Converter:
             Publisher=self.publisher,
             Date=datetime.date.today(),  # noqa: DTZ011
             Illustration_48x48_at_1=self.illustration,
-            Tags=";".join(self.tags),
+            Tags=self.tags,
             Source=self.source,
             Scraper=f"warc2zim {get_version()}{self.scraper_suffix or ''}",
         ).start()

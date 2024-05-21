@@ -1,5 +1,3 @@
-from itertools import chain
-
 import pytest
 
 from warc2zim.main import main
@@ -76,14 +74,6 @@ def test_long_description_validation(long_description, is_valid):
     ],
 )
 def test_tags_validation(tags, is_valid):
-    args = list(
-        chain(
-            *(
-                ["--name", "test"],
-                chain(*(["--tags", tag] for tag in tags)),
-                ["--output", "./"],
-            )
-        )
-    )
+    args = ["--name", "test", "--tags", ";".join(tags), "--output", "./"]
     if is_valid:
         assert main(args) == 100

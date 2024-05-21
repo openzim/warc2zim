@@ -61,7 +61,10 @@ def main(raw_args=None):
     )
     parser.add_argument("--long-description", help="Longer description (<=4K chars)")
     parser.add_argument(
-        "--tags", action="append", help="ZIM tags (use multiple times)", default=[]
+        "--tags",
+        help="List of ZIM Tags, single string with individual tags separated by a "
+        "semicolon.",
+        default="",
     )
     parser.add_argument(
         "--lang",
