@@ -28,6 +28,10 @@ from .utils import ContentForTests
             'background: url("some/image.png") ; }</style>'
         ),
         ContentForTests("<a href></a>"),
+        ContentForTests(
+            """<a type="a&quot;type">This is a sample attribute with a quote in its"""
+            "value and which is not a URL</a>"
+        ),
         ContentForTests("<img src />"),
         ContentForTests("<code>&lt;script&gt;</code>"),
         ContentForTests(
@@ -613,4 +617,53 @@ def test_rewrite_base_href(rewrite_base_href_content, no_js_notify):
         .rewrite(rewrite_base_href_content.input_str)
         .content
         == rewrite_base_href_content.expected_str
+    )
+
+
+@pytest.mark.parametrize(
+    "input_content,expected_output",
+    [
+        pytest.param(
+            """<a type="whatever"></a>""",
+            """<a type="whatever"></a>""",
+            id="double_quoted_attr",
+        ),
+        pytest.param(
+            "<a type='whatever'></a>",
+            """<a type="whatever"></a>""",
+            id="single_quoted_attr",
+        ),
+        pytest.param(
+            """<a type="wha&QUOT;tever"></a>""",
+            """<a type="wha&quot;tever"></a>""",
+            id="uppercase_named_reference_in_attr",
+        ),
+        pytest.param(
+            """<a type="wha&#x22;tever"></a>""",
+            """<a type="wha&quot;tever"></a>""",
+            id="numeric_reference_in_attr",
+        ),
+        pytest.param(
+            """<a type="wha&#198;tever"></a>""",
+            """<a type="whaÆtever"></a>""",
+            id="numeric_reference_in_attr",
+        ),
+        pytest.param(
+            """<img src="image.png?param1=value1&param2=value2">""",
+            """<img src="image.png%3Fparam1%3Dvalue1%C2%B6m2%3Dvalue2">""",
+            id="badly_escaped_src",
+        ),
+    ],
+)
+def test_simple_rewrite(input_content, expected_output, no_js_notify):
+    assert (
+        HtmlRewriter(
+            ArticleUrlRewriter(HttpUrl("http://example.com"), set()),
+            "",
+            "",
+            no_js_notify,
+        )
+        .rewrite(input_content)
+        .content
+        == expected_output
     )
