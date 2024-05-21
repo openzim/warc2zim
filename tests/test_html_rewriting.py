@@ -229,9 +229,11 @@ def test_extract_title(no_js_notify):
     </html>"""
 
     assert (
-        # Nota: lambda below is a trick, we should assign an ArticleUrlRewriter
         HtmlRewriter(
-            lambda _: "kiwix.org",  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
+            ArticleUrlRewriter(
+                HttpUrl("http://example.com"),
+                {ZimPath("exemple.com/a/long/path")},
+            ),
             "",
             "",
             no_js_notify,
