@@ -33,8 +33,7 @@ import requests
 from bs4 import BeautifulSoup
 from cdxj_indexer import buffering_record_iter, iter_file_or_dir
 from jinja2 import Environment, PackageLoader
-from warcio import ArchiveIterator, StatusAndHeaders
-from warcio.recordbuilder import RecordBuilder
+from warcio import ArchiveIterator
 from zimscraperlib.constants import (
     DEFAULT_DEV_ZIM_METADATA,
     RECOMMENDED_MAX_TITLE_LENGTH,
@@ -47,7 +46,7 @@ from zimscraperlib.types import FALLBACK_MIME
 from zimscraperlib.zim.creator import Creator
 
 from warc2zim.constants import logger
-from warc2zim.items import StaticArticle, WARCPayloadItem
+from warc2zim.items import StaticArticle, StaticFile, WARCPayloadItem
 from warc2zim.url_rewriting import HttpUrl, ZimPath, normalize
 from warc2zim.utils import (
     can_process_status_code,
@@ -68,8 +67,6 @@ HEAD_INSERT_FILE = "head_insert.html"
 
 # Default ZIM metadata tags
 DEFAULT_TAGS = ["_ftindex:yes", "_category:other"]
-
-CUSTOM_CSS_URL = "https://warc2zim.kiwix.app/custom.css"
 
 DUPLICATE_EXC_STR = re.compile(
     r"^Impossible to add(.+)"
@@ -170,7 +167,7 @@ class Converter:
                 {"written": self.written_records, "total": self.total_records}, fh
             )
 
-    def get_custom_css_record(self):
+    def add_custom_css_item(self):
         if re.match(r"^https?\://", self.custom_css):
             resp = requests.get(self.custom_css, timeout=10)
             resp.raise_for_status()
@@ -180,18 +177,8 @@ class Converter:
             with open(css_path, "rb") as fh:
                 payload = fh.read()
 
-        http_headers = StatusAndHeaders(
-            "200 OK",
-            [("Content-Type", 'text/css; charset="UTF-8"')],
-            protocol="HTTP/1.0",
-        )
-
-        return RecordBuilder().create_warc_record(
-            CUSTOM_CSS_URL,
-            "response",
-            payload=io.BytesIO(payload),
-            length=len(payload),
-            http_headers=http_headers,
+        self.creator.add_item(
+            StaticFile(content=payload, filename="custom.css", mimetype="text/css")
         )
 
     def run(self):
@@ -227,14 +214,14 @@ class Converter:
         self.env.filters["urlsplit"] = urlsplit
         self.env.filters["tobool"] = lambda val: "true" if val else "false"
 
-        # init head insert
-        self.head_template = self.env.get_template(HEAD_INSERT_FILE)
-        if self.custom_css:
-            self.css_insert = (
-                f'\n<link type="text/css" href="{CUSTOM_CSS_URL}" rel="Stylesheet" />\n'
-            )
-        else:
-            self.css_insert = None
+        # init head inserts
+        self.pre_head_template = self.env.get_template(HEAD_INSERT_FILE)
+        self.post_head_template = self.env.from_string(
+            '\n<link type="text/css" href="{{ static_prefix }}custom.css"'
+            ' rel="stylesheet" />\n'
+            if self.custom_css
+            else ""
+        )
 
         self.creator = Creator(
             self.full_filename,
@@ -262,7 +249,10 @@ class Converter:
                     StaticArticle(filename=file, main_path=self.main_path.value)
                 )
 
-        for record in self.iter_all_warc_records():
+        if self.custom_css:
+            self.add_custom_css_item()
+
+        for record in iter_warc_records(self.inputs):
             try:
                 self.add_items_for_warc_record(record)
             except Exception as exc:
@@ -313,13 +303,6 @@ class Converter:
         logger.debug(f"Found {self.total_records} records in WARCs")
 
         self.creator.finish()
-
-    def iter_all_warc_records(self):
-        # add custom css records
-        if self.custom_css:
-            yield self.get_custom_css_record()
-
-        yield from iter_warc_records(self.inputs)
 
     def gather_information_from_warc(self):
         main_page_found = False
@@ -520,7 +503,7 @@ class Converter:
 
         if self.favicon_url or self.favicon_path:
             # look into WARC records
-            for record in self.iter_all_warc_records():
+            for record in iter_warc_records(self.inputs):
                 if record.rec_type != "response":
                     continue
                 url = get_record_url(record)
@@ -639,8 +622,8 @@ class Converter:
             payload_item = WARCPayloadItem(
                 item_zim_path.value,
                 record,
-                self.head_template,
-                self.css_insert,
+                self.pre_head_template,
+                self.post_head_template,
                 self.expected_zim_items,
                 self.missing_zim_paths,
                 self.js_modules,
