@@ -83,7 +83,7 @@ class Rewriter:
     def content_str(self) -> str:
         try:
             result = to_string(self.content, self.encoding)
-            if result.encoding and result.encoding != self.encoding:
+            if self.encoding and result.encoding and result.encoding != self.encoding:
                 logger.warning(
                     f"Encoding issue, '{result.encoding}' has been used instead of "
                     f"'{self.encoding}' to decode content of '{self.orig_url_str}'"
