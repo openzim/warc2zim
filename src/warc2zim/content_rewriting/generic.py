@@ -98,12 +98,12 @@ class Rewriter:
             raise RuntimeError(f"Impossible to decode item {self.path}") from e
 
     def rewrite(
-        self, head_template: Template, css_insert: str | None
+        self, pre_head_template: Template, post_head_template: Template
     ) -> tuple[str, str | bytes]:
         opts = {}
 
         if self.rewrite_mode == "html":
-            return self.rewrite_html(head_template, css_insert)
+            return self.rewrite_html(pre_head_template, post_head_template)
 
         if self.rewrite_mode == "css":
             return self.rewrite_css()
@@ -157,13 +157,20 @@ class Rewriter:
         """
         self.js_modules.add(zim_path)
 
-    def rewrite_html(self, head_template: Template, css_insert: str | None):
+    def rewrite_html(self, pre_head_template: Template, post_head_template: Template):
         orig_url = urlsplit(self.orig_url_str)
 
         rel_static_prefix = self.url_rewriter.get_document_uri(
             ZimPath("_zim_static/"), ""
         )
-        head_insert = head_template.render(
+        pre_head_insert = pre_head_template.render(
+            path=quote(self.path),
+            static_prefix=rel_static_prefix,
+            orig_url=self.orig_url_str,
+            orig_scheme=orig_url.scheme,
+            orig_host=orig_url.netloc,
+        )
+        post_head_insert = post_head_template.render(
             path=quote(self.path),
             static_prefix=rel_static_prefix,
             orig_url=self.orig_url_str,
@@ -172,8 +179,8 @@ class Rewriter:
         )
         return HtmlRewriter(
             url_rewriter=self.url_rewriter,
-            pre_head_insert=head_insert,
-            post_head_insert=css_insert,
+            pre_head_insert=pre_head_insert,
+            post_head_insert=post_head_insert,
             notify_js_module=self.js_module_found,
         ).rewrite(self.content_str)
 

@@ -652,9 +652,10 @@ class TestWarc2Zim:
         zim_output = tmp_path / zim_output
 
         res = self.get_article(zim_output, "example.com/")
-        assert b"warc2zim.kiwix.app/custom.css" in res
+        assert b"static_prefix" not in res
+        assert b"../_zim_static/custom.css" in res
 
-        res = self.get_article(zim_output, "warc2zim.kiwix.app/custom.css")
+        res = self.get_article(zim_output, "_zim_static/custom.css")
         assert custom_css == res
 
     def test_custom_css_remote(self, tmp_path):
@@ -679,9 +680,10 @@ class TestWarc2Zim:
         zim_output = tmp_path / zim_output
 
         res = self.get_article(zim_output, "example.com/")
-        assert b"warc2zim.kiwix.app/custom.css" in res
+        assert b"static_prefix" not in res
+        assert b"../_zim_static/custom.css" in res
 
-        res = self.get_article(zim_output, "warc2zim.kiwix.app/custom.css")
+        res = self.get_article(zim_output, "_zim_static/custom.css")
         assert res == requests.get(url, timeout=10).content
 
     def test_http_return_codes(self, tmp_path):

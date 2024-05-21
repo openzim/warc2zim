@@ -28,8 +28,8 @@ class WARCPayloadItem(StaticItem):
         self,
         path: str,
         record: ArcWarcRecord,
-        head_template: Template,
-        css_insert: str | None,
+        pre_head_template: Template,
+        post_head_template: Template,
         existing_zim_paths: set[ZimPath],
         missing_zim_paths: set[ZimPath] | None,
         js_modules: set[ZimPath],
@@ -40,7 +40,7 @@ class WARCPayloadItem(StaticItem):
         self.mimetype = get_record_mime_type(record)
         (self.title, self.content) = Rewriter(
             path, record, existing_zim_paths, missing_zim_paths, js_modules
-        ).rewrite(head_template, css_insert)
+        ).rewrite(pre_head_template, post_head_template)
 
     def get_hints(self):
         is_front = self.mimetype.startswith("text/html")
@@ -48,6 +48,11 @@ class WARCPayloadItem(StaticItem):
 
 
 class StaticArticle(StaticItem):
+    """A file to store in _zim_static folder, based on exisiting file.
+
+    Meant to be used for unknown mimetype which will be guessed
+    """
+
     def __init__(self, filename: Path, main_path: str, **kwargs):
         super().__init__(**kwargs)
         self.filename = filename
@@ -60,6 +65,24 @@ class StaticArticle(StaticItem):
 
     def get_path(self):
         return "_zim_static/" + self.filename.name
+
+    def get_mimetype(self):
+        return self.mime
+
+    def get_hints(self):
+        return {Hint.FRONT_ARTICLE: False}
+
+
+class StaticFile(StaticItem):
+    """A file to store in _zim_static folder, based on known content and mimetype"""
+
+    def __init__(self, content: str | bytes, filename: str, mimetype: str):
+        self.filename = filename
+        self.mime = mimetype
+        self.content = content
+
+    def get_path(self):
+        return "_zim_static/" + self.filename
 
     def get_mimetype(self):
         return self.mime
