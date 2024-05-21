@@ -17,6 +17,7 @@ import importlib.resources
 import io
 import json
 import logging
+import mimetypes
 import pathlib
 import re
 import tempfile
@@ -24,6 +25,7 @@ import time
 from http import HTTPStatus
 from pathlib import Path
 from urllib.parse import urljoin, urlsplit, urlunsplit
+from uuid import uuid4
 
 import requests
 
@@ -41,6 +43,7 @@ from zimscraperlib.download import stream_file
 from zimscraperlib.i18n import get_language_details
 from zimscraperlib.image.convertion import convert_image
 from zimscraperlib.image.transformation import resize_image
+from zimscraperlib.types import FALLBACK_MIME
 from zimscraperlib.zim.creator import Creator
 
 from warc2zim.constants import logger
@@ -129,6 +132,9 @@ class Converter:
         with tempfile.NamedTemporaryFile(dir=self.output, delete=True) as fh:
             logger.debug(f"Confirming output is writable using {fh.name}")
 
+        self.failed_content_path = self.output / args.failed_items
+        self.failed_content_path.mkdir(parents=True, exist_ok=True)
+
         self.inputs = args.inputs
         self.include_domains = args.include_domains
 
@@ -151,6 +157,8 @@ class Converter:
         self.written_records = self.total_records = 0
 
         self.scraper_suffix = args.scraper_suffix
+
+        self.continue_on_error = bool(args.continue_on_error)
 
     def update_stats(self):
         """write progress as JSON to self.stats_filename if requested"""
@@ -255,7 +263,32 @@ class Converter:
                 )
 
         for record in self.iter_all_warc_records():
-            self.add_items_for_warc_record(record)
+            try:
+                self.add_items_for_warc_record(record)
+            except Exception as exc:
+                logger.error(
+                    f"Problem encountered while processing {get_record_url(record)}.",
+                    exc_info=exc,
+                )
+                if logger.isEnabledFor(logging.DEBUG):
+                    content_extension = mimetypes.guess_extension(
+                        get_record_mime_type(record), strict=False
+                    ) or mimetypes.guess_extension(FALLBACK_MIME)
+                    content_path = (
+                        self.failed_content_path / f"{uuid4()}{content_extension}"
+                    )
+                    content_path.write_bytes(get_record_content(record))
+                    logger.debug(
+                        f"### REC Headers ###\n{record.rec_headers}\n"
+                        f"### HTTP Headers ###\n{record.http_headers}\n"
+                        "### Content ###\n"
+                        f"Content has been stored b64-encoded at {content_path}"
+                    )
+                if not self.continue_on_error:
+                    logger.error(
+                        "Scraper will stop. Pass --verbose flag for more details."
+                    )
+                    raise
 
         # process redirects
         for redirect_source, redirect_target in self.redirections.items():

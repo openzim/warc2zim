@@ -86,6 +86,14 @@ warc2zim myarchive.warc --name myarchive -i subdomain1.example.com -i subdomain2
 
 `--custom-css` allows passing an URL or a path to a CSS file that gets added to the ZIM and gets included on **every HTML article** at the very end of `</head>` (if it exists).
 
+### Failed items
+
+When an item fails to be converted into the ZIM and `--verbose` flag is passed, the failed item content is stored on the filesystem for easier analysis. The directory where this file is saved can be customized with `--failed-items`. File name is a random UUID4 which is output in the logs.
+
+### Development features
+
+For developement purpose, it is possible to ask to continue on WARC record processing errors with `--continue-on-error`.
+
 ### Other options
 
 See `warc2zim -h` for other options.
