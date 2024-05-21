@@ -6,6 +6,7 @@ from urllib.parse import quote, urlsplit
 from jinja2.environment import Template
 from warcio.recordloader import ArcWarcRecord
 
+from warc2zim.constants import logger
 from warc2zim.content_rewriting.css import CssRewriter
 from warc2zim.content_rewriting.ds import get_ds_rules
 from warc2zim.content_rewriting.html import HtmlRewriter
@@ -79,9 +80,20 @@ class Rewriter:
         self.js_modules = js_modules
 
     @property
-    def content_str(self):
+    def content_str(self) -> str:
         try:
-            return to_string(self.content, self.encoding)
+            result = to_string(self.content, self.encoding)
+            if result.encoding and result.encoding != self.encoding:
+                logger.warning(
+                    f"Encoding issue, '{result.encoding}' has been used instead of "
+                    f"'{self.encoding}' to decode content of '{self.orig_url_str}'"
+                )
+            if result.chars_ignored:
+                logger.warning(
+                    "Encoding issue, some chars had to be ignored to properly decode "
+                    f"content of '{self.orig_url_str}' with '{result.encoding}'"
+                )
+            return result.value
         except ValueError as e:
             raise RuntimeError(f"Impossible to decode item {self.path}") from e
 

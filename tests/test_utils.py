@@ -57,10 +57,10 @@ def test_decode(simple_encoded_content):
     if not simple_encoded_content.valid:
         # Nothing to test
         return
-    assert (
-        to_string(simple_encoded_content.encoded, None)
-        == simple_encoded_content.content
-    )
+    result = to_string(simple_encoded_content.encoded, None)
+    assert result.value == simple_encoded_content.content
+    assert result.encoding
+    assert not result.chars_ignored
 
 
 @pytest.fixture(
@@ -152,9 +152,11 @@ def test_declared_decode(declared_encoded_content):
     if not test_case.valid:
         return
 
-    decoded = to_string(test_case.encoded, test_case.declared_encoding)
+    result = to_string(test_case.encoded, test_case.declared_encoding)
     if test_case.correct:
-        assert decoded == test_case.content
+        assert result.value == test_case.content
+        assert result.encoding
+        assert not result.chars_ignored
 
 
 # This is a set of content/encoding/decoding that we know to fail.
@@ -225,13 +227,18 @@ def test_declared_decode_html(declared_html_encoded_content):
     if not test_case.valid:
         return
 
-    html_decoded = to_string(test_case.encoded, None)
+    result = to_string(test_case.encoded, None)
     if test_case.correct:
-        assert html_decoded == test_case.content
+        assert result.value == test_case.content
+        assert result.encoding
+        assert not result.chars_ignored
 
 
 def test_decode_str(content, declared_encoding):
-    assert to_string(content, declared_encoding) == content
+    result = to_string(content, declared_encoding)
+    assert result.value == content
+    assert result.encoding is None
+    assert not result.chars_ignored
 
 
 def test_binary_content():
@@ -243,6 +250,17 @@ def test_binary_content():
     with pytest.raises(ValueError):
         assert to_string(content, None)
 
-    with pytest.raises(ValueError):
-        # Make coverage pass on code avoiding us to try the same encoding twice
-        assert to_string(content, "UTF-8-SIG")
+    # Make coverage pass on code avoiding us to try the same encoding twice
+    result = to_string(content, "UTF-8-SIG")
+    assert result.encoding == "UTF-8-SIG"
+    assert result.chars_ignored
+
+
+def test_single_bad_character():
+    content = bytes([0xEF, 0xBB, 0xBF]) + b"prem" + bytes([0xC3]) + "ière".encode()
+    # [0xEF, 0xBB, 0xBF] is a BOM marker for utf-8-sig
+    # 0xC3 is a bad character (nothing in utf-8-sig at this position)
+    result = to_string(content, "utf-8-sig")
+    assert result.value == "première"
+    assert result.encoding == "utf-8-sig"
+    assert result.chars_ignored

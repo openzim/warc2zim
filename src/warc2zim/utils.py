@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import re
 from http import HTTPStatus
+from typing import NamedTuple
 
 import chardet
 from bs4 import BeautifulSoup
@@ -16,6 +17,12 @@ ENCODING_RE = re.compile(
     r"(charset|encoding)=(?P<quote>['\"]?)(?P<encoding>[a-wA-Z0-9_\-]+)(?P=quote)",
     re.ASCII,
 )
+
+
+class StringConversionResult(NamedTuple):
+    value: str
+    encoding: str | None
+    chars_ignored: bool
 
 
 def get_version():
@@ -125,55 +132,83 @@ def get_record_encoding(record: ArcWarcRecord) -> str | None:
         return m.group("encoding")
 
 
-def to_string(input_: str | bytes, encoding: str | None) -> str:
+def to_string(input_: str | bytes, encoding: str | None) -> StringConversionResult:
     """
     Decode content to string, trying to be the more tolerant possible to invalid
     declared encoding.
 
-    This try decode the content using 3 methods:
+    This try to decode the content using 3 methods:
      - From http headers in the warc record (given as `encoding` argument)
      - From encoding declaration inside the content (hopping that content can be
        losely decode using ascii to something usable)
      - From statistical analysis of the content (made by chardet)
 
+    If all these methods fails, try again with the encoding passed via http headers but
+    ignore all unrecognized characters.
+
+    Returns the decoded content, the encoding used (or None if the input was already
+    decoded) and a boolean indicating wether unrecognized characters had to been ignored
+    or not.
+
     """
-    tried_encodings = set()
+    http_encoding = encoding
+
+    tried_encodings: set[str] = set()
     if isinstance(input_, str):
-        return input_
+        return StringConversionResult(input_, None, False)
 
     if not input_:
         # Empty bytes are easy to decode
-        return ""
+        return StringConversionResult("", None, False)
 
     if encoding:
         try:
-            return input_.decode(encoding)
+            return StringConversionResult(input_.decode(encoding), encoding, False)
         except (ValueError, LookupError):
             tried_encodings.add(encoding)
             pass
 
-    # Detect encoding from content.
+    # Search for encoding from content first bytes based on regexp
     content_start = input_[:1024].decode("ascii", errors="replace")
     if m := ENCODING_RE.search(content_start):
         encoding = m.group("encoding")
         if encoding and encoding not in tried_encodings:
             try:
-                return input_.decode(encoding)
+                return StringConversionResult(input_.decode(encoding), encoding, False)
             except (ValueError, LookupError):
                 tried_encodings.add(encoding)
                 pass
 
-    encodings = (
-        encoding
-        for e in chardet.detect_all(input_)
-        if (encoding := e["encoding"]) and encoding not in tried_encodings
-    )
+    # Try to detect the most probable encoding with chardet (and only most probable
+    # one, since otherwise we will likely find an encoding which pass but produces only
+    # garbage with most characters badly decoded just due to a wrongly encoded character
+    # see https://github.com/openzim/warc2zim/issues/221)
+    # Nota: we use the detect_all method of chardet even if we are interesting only in
+    # the most probable encoding, because (as-of chardet 5.2.0 at least) the detect
+    # chardet method seems to be more naive, and detect_all gives better results in our
+    # tests
+    chardet_encodings = chardet.detect_all(input_)
+    if len(chardet_encodings):
+        chardet_encoding = chardet_encodings[0]["encoding"]
+        if chardet_encoding and chardet_encoding not in tried_encodings:
+            try:
+                return StringConversionResult(
+                    input_.decode(chardet_encoding), chardet_encoding, False
+                )
+            except (ValueError, LookupError):
+                tried_encodings.add(chardet_encoding)
+                pass
 
-    for encoding in encodings:
+    # Try again encoding detected by chardet (most probable one), but this time ignore
+    # all bad chars
+    if http_encoding:
         try:
-            return input_.decode(encoding)
-        except ValueError:
+            return StringConversionResult(
+                input_.decode(http_encoding, errors="ignore"), http_encoding, True
+            )
+        except (ValueError, LookupError):
             pass
+
     raise ValueError(f"Impossible to decode content {input_[:200]}")
 
 
