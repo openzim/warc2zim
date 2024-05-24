@@ -58,7 +58,7 @@ def extract_jsonp_callback(url: str):
 class Rewriter:
     def __init__(
         self,
-        path: str,
+        path: ZimPath,
         record: ArcWarcRecord,
         existing_zim_paths: set[ZimPath],
         missing_zim_paths: set[ZimPath] | None,
@@ -95,7 +95,7 @@ class Rewriter:
                 )
             return result.value
         except ValueError as e:
-            raise RuntimeError(f"Impossible to decode item {self.path}") from e
+            raise RuntimeError(f"Impossible to decode item {self.path.value}") from e
 
     def rewrite(
         self, pre_head_template: Template, post_head_template: Template
@@ -109,7 +109,7 @@ class Rewriter:
             return self.rewrite_css()
 
         if self.rewrite_mode == "javascript":
-            if any(path.value == self.path for path in self.js_modules):
+            if any(path == self.path for path in self.js_modules):
                 opts["isModule"] = True
             return self.rewrite_js(opts)
 
@@ -140,7 +140,7 @@ class Rewriter:
             if extract_jsonp_callback(self.orig_url_str):
                 return "jsonp"
 
-            if self.path.endswith(".json"):
+            if self.path.value.endswith(".json"):
                 return "json"
             return "javascript"
 
@@ -164,14 +164,14 @@ class Rewriter:
             ZimPath("_zim_static/"), ""
         )
         pre_head_insert = pre_head_template.render(
-            path=quote(self.path),
+            path=quote(self.path.value),
             static_prefix=rel_static_prefix,
             orig_url=self.orig_url_str,
             orig_scheme=orig_url.scheme,
             orig_host=orig_url.netloc,
         )
         post_head_insert = post_head_template.render(
-            path=quote(self.path),
+            path=quote(self.path.value),
             static_prefix=rel_static_prefix,
             orig_url=self.orig_url_str,
             orig_scheme=orig_url.scheme,

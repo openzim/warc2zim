@@ -26,7 +26,7 @@ class WARCPayloadItem(StaticItem):
 
     def __init__(
         self,
-        path: str,
+        path: ZimPath,
         record: ArcWarcRecord,
         pre_head_template: Template,
         post_head_template: Template,
@@ -36,7 +36,7 @@ class WARCPayloadItem(StaticItem):
     ):
         super().__init__()
 
-        self.path = path
+        self.path = path.value
         self.mimetype = get_record_mime_type(record)
         (self.title, self.content) = Rewriter(
             path, record, existing_zim_paths, missing_zim_paths, js_modules
