@@ -44,6 +44,12 @@ from zimscraperlib.image.convertion import convert_image
 from zimscraperlib.image.transformation import resize_image
 from zimscraperlib.types import FALLBACK_MIME
 from zimscraperlib.zim.creator import Creator
+from zimscraperlib.zim.metadata import (
+    validate_description,
+    validate_longdescription,
+    validate_tags,
+    validate_title,
+)
 
 from warc2zim.constants import logger
 from warc2zim.items import StaticArticle, StaticFile, WARCPayloadItem
@@ -156,6 +162,7 @@ class Converter:
         self.scraper_suffix = args.scraper_suffix
 
         self.continue_on_error = bool(args.continue_on_error)
+        self.disable_metadata_checks = bool(args.disable_metadata_checks)
 
     def update_stats(self):
         """write progress as JSON to self.stats_filename if requested"""
@@ -182,6 +189,21 @@ class Converter:
         )
 
     def run(self):
+
+        if not self.disable_metadata_checks:
+            # Validate ZIM metadata early so that we do not waste time doing operations
+            # for a scraper which will fail anyway in the end
+            validate_tags("Tags", self.tags)
+            if self.title:
+                validate_title("Title", self.title)
+            if self.description:
+                validate_description("Description", self.description)
+            if self.long_description:
+                validate_longdescription("LongDescription", self.long_description)
+            # Nota: we do not validate illustration since logic in the scraper is made
+            # to always provide a valid image, at least a fallback transparent PNG and
+            # final illustration is most probably not yet known at this stage
+
         if not self.inputs:
             logger.info(
                 "Arguments valid, no inputs to process. Exiting with return code 100"

@@ -99,6 +99,14 @@ def main(raw_args=None):
         default="fails",
     )
 
+    parser.add_argument(
+        "--disable-metadata-checks",
+        help="Disable validity checks of metadata according to openZIM conventions",
+        action="store_true",
+        default=False,
+        dest="disable_metadata_checks",
+    )
+
     args = parser.parse_args(args=raw_args)
     converter = Converter(args)
     return converter.run()
