@@ -217,6 +217,27 @@ from warc2zim.url_rewriting import ArticleUrlRewriter, HttpUrl, ZimPath
             ["kiwix.org/foo.html"],
             False,
         ),
+        (
+            "https://kiwix.org/a/article/document.html",
+            "#anchor1",
+            "#anchor1",
+            ["kiwix.org/a/article/document.html"],
+            False,
+        ),
+        (
+            "https://kiwix.org/a/article/",
+            "#anchor1",
+            "#anchor1",
+            ["kiwix.org/a/article/"],
+            False,
+        ),
+        (
+            "https://kiwix.org/a/article/",
+            "../article/",
+            "./",
+            ["kiwix.org/a/article/"],
+            False,
+        ),
     ],
 )
 def test_relative_url(
