@@ -339,13 +339,9 @@ class TestWarc2Zim:
                 "--zim-file",
                 zim_output,
                 "--tags",
-                "some",
-                "--tags",
-                "foo",
+                " foo   ;bar; ; some;_foo:bar;_foo_,_bar_",
                 "--desc",
                 "test zim",
-                "--tags",
-                "bar",
                 "--title",
                 "Some Title",
             ]
@@ -387,10 +383,18 @@ class TestWarc2Zim:
         assert zim_fh.has_title_index
 
         assert self.get_metadata(zim_output, "Description") == b"test zim"
-        assert (
-            self.get_metadata(zim_output, "Tags")
-            == b"_ftindex:yes;_category:other;some;foo;bar"
-        )
+        # we compare sets of tags since tags ordering has no meaning
+        assert set(
+            self.get_metadata(zim_output, "Tags").decode("utf-8").split(";")
+        ) == {
+            "_ftindex:yes",
+            "_category:other",
+            "some",
+            "foo",
+            "bar",
+            "_foo:bar",
+            "_foo_,_bar_",
+        }
         assert self.get_metadata(zim_output, "Title") == b"Some Title"
 
     def test_warc_to_zim_main(self, cmdline, tmp_path):
@@ -503,8 +507,14 @@ class TestWarc2Zim:
             == zim_favicon
         )
 
-        # test default tags added
-        assert self.get_metadata(zim_output, "Tags") == b"_ftindex:yes;_category:other"
+        # test default tags added ; we compare sets of tags since tags ordering has no
+        # meaning
+        assert set(
+            self.get_metadata(zim_output, "Tags").decode("utf-8").split(";")
+        ) == {
+            "_ftindex:yes",
+            "_category:other",
+        }
 
     def test_website_with_redirect(self, tmp_path):
         zim_output = "kiwix.zim"
