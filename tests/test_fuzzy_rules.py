@@ -90,6 +90,39 @@ def test_fuzzyrules_google_video_infos(google_video_info_case):
 @pytest.fixture(
     params=[
         ContentForTests(
+            "i.ytimg.com/vi/-KpLmsAR23I/maxresdefault.jpg?sqp=-oaymwEmCIAKENAF8quKqQMa8"
+            "AEB-AH-CYAC0AWKAgwIABABGHIgTyg-MA8=&rs=AOn4CLDr-FmDmP3aCsD84l48ygBmkwHg-g",
+            "i.ytimg.com.fuzzy.replayweb.page/vi/-KpLmsAR23I/thumbnail.jpg",
+        ),
+        ContentForTests(
+            "i.ytimg.com/vi/-KpLmsAR23I/maxresdefault.png?sqp=-oaymwEmCIAKENAF8quKqQMa8"
+            "AEB-AH-CYAC0AWKAgwIABABGHIgTyg-MA8=&rs=AOn4CLDr-FmDmP3aCsD84l48ygBmkwHg-g",
+            "i.ytimg.com.fuzzy.replayweb.page/vi/-KpLmsAR23I/thumbnail.png",
+        ),
+        ContentForTests(
+            "i.ytimg.com/vi/-KpLmsAR23I/maxresdefault.jpg",
+            "i.ytimg.com.fuzzy.replayweb.page/vi/-KpLmsAR23I/thumbnail.jpg",
+        ),
+        ContentForTests(
+            "i.ytimg.com/vi/-KpLmsAR23I/max-res.default.jpg",
+            "i.ytimg.com.fuzzy.replayweb.page/vi/-KpLmsAR23I/thumbnail.jpg",
+        ),
+    ]
+)
+def youtube_thumbnails_case(request):
+    yield request.param
+
+
+def test_fuzzyrules_youtube_thumbnails(youtube_thumbnails_case):
+    assert (
+        apply_fuzzy_rules(youtube_thumbnails_case.input_str)
+        == youtube_thumbnails_case.expected_str
+    )
+
+
+@pytest.fixture(
+    params=[
+        ContentForTests(
             "www.example.com/page?1234",
             "www.example.com/page",
         ),
