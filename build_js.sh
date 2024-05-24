@@ -20,4 +20,6 @@ python3 -m venv /local
 
 cd /src/javascript
 
+yarn install
+
 OUTPUT_DIR=/output yarn build-prod
