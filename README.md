@@ -56,6 +56,8 @@ Scenario which are known to work well:
 - Redirections with `meta http-equiv` are not yet supported (see https://github.com/openzim/warc2zim/issues/237)
 - Web workers are not yet supported (see https://github.com/openzim/warc2zim/issues/272)
 - Service workers are not supported and will most probably never be
+- Inline JS code inside an onxxx HTML event (e.g. onclick, onhover, ...) is rewritten, so for instance redirection to another handled with these events is working
+  - However since URL rewriting is performed with dynamic JS rewriting, at this stage scraper has no clue on what is inside the ZIM and what is external ; all URLs are hence supposed to be internal, which might break some dynamic redirection to an online website
 
 It is also important to note that warc2zim is inherently limited to what is present inside the WARC. A bad WARC can only produce a bad ZIM. Garbage in, garbage out.
 

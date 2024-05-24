@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Test website</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16x16.png">
+  <link rel="manifest" href="./icons/site.webmanifest">
+  <link rel="shortcut icon" href="./icons/favicon.ico">
+  <style>
+    .status {
+        color: red;
+    }
+    .status.green {
+        color: green;
+    }
+</style>
+</head>
+
+<body>
+
+  <h2>onxxx HTML events</h2>
+
+  <p>When clicking images below, it should redirect your browser to the another page</p>
+
+  <p>Relative (<a href="./index.html">this site home page</a>): <img src="images/image1.png" onclick="document.location.href='./index.html';"> </p>
+
+  <p>Absolute internal 1 (<a href="https://standard_netloc/index.html">this site home page</a>): <img src="images/image1.png" onclick="document.location.href='https://standard_netloc/index.html';"></p>
+
+  <p>Absolute internal 2 (<a href="https://not_standard_netloc_punny_encoded/index.html">another site home page</a>): <img src="images/image1.png" onclick="document.location.href='https://not_standard_netloc_punny_encoded/index.html';"></p>
+
+  <p>Absolute external (kiwix homepage): <img src="images/image1.png" onclick="document.location.href='https://www.kiwix.org';"></p>
+
+</body>
+
+</html>

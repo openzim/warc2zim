@@ -229,9 +229,11 @@ def test_extract_title(no_js_notify):
     </html>"""
 
     assert (
-        # Nota: lambda below is a trick, we should assign an ArticleUrlRewriter
         HtmlRewriter(
-            lambda _: "kiwix.org",  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
+            ArticleUrlRewriter(
+                HttpUrl("http://example.com"),
+                {ZimPath("exemple.com/a/long/path")},
+            ),
             "",
             "",
             no_js_notify,
@@ -666,4 +668,78 @@ def test_simple_rewrite(input_content, expected_output, no_js_notify):
         .rewrite(input_content)
         .content
         == expected_output
+    )
+
+
+@pytest.fixture(
+    params=[
+        ContentForTests(
+            """<img onclick="">""",
+        ),
+        ContentForTests(
+            """<img on-whatever="foo">""",
+        ),
+        ContentForTests(
+            """<img on="foo">""",
+        ),
+        ContentForTests(
+            """<img to="foo">""",
+        ),
+        ContentForTests(
+            """<img onclick="document.location.href='./index.html';">""",
+            (
+                """<img onclick="var _____WB$wombat$assign$function_____ = """
+                "function(name) {return (self._wb_wombat &amp;&amp; "
+                "self._wb_wombat.local_init &amp;&amp; "
+                "self._wb_wombat.local_init(name)) || self[name]; };\n"
+                "if (!self.__WB_pmw) { self.__WB_pmw = function(obj) "
+                "{ this.__WB_source = obj; return this; } }\n"
+                "{\n"
+                "let window = _____WB$wombat$assign$function_____(&quot;window&quot;);"
+                "\n"
+                "let globalThis = _____WB$wombat$assign$function_____"
+                "(&quot;globalThis&quot;);\n"
+                "let self = _____WB$wombat$assign$function_____(&quot;self&quot;);\n"
+                "let document = "
+                "_____WB$wombat$assign$function_____(&quot;document&quot;);\n"
+                "let location = "
+                "_____WB$wombat$assign$function_____(&quot;location&quot;);\n"
+                "let top = _____WB$wombat$assign$function_____(&quot;top&quot;);\n"
+                "let parent = "
+                "_____WB$wombat$assign$function_____(&quot;parent&quot;);\n"
+                "let frames = "
+                "_____WB$wombat$assign$function_____(&quot;frames&quot;);\n"
+                "let opener = "
+                "_____WB$wombat$assign$function_____(&quot;opener&quot;);\n"
+                "let arguments;\n\n"
+                "document.location.href=&#x27;./index.html&#x27;;\n"
+                """}">"""
+            ),  # NOTA: quotes and ampersand are escaped since we are inside HTML attr
+        ),
+    ]
+)
+def rewrite_onxxx_content(request):
+    yield request.param
+
+
+def test_rewrite_onxxx_event(rewrite_onxxx_content, no_js_notify):
+    assert (
+        HtmlRewriter(
+            ArticleUrlRewriter(
+                HttpUrl(f"http://{rewrite_onxxx_content.article_url}"),
+                {
+                    ZimPath("kiwix.org/foo.html"),
+                    ZimPath("kiwix.org/foo.js"),
+                    ZimPath("kiwix.org/foo.css"),
+                    ZimPath("kiwix.org/foo.png"),
+                    ZimPath("kiwix.org/favicon.png"),
+                },
+            ),
+            "",
+            "",
+            no_js_notify,
+        )
+        .rewrite(rewrite_onxxx_content.input_str)
+        .content
+        == rewrite_onxxx_content.expected_str
     )

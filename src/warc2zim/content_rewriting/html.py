@@ -67,6 +67,12 @@ class HtmlRewriter(HTMLParser):
             self.url_rewriter, base_href=self.base_href, rewrite_all_url=False
         )
         self.css_rewriter = CssRewriter(self.url_rewriter, self.base_href)
+        self.js_rewriter = JsRewriter(
+            url_rewriter=self.url_rewriter,
+            base_href=self.base_href,
+            extra_rules=get_ds_rules(self.url_rewriter.article_url.value),
+            notify_js_module=self.notify_js_module,
+        )
 
         self.feed(content)
         self.close()
@@ -149,12 +155,7 @@ class HtmlRewriter(HTMLParser):
                     data = RxRewriter(rules).rewrite(data, {})
         elif self.html_rewrite_context and self.html_rewrite_context.startswith("js-"):
             if data.strip():
-                data = JsRewriter(
-                    url_rewriter=self.url_rewriter,
-                    base_href=self.base_href,
-                    extra_rules=get_ds_rules(self.url_rewriter.article_url.value),
-                    notify_js_module=self.notify_js_module,
-                ).rewrite(
+                data = self.js_rewriter.rewrite(
                     data,
                     opts={"isModule": self.html_rewrite_context == "js-module"},
                 )
@@ -206,6 +207,8 @@ class HtmlRewriter(HTMLParser):
             return (attr_name, ", ".join(new_value_list))
         if attr_name == "style":
             return (attr_name, self.css_rewriter.rewrite_inline(attr_value))
+        if attr_name.startswith("on") and not attr_name.startswith("on-"):
+            return (attr_name, self.js_rewriter.rewrite(attr_value))
         return (attr_name, attr_value)
 
     def format_attr(self, name: str, value: str | None) -> str:
