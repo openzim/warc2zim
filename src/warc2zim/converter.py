@@ -391,7 +391,10 @@ class Converter:
                         redirection_zim_path = normalize(
                             HttpUrl(urljoin(url, redirect_location))
                         )
-                        self.redirections[zim_path] = redirection_zim_path
+                        # Redirection to same ZIM path have to be ignored (occurs for
+                        # instance when redirecting from http to https)
+                        if zim_path != redirection_zim_path:
+                            self.redirections[zim_path] = redirection_zim_path
                     else:
                         logger.warning(f"Redirection target is empty for {zim_path}")
             else:
@@ -468,12 +471,16 @@ class Converter:
             logger.debug(f"Favicon: {self.favicon_url or self.favicon_path}")
             main_page_found = True
 
+        logger.info(f"Expecting {len(self.expected_zim_items)} ZIM entries to files")
+
         if not main_page_found:
             raise KeyError(
                 f"Unable to find WARC record for main page: {self.main_path}, aborting"
             )
 
         redirections_to_ignore = set()
+
+        logger.debug(f"Preparing {len(self.redirections)} redirections")
         for redirect_source, redirect_target in self.redirections.items():
             # if the URL is already expected, then just ignore the redirection
             if redirect_source in self.expected_zim_items:
@@ -486,9 +493,23 @@ class Converter:
                 final_redirect_target in self.redirections
                 and final_redirect_target != redirect_source
             ):
+                # If redirection target is identical, we have finished looping
+                # This should not happen here / be handled upper-level, but it is better
+                # to check than finishing in a dead loop
+                if final_redirect_target == self.redirections[final_redirect_target]:
+                    logger.warning(
+                        f"Redirection to self found for {final_redirect_target}"
+                    )
+                    break
                 final_redirect_target = self.redirections[final_redirect_target]
 
-            if final_redirect_target in self.expected_zim_items:
+            if final_redirect_target == redirect_source:
+                # If the redirect target is the source ... we obviously have an issue
+                logger.warning(
+                    f"Redirection loop found for {redirect_source}, will be ignored"
+                )
+                redirections_to_ignore.add(redirect_source)
+            elif final_redirect_target in self.expected_zim_items:
                 # if final redirection target is including inside the ZIM, simply add
                 # the redirection source to the list of expected ZIM items so that URLs
                 # are properly rewritten
@@ -496,11 +517,21 @@ class Converter:
             else:
                 # otherwise add it to a temporary list of items that will have to be
                 # dropped from the list of redirections to create
+                logger.warning(
+                    f"Redirection target of {redirect_source} is missing "
+                    f"({final_redirect_target} is not expected in the ZIM)"
+                )
                 redirections_to_ignore.add(redirect_source)
+
+        logger.debug(f"{len(redirections_to_ignore)} redirections will be ignored")
 
         # update the list of redirections to create
         for redirect_source in redirections_to_ignore:
             self.redirections.pop(redirect_source)
+
+        logger.info(
+            f"Expecting {len(self.expected_zim_items)} ZIM entries including redirects"
+        )
 
     def find_icon_and_language(self, record, content):
         soup = BeautifulSoup(content, "html.parser")
