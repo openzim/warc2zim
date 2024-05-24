@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Test website</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16x16.png">
+  <link rel="manifest" href="./icons/site.webmanifest">
+  <link rel="shortcut icon" href="./icons/favicon.ico">
+  <script type="importmap">
+    {
+      "imports": {
+        "resources": "./javascript/resources.js",
+        "javascript/resources": "./javascript/resources.js",
+        "../javascript/resources": "./javascript/resources.js",
+        "https://example.com/resources": "./javascript/resources.js",
+        "https://standard_netloc/resources": "./javascript/resources.js",
+        "https://not_standard_netloc_punny_encoded/resources": "./javascript/resources.js",
+        "https://not_standard_netloc_not_encoded/resources": "./javascript/resources.js"
+      }
+    }
+  </script>
+  <script type="text/javascript" src="./javascript/script04.js"></script>
+  <link rel="preload" href="./javascript/script05.js" as="script" />
+  <link rel="modulepreload" href="./javascript/script07.js" />
+  <style>
+    .status {
+        color: red;
+    }
+    .status.green {
+        color: green;
+    }
+</style>
+</head>
+
+<body>
+
+  <h2>Various Javascript</h2>
+
+  <p>On every lines below, you should see written "This is working OK"</p>
+
+  <p>
+    01a. Simple inline Javascript with content on "normal" FQDN: <span class="status" id="span01a">This is not working</span>
+  </p>
+
+  <p>
+    01b. Simple inline Javascript with content on "special chars" FQDN: <span class="status" id="span01b">This is not working</span>
+  </p>
+
+  <p>
+    01c. Simple inline Javascript with content on "normal" FQDN and accentuated path: <span class="status" id="span01c">This is not working</span>
+  </p>
+
+  <p>
+    01d. Simple inline Javascript with content on "special chars" FQDN and accentuated path: <span class="status" id="span01d">This is not working</span>
+  </p>
+
+  <p>
+    01e. Simple inline Javascript with content on "normal" FQDN and utf-8 char in path: <span class="status" id="span01e">This is not working</span>
+  </p>
+
+  <p>
+    01f. Simple inline Javascript with content on "special chars" FQDN and utf-8 char in path: <span class="status" id="span01f">This is not working</span>
+  </p>
+
+  <p>
+    01g. Simple inline Javascript with content on "normal" FQDN and improperly escaped accentued char in path: <span class="status" id="span01g">This is not working</span>
+  </p>
+
+  <p>
+    01h. Simple inline Javascript with content on "special chars" FQDN andimproperly escaped accentued char in path: <span class="status" id="span01h">This is not working</span>
+  </p>
+
+  <p>
+    01i. Simple inline Javascript with content on improperly escaped "special chars" FQDN: <span class="status" id="span01i">This is not working</span>
+  </p>
+
+  <p>
+    01j. Simple inline Javascript with content accessed with query parameter: <span class="status" id="span01j">This is not working</span>
+  </p>
+
+  <p>
+    01k. Simple inline Javascript with content accessed with query parameter and query value containing an equal sign : <span class="status" id="span01k">This is not working</span>
+  </p>
+
+  <p>
+    01l. Simple inline Javascript with content accessed with query parameter and query value containing a percent sign: <span class="status" id="span01l">This is not working</span>
+  </p>
+
+  <p>
+    01m. Simple inline Javascript with content URL containing an interogation point sign: <span class="status" id="span01m">This is not working</span>
+  </p>
+
+  <p>
+    01n. Simple inline Javascript with content URL containing an interogation point sign and a query parameter: <span class="status" id="span01n">This is not working</span>
+  </p>
+
+  <p>
+    01o. Simple inline Javascript with content on "normal" FQDN and improperly escaped utf-8 char in path: <span class="status" id="span01o">This is not working</span>
+  </p>
+
+  <p>
+    01p. Simple inline Javascript with content on "special chars" FQDN and improperly escaped utf-8 char in path: <span class="status" id="span01p">This is not working</span>
+  </p>
+
+  <p>
+    01q. Simple inline Javascript with content on relative path and improperly escaped utf-8 char in path: <span class="status" id="span01q">This is not working</span>
+  </p>
+
+  <p>
+    01r. Simple inline Javascript with content on relative path and exclamation mark in path: <span class="status" id="span01r">This is not working</span>
+  </p>
+
+  <p>
+    02a. Simple classic Javascript with simple src: <span class="status" id="span02a">This is not working</span>
+  </p>
+
+  <p>
+    02b. Simple classic Javascript with src and exclamation mark in path: <span class="status" id="span02b">This is not working</span>
+  </p>
+
+  <p>
+    03. Simple classic Javascript with src and type: <span class="status" id="span03">This is not working</span>
+  </p>
+
+  <p>
+    04. Simple classic Javascript onload: <span class="status" id="span04">This is not working</span>
+  </p>
+
+  <p>
+    05. Simple classic Javascript preload as script: <span class="status" id="span05">This is not working</span>
+  </p>
+
+  <p>
+    06a. Simple module Javascript with src and type - nominal case: <span class="status" id="span06a">This is not working</span>
+  </p>
+
+  <p>
+    06b. Simple module Javascript with src and type - unused vars: <span class="status" id="span06b">This is not working</span>
+  </p>
+
+  <p>
+    06c. Simple module Javascript with src and type - absolute path: <span class="status" id="span06c">This is not working</span>
+  </p>
+
+  <p>
+    06d. Simple module Javascript with src and type - parent path: <span class="status" id="span06d">This is not working</span>
+  </p>
+
+  <p>
+    06e. Simple module Javascript with src and type - accentuated path: <span class="status" id="span06e">This is not working</span>
+  </p>
+
+  <p>
+    06f. Simple module Javascript with src and type - querystring: <span class="status" id="span06f">This is not working</span>
+  </p>
+
+  <p>
+    06g. Simple module Javascript with src and type - querystring with equal sign in value: <span class="status" id="span06g">This is not working</span>
+  </p>
+
+  <p>
+    06h. Simple module Javascript with src and type - querystring with percent sign in value: <span class="status" id="span06h">This is not working</span>
+  </p>
+
+  <p>
+    06i. Simple module Javascript with src and type - interogation sign in path: <span class="status" id="span06i">This is not working</span>
+  </p>
+
+  <p>
+    06j. Simple module Javascript with src and type - interogation sign in path and querystring: <span class="status" id="span06j">This is not working</span>
+  </p>
+
+  <p>
+    07. Simple module Javascript with modulepreload: <span class="status" id="span07">This is not working</span>
+  </p>
+
+  <p>
+    08a. Simple module Javascript with importmap required: <span class="status" id="span08a">This is not working</span>
+  </p>
+
+  <p>
+    08b. Simple module Javascript with importmap required: <span class="status" id="span08b">This is not working</span>
+  </p>
+
+  <p>
+    08c. Simple module Javascript with importmap required: <span class="status" id="span08c">This is not working</span>
+  </p>
+
+  <p>
+    09a. Simple module Javascript with importmap required but nasty URL used in JS: <span class="status" id="span09a">This is not working</span>
+  </p>
+
+  <p>
+    09b. Simple module Javascript with importmap required but nasty URL used in JS: <span class="status" id="span09b">This is not working</span>
+  </p>
+
+  <p>
+    09c. Simple module Javascript with importmap required but nasty URL used in JS: <span class="status" id="span09c">This is not working</span>
+  </p>
+
+  <p>
+    09d. Simple module Javascript with importmap required but nasty URL used in JS: <span class="status" id="span09d">This is not working</span>
+  </p>
+
+  <p>
+    10. Rewritting image src dynamically based on already statically rewritten link: <img id="img10" src="https://not_standard_netloc_punny_encoded/javascript/not_working.png"></img>
+  </p>
+
+  <script>
+    fetch("https://standard_netloc/javascript/content.txt")
+    .then(function(response) {
+      if (response.status !== 200) { return; }
+      response.text().then(function(text) {
+        const span = document.getElementById("span01a");
+        span.innerHTML=text;
+        span.classList.add("green");
+      });
+    });
+  </script>
+  <script>
+    fetch("https://not_standard_netloc_punny_encoded/javascript/content.txt")
+    .then(function(response) {
+      if (response.status !== 200) { return; }
+      response.text().then(function(text) {
+        const span = document.getElementById("span01b");
+        span.innerHTML=text;
+        span.classList.add("green");
+      });
+    });
+  </script>
+  <script>
+    fetch("https://standard_netloc/javascript/contént.txt")
+    .then(function(response) {
+      if (response.status !== 200) { return; }
+      response.text().then(function(text) {
+        const span = document.getElementById("span01c");
+        span.innerHTML=text;
+        span.classList.add("green");
+      });
+    });
+  </script>
+  <script>
+    fetch("https://not_standard_netloc_punny_encoded/javascript/cont%C3%A9nt.txt")
+    .then(function(response) {
+      if (response.status !== 200) { return; }
+      response.text().then(function(text) {
+        const span = document.getElementById("span01d");
+        span.innerHTML=text;
+        span.classList.add("green");
+      });
+    });
+  </script>
+  <script>
+    fetch("https://standard_netloc/javascript/cont%F0%9F%8E%81nt.txt")
+    .then(function(response) {
+      if (response.status !== 200) { return; }
+      response.text().then(function(text) {
+        const span = document.getElementById("span01e");
+        span.innerHTML=text;
+        span.classList.add("green");
+      });
+    });
+  </script>
+  <script>
+    fetch("https://not_standard_netloc_punny_encoded/javascript/cont%F0%9F%8E%81nt.txt")
+    .then(function(response) {
+      if (response.status !== 200) { return; }
+      response.text().then(function(text) {
+        const span = document.getElementById("span01f");
+        span.innerHTML=text;
+        span.classList.add("green");
+      });
+    });
+  </script>
+  <script>
+    fetch("https://standard_netloc/javascript/contént.txt")
+    .then(function(response) {
+      if (response.status !== 200) { return; }
+      response.text().then(function(text) {
+        const span = document.getElementById("span01g");
+        span.innerHTML=text;
+        span.classList.add("green");
+      });
+    });
+  </script>
+  <script>
+    fetch("https://not_standard_netloc_punny_encoded/javascript/contént.txt")
+    .then(function(response) {
+      if (response.status !== 200) { return; }
+      response.text().then(function(text) {
+        const span = document.getElementById("span01h");
+        span.innerHTML=text;
+        span.classList.add("green");
+      });
+    });
+  </script>
+  <script>
+    fetch("https://not_standard_netloc_not_encoded/javascript/content.txt")
+    .then(function(response) {
+      if (response.status !== 200) { return; }
+      response.text().then(function(text) {
+        const span = document.getElementById("span01i");
+        span.innerHTML=text;
+        span.classList.add("green");
+      });
+    });
+  </script>
+  <script>
+    fetch("https://standard_netloc/javascript/content.txt?query=value")
+    .then(function(response) {
+      if (response.status !== 200) { return; }
+      response.text().then(function(text) {
+        const span = document.getElementById("span01j");
+        span.innerHTML=text;
+        span.classList.add("green");
+      });
+    });
+  </script>
+  <script>
+    fetch("https://standard_netloc/javascript/content.txt?query=valu%3De")
+    .then(function(response) {
+      if (response.status !== 200) { return; }
+      response.text().then(function(text) {
+        const span = document.getElementById("span01k");
+        span.innerHTML=text;
+        span.classList.add("green");
+      });
+    });
+  </script>
+  <script>
+    fetch("https://standard_netloc/javascript/content.txt?query=valu%25e")
+    .then(function(response) {
+      if (response.status !== 200) { return; }
+      response.text().then(function(text) {
+        const span = document.getElementById("span01l");
+        span.innerHTML=text;
+        span.classList.add("green");
+      });
+    });
+  </script>
+  <script>
+    fetch("https://standard_netloc/javascript/cont%3Fnt.txt")
+    .then(function(response) {
+      if (response.status !== 200) { return; }
+      response.text().then(function(text) {
+        const span = document.getElementById("span01m");
+        span.innerHTML=text;
+        span.classList.add("green");
+      });
+    });
+  </script>
+  <script>
+    fetch("https://standard_netloc/javascript/cont%3Fnt.txt?query=value")
+    .then(function(response) {
+      if (response.status !== 200) { return; }
+      response.text().then(function(text) {
+        const span = document.getElementById("span01n");
+        span.innerHTML=text;
+        span.classList.add("green");
+      });
+    });
+  </script>
+  <script>
+    fetch("https://standard_netloc/javascript/cont🎁nt.txt")
+    .then(function(response) {
+      if (response.status !== 200) { return; }
+      response.text().then(function(text) {
+        const span = document.getElementById("span01o");
+        span.innerHTML=text;
+        span.classList.add("green");
+      });
+    });
+  </script>
+  <script>
+    fetch("https://not_standard_netloc_punny_encoded/javascript/cont🎁nt.txt")
+    .then(function(response) {
+      if (response.status !== 200) { return; }
+      response.text().then(function(text) {
+        const span = document.getElementById("span01p");
+        span.innerHTML=text;
+        span.classList.add("green");
+      });
+    });
+  </script>
+  <script>
+    fetch("./javascript/cont🎁nt.txt")
+    .then(function(response) {
+      if (response.status !== 200) { return; }
+      response.text().then(function(text) {
+        const span = document.getElementById("span01q");
+        span.innerHTML=text;
+        span.classList.add("green");
+      });
+    });
+  </script>
+  <script>
+    fetch("./javascript/cont!nt.txt")
+    .then(function(response) {
+      if (response.status !== 200) { return; }
+      response.text().then(function(text) {
+        const span = document.getElementById("span01r");
+        span.innerHTML=text;
+        span.classList.add("green");
+      });
+    });
+  </script>
+  <script src="./javascript/script02a.js"></script>
+  <script src="./javascript/script02!b.js"></script>
+  <script type="text/javascript" src="./javascript/script03.js"></script>
+  <script src="./javascript/script05.js" defer></script>
+  <script type="module" src="./javascript/script06a.js"></script>
+  <script type="module" src="./javascript/script06b.js"></script>
+  <script type="module" src="./javascript/script06c.js"></script>
+  <script type="module" src="./javascript/script06d.js"></script>
+  <script type="module" src="./javascript/script06e.js"></script>
+  <script type="module" src="./javascript/script06f.js"></script>
+  <script type="module" src="./javascript/script06g.js"></script>
+  <script type="module" src="./javascript/script06h.js"></script>
+  <script type="module" src="./javascript/script06i.js"></script>
+  <script type="module" src="./javascript/script06j.js"></script>
+  <script type="module" src="./javascript/script07.js" defer></script>
+  <script type="module" src="./javascript/script08a.js"></script>
+  <script type="module" src="./javascript/script08b.js"></script>
+  <script type="module" src="./javascript/script08c.js"></script>
+  <script type="module" src="./javascript/script09a.js"></script>
+  <script type="module" src="./javascript/script09b.js"></script>
+  <script type="module" src="./javascript/script09c.js"></script>
+  <script type="module" src="./javascript/script09d.js"></script>
+  <script src="./javascript/script10.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Test website</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16x16.png">
+    <link rel="manifest" href="./icons/site.webmanifest">
+    <link rel="shortcut icon" href="./icons/favicon.ico">
+</head>
+
+<body>
+
+    <h2>Broken inline CSS</h2>
+
+    <div
+        style="background-image: url('http://www.mediaelementjs.com/images/big_buck_bunny.jpg'); width:150px; height: 100px; margin: 2rem; padding: 1rem; font-weight:bolder; color: white; text-align: center;">
+        CSS not broken, background image displayed
+    </div>
+    <div
+        style="background-image: url('http://www.mediaelementjs.com/images/big_buck_bunny.jpg'); width:150px; height: 100px; margin: 2rem; padding: 1rem; font-weight:bolder; color: white; text-align: center; text-shadow=;  color: red;">
+        CSS broken, background image displayed as well
+    </div>
+
+</body>
+
+</html>

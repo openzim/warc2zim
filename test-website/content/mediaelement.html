@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Test website</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16x16.png">
+  <link rel="manifest" href="./icons/site.webmanifest">
+  <link rel="shortcut icon" href="./icons/favicon.ico">
+</head>
+
+<body>
+
+  <h2>MediaElement.js player</h2>
+
+  <!-- Import Mediaelement CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/mediaelement@latest/build/mediaelementplayer.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mediaelement-plugins@latest/dist/quality/quality.min.css">
+
+  <!-- Import Mediaelement JS -->
+  <script src="https://cdn.jsdelivr.net/npm/mediaelement@latest/build/mediaelement-and-player.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mediaelement-plugins@latest/dist/quality/quality.min.js"></script>
+
+  <div class="player">
+    <video id="player-demo" width="640" height="360" preload="none" style="max-width: 100%" controls=""
+      poster="http://www.mediaelementjs.com/images/big_buck_bunny.jpg">
+      <!-- Add multiple <source>-tags and set text per `data-quality`-attribute -->
+      <source type="video/mp4" src="https://download.samplelib.com/mp4/sample-15s.mp4" data-quality="HD">
+      <source type="video/mp4" src="https://download.samplelib.com/mp4/sample-10s.mp4" data-quality="SD">
+      <source type="video/mp4" src="https://download.samplelib.com/mp4/sample-5s.mp4" data-quality="LD">
+      <!-- Just add multiple <track> files, they get integrated automatically -->
+      <track src="http://www.mediaelementjs.com/dist/mediaelement.vtt" srclang="en" label="English" kind="captions"
+        type="text/vtt">
+      <track src="http://www.mediaelementjs.com/dist/mediaelement_german.vtt" srclang="de" label="Deutsch"
+        kind="subtitles" type="text/vtt">
+    </video>
+  </div>
+
+  <script>
+    // You can use either a string for the player ID (i.e., `player`),
+    // or `document.querySelector()` for any selector
+    const playerQuality = new MediaElementPlayer('player', {
+      iconSprite: 'http://www.mediaelementjs.com/images/mejs-controls.svg', // path to svg-spritemap for all icons
+      features: ['playpause', 'current', 'progress', 'duration', 'volume', 'tracks', 'quality', 'fullscreen'], // add 'quality' feature
+    });
+  </script>
+
+</body>
+
+</html>

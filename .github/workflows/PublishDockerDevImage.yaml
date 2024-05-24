@@ -1,0 +1,35 @@
+name: Publish Docker dev image
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build Javascript wombatSetup.js
+        uses: addnab/docker-run-action@v3
+        with:
+          image: node:20-bookworm
+          options: -v ${{ github.workspace }}/src/warc2zim/statics:/output -v ${{ github.workspace }}/rules:/src/rules -v ${{ github.workspace }}/javascript:/src/javascript -v ${{ github.workspace }}/build_js.sh:/src/build_js.sh
+          run: |
+            /src/build_js.sh
+
+      - name: Build and push Docker image
+        uses: openzim/docker-publish-action@v10
+        with:
+          image-name: openzim/warc2zim
+          manual-tag: dev
+          latest-on-tag: false
+          restrict-to: openzim/warc2zim
+          registries: ghcr.io
+          credentials:
+            GHCRIO_USERNAME=${{ secrets.GHCR_USERNAME }}
+            GHCRIO_TOKEN=${{ secrets.GHCR_TOKEN }}
+          repo_description: auto
+          repo_overview: auto

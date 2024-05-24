@@ -1,13 +1,69 @@
 # warc2zim
-[![](https://img.shields.io/pypi/v/warc2zim.svg)](https://pypi.python.org/pypi/warc2zim)
-![CI](https://github.com/openzim/warc2zim/workflows/CI/badge.svg)
-[![codecov](https://codecov.io/gh/openzim/warc2zim/branch/main/graph/badge.svg)](https://codecov.io/gh/openzim/warc2zim)
+
 [![CodeFactor](https://www.codefactor.io/repository/github/openzim/warc2zim/badge)](https://www.codefactor.io/repository/github/openzim/warc2zim)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![codecov](https://codecov.io/gh/openzim/warc2zim/branch/main/graph/badge.svg)](https://codecov.io/gh/openzim/warc2zim)
+[![PyPI - Package version](https://img.shields.io/pypi/v/warc2zim.svg)](https://pypi.org/project/warc2zim)
+[![PyPI - Supported Python versions](https://img.shields.io/pypi/pyversions/warc2zim.svg)](https://pypi.org/project/warc2zim)
+
 
 warc2zim provides a way to convert WARC files to ZIM, storing the WARC payload and WARC+HTTP headers separately.
 
 Additionally, the [ReplayWeb.page](https://replayweb.page) is also added to the ZIM, creating a self-contained ZIM
 that can render its content in a modern browser.
+
+## Capabilities
+
+While we would like to support as many websites as possible, making an offline archive of a website obviously has some limitations.
+
+Scenario which are known to work well:
+- HTML and CSS documents
+- JS manipulating the DOM and/or doing simple fetch (preferably GET) requests
+  - E.g. JS manipulating the DOM to modify images, fetch remote stuff (JSON data, ...) is supposed to work
+  - POST requests support is fairly limited (at best, scraper replays the same response as it has been recorded)
+- Puny-encoded hostnames
+- Encoded URL path
+- URL query string
+- URL fragments
+- JS modules
+- HTML base href
+
+## Known limitations
+
+- Any web site expecting a server to store live data and wanting to modifying those data (form, read/write api, ...) is not supported
+- Website using dynamic resources (dynamic URLs) fetch based on user-agent configuration (e.g. viewport), timestamp, unique ID
+  - E.g. if the viewport size is sent in every requests to fetch website images, this will not work since the URL built during the scrape will most likely be different than the URL built when the end-user read the ZIM content, and the ZIM reader won't find associated resource
+  - Scraper tries to do its best on few popular websites (e.g. Youtube embedded player) by getting rid of dynamic parts in URL during URL rewriting (with what is called fuzzy rules), but support is fairly very limited
+- For simplification, scraper assumes that:
+  - servers do not mix multiple ports with two different resources at same hostname and path. E.g. if `http://www.acme.com:80/resource1` and `http://www.acme.com:8080/resource1` both exist AND lead to different resources, the scraper will include in the ZIM only the first resource fetched and silently ignore all other resources in conflict
+  - corollary: servers do not mix HTTP and HTTPS with two different resources at same hostname and path. E.g. if `http://www.acme.com/resource1` and `https://www.acme.com/resource1` both exist AND lead to different resources, the scraper will include in the ZIM only the first resource fetched and silently ignore all other resources in conflict
+- Scraper does not store HTTP response headers: these headers are not stored inside the ZIM / not replayed ; any website requiring these will be broken
+- Scraper does not take into account HTTP request headers: if different request header values leads to two different page / resource, scraper is ignoring this information
+- User-Agent: corollary of the point above on HTTP request headers, scraper supposes a single User-Agent has been used to create the WARC files ; if the website is providing different content based on the User-Agent, only one will be used
+- HTTP return codes have known limitations:
+  - in the `2xx` range, only `200`, `201`, `202` and `203` are supported ; others are simply ignored
+  - in the `3xx` range, only `301`, `302`, `306` and `307` are supported if they redirect to a payload which is present in the WARC ; others are simply ignored
+  - all payloads with HTTP return codes in the `1xx` (not supposed to exist in WARC files anyway), `4xx` and `5xx` ranges are ignored
+- HTML documents are always interpreted since we have to rewrite all URLs as well as inline documents (JS, CSS). This has some side-effects even if we try to minimize them.
+  - HTML tag attributes values are always surrounded by double quotes in the ZIM HTML documents
+  - HTML tag attributes are always unescaped from any named or numeric character references (e.g. &gt;, &#62;, &#x3e;) for proper processing when they have to be adapted. Only mandatorily escaped characters (`&`, `<`, `>`, `'` and `"`) are escaped-back.
+    - Numeric character references are replaced by their named character references equivalence
+    - Named character references are always lower-cased
+    - This processing has some bad side-effects when attribute values were not escaped in the original HTML document. E.g. `<img src="image.png?param1=value1&param2=value2">` is transformed into `<img src="image.png%3Fparam1%3Dvalue1%C2%B6m2%3Dvalue2">` because URL was supposed to be `image.png?param1=value1¶m2=value2` because `&para` has been decoded to `¶`. HTML should have been `<img src="image.png?param1=value1&amp;param2=value2">` for the URL to be `image.png?param1=value1&param2=value2`
+    - See https://github.com/openzim/warc2zim/issues/219 for more discussions / details / pointers
+- HTTP/2 support is working but limited to same limitations mentioned above
+- HTML/JS importmaps are not yet supported (see https://github.com/openzim/warc2zim/issues/230)
+- Redirections with `meta http-equiv` are not yet supported (see https://github.com/openzim/warc2zim/issues/237)
+- Web workers are not yet supported (see https://github.com/openzim/warc2zim/issues/272)
+- Service workers are not supported and will most probably never be
+- Inline JS code inside an onxxx HTML event (e.g. onclick, onhover, ...) is rewritten, so for instance redirection to another handled with these events is working
+  - However since URL rewriting is performed with dynamic JS rewriting, at this stage scraper has no clue on what is inside the ZIM and what is external ; all URLs are hence supposed to be internal, which might break some dynamic redirection to an online website
+
+It is also important to note that warc2zim is inherently limited to what is present inside the WARC. A bad WARC can only produce a bad ZIM. Garbage in, garbage out.
+
+It is hence very important to properly configure the system used to create the WARC. If zimit is used (and hence WebRecorder Browsertrix crawler), it is very important to properly configure scope type, mobile device used, behaviors (including custom ones needed on some sites) and login profile.
+
+Adding a custom CSS is also strongly recommended to hide features which won't work offline (e.g. search box which relies on a live search server).
 
 ## Usage
 
@@ -35,11 +91,13 @@ warc2zim --help
 deactivate  # unloads virtualenv from shell
 ```
 
-## URL Filtering
+## Usage
+
+### URL Filtering
 
 By default, all URLs found in the WARC files are included unless the `--include-domains`/ `-i` flag is set.
 
-To filter URLs that may be out of scope (eg. ads, social media trackers), use the `--include-domains`/ `-i` flag to specify each domain you want to include. 
+To filter URLs that may be out of scope (eg. ads, social media trackers), use the `--include-domains`/ `-i` flag to specify each domain you want to include.
 
 Other URLs will be filtered and not pushed to the ZIM.
 
@@ -63,49 +121,67 @@ If main page is on a subdomain, `https://subdomain1.example.com/` and only URLs 
 warc2zim myarchive.warc --name myarchive -i subdomain1.example.com -i subdomain2.example.com -u https://subdomain1.example.com/starting/page.html
 ```
 
-## Custom CSS
+### Custom CSS
 
 `--custom-css` allows passing an URL or a path to a CSS file that gets added to the ZIM and gets included on **every HTML article** at the very end of `</head>` (if it exists).
 
+### Failed items
+
+When an item fails to be converted into the ZIM and `--verbose` flag is passed, the failed item content is stored on the filesystem for easier analysis. The directory where this file is saved can be customized with `--failed-items`. File name is a random UUID4 which is output in the logs.
+
+### Development features
+
+For developement purpose, it is possible to ask to continue on WARC record processing errors with `--continue-on-error`.
+
+### Other options
 
 See `warc2zim -h` for other options.
 
+## Documentation
 
-## ZIM Entry Layout
+We have documentation about the [functional architecture](docs/functional_architecture.md), the [technical architecture](docs/technical_architecture.md) and the [software architecture](docs/software_architecture.md).
 
-The WARC to ZIM conversion is performed by splitting the WARC (and HTTP) headers from the payload.
+## Contributing
 
-For `response` records, the WARC + HTTP headers are stored under `H/<url>` while the payload is stored under `A/<url>`
+Requirements:
+- proper Python version (see pyproject.toml) with pip
+- optionally Docker
+- optionally Node LTS version (20 recommended)
 
-For `resource` records, the WARC headers are stored under `H/<url>` while the payload is stored under `A/<url>`. (Three are no HTTP headers for resource records).
+First, clone this repository.
 
-For `revisit` records, the WARC + optional HTTP headers are stored under `H/<url>`, while no payload record is created.
+If you do not already have it on your system, install hatch to build the software and manage virtual environments (you might be interested by our detailed [Developer Setup](https://github.com/openzim/_python-bootstrap/wiki/Developer-Setup) as well).
 
+```bash
+pip3 install hatch
+```
 
-If the payload `A/<url>` is zero-length, the record is omitted to conform to ZIM specifications of not storing empty records.
+Start a hatch shell: this will install software including dependencies in an isolated virtual environment.
 
+```bash
+hatch shell
+```
 
-## Duplicate URIs
+### Regenerate wombatSetup.js
 
-WARCs allow multiple records for the same URL, while ZIM does not. As a result, only the first encountered response or resource record is stored in the ZIM,
-and subsequent records are ignored.
+wombatSetup.js is the JS code used to setup wombat when the ZIM is used.
 
-For revisit records, they are only added if pointing to a different URL, and are processed after response/revisit records. A revisit record to the same URL
-will always be ignored.
+It is normally retrieved by Python build process (see openzim.toml for details).
 
-All other WARC records are skipped.
+Recommended solution to develop this JS code is to install Node.JS on your system, and then
 
-## i18n
+```bash
+cd javascript
+yarn build-dev # or yarn build-prod
+```
 
-`warc2zim` has very minimal non-content text but still uses gettext through [babel](http://babel.pocoo.org/en/latest/setup.html) to internationalize.
+Should you want to regenerate this code without install Node.JS, you might simply run following command.
 
-To add a new locale (`fr` in this example, use only ISO-639-1):
+```bash
+docker run -v $PWD/src/warc2zim/statics:/output -v $PWD/rules:/src/rules -v $PWD/javascript:/src/javascript -v $PWD/build_js.sh:/src/build_js.sh -it --rm --entrypoint /src/build_js.sh node:20-bookworm
+```
 
-1. init for your locale: `python setup.py init_catalog -l fr`
-2. make sure the POT is up to date `python setup.py extract_messages`
-3. update your locale's catalog `python setup.py update_catalog`
-3. translate the PO file ([poedit](https://poedit.net/) is your friend)
-4. compile updated translation `python setup.py compile_catalog`
+It will install Python3 on-top of Node.JS in a Docker container, generate JS fuzzy rules and bundle JS code straight to `/src/warc2zim/statics/wombatSetup.js` where the file is expected to be placed.
 
 ## License
 

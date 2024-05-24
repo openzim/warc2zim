@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Test website</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="../icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="../icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="../icons/favicon-16x16.png">
+  <link rel="manifest" href="../icons/site.webmanifest">
+  <link rel="shortcut icon" href="../icons/favicon.ico">
+  <base target="_blank">
+  <base href="./base-href/">
+  <base href="./not-used-href/">
+</head>
+
+<body>
+
+  <h2>Base href</h2>
+
+  You should check that icon (meaning favicon) / webmanifest are properly loaded as well
+
+  <p><a href="something.html">Something on relative link</a></p>
+  <p><a href="https://not_standard_netloc_punny_encoded/base-href/something.html">Something on absolute link</a></p>
+  <p>A picture with relative link: <img src="image1.png"></img></p>
+  <p>Another picture with relative link: <img src="../images/image1.png"></img></p>
+  <p>A picture with absolute link: <img src="https://not_standard_netloc_punny_encoded/images/image1.png"></img></p>
+
+</body>
+
+</html>

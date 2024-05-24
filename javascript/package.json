@@ -1,0 +1,43 @@
+{
+  "name": "@openzim/wombat-setup",
+  "type": "module",
+  "version": "0.1.0",
+  "license": "GPL-3.0-or-later",
+  "author": "openZIM",
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "25.0.7",
+    "@rollup/plugin-node-resolve": "15.2.3",
+    "@rollup/plugin-terser": "0.4.4",
+    "ava": "^6.1.2",
+    "eslint": "9.0.0",
+    "eslint-config-prettier": "9.1.0",
+    "prettier": "3.2.5",
+    "rollup": "4.14.1"
+  },
+  "scripts": {
+    "prettier-check": "prettier . --check",
+    "prettier-fix": "prettier . --write",
+    "eslint": "eslint .",
+    "test": "ava --verbose",
+    "build-prod": "rollup -c rollup.config.js",
+    "build-dev": "DEV=1 rollup -c rollup.config.js",
+    "build-dev-watch": "DEV=1 rollup --watch -c rollup.config.js"
+  },
+  "prettier": {
+    "singleQuote": true
+  },
+  "ava": {
+    "concurrency": 1,
+    "verbose": true,
+    "serial": true,
+    "files": [
+      "test/*.js"
+    ],
+    "sources": [
+      "src/**/*"
+    ]
+  },
+  "dependencies": {
+    "uri-js": "^4.4.1"
+  }
+}

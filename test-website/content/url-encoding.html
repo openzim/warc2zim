@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Test website</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16x16.png">
+    <link rel="manifest" href="./icons/site.webmanifest">
+    <link rel="shortcut icon" href="./icons/favicon.ico">
+</head>
+
+<body>
+
+    <p>This page contains URL encoding test(s).</p>
+
+    <h2>Image with non-encoded chars in name with non-encoded special chars in link</h2>
+
+    <p>An image should be displayed below</p>
+    <img width="200" src="./images/urlencoding1_icône-débuter-Solidarité-Numérique_1@300x.png" />
+
+    <h2>Image with non-encoded chars in name and already encoded special chars</h2>
+
+    <p>An image should be displayed below</p>
+    <img width="200" src="./images/urlencoding1_ico%CC%82ne-de%CC%81buter-Solidarite%CC%81-Nume%CC%81rique_1%40300x.png" />
+
+    <h2>Image with non-encoded chars in name and a mix of non-encoded and already encoded special chars</h2>
+
+    <p>An image should be displayed below</p>
+    <img width="200" src="./images/urlencoding1_icône-débuter-Solidarite%CC%81-Nume%CC%81rique_1@300x.png" />
+
+    <h2>Image with non-encoded chars in name with non-encoded special chars in link and a query parameter and fragment with reserved chars</h2>
+
+    <p>An image should be displayed below as well</p>
+    <img width="200" src="./images/urlencoding1_icône-débuter-Solidarité-Numérique_1@300x.png?param1=value1&amp;param2=value%262#anchor%233" />
+
+    <hr/>
+
+    <h2>Image with already encoded chars in name with non-encoded special chars in link</h2>
+
+    <p>This is not working on source website, so should not work in ZIM</p>
+    <img width="200" src="./images/urlencoding2_icône-débuter-Solidarité-Numérique_1@300x.png" />
+
+    <h2>Image with already encoded chars in name and already encoded special chars in link</h2>
+
+    <p>This is not working on source website, so should not work in ZIM</p>
+    <img width="200" src="./images/urlencoding2_ico%CC%82ne-de%CC%81buter-Solidarite%CC%81-Nume%CC%81rique_1%40300x.png" />
+
+    <h2>Image with already encoded chars in name and a mix of non-encoded and already encoded special chars in link</h2>
+
+    <p>This is not working on source website, so should not work in ZIM</p>
+    <img width="200" src="./images/urlencoding2_icône-débuter-Solidarite%CC%81-Nume%CC%81rique_1@300x.png" />
+
+    <hr/>
+
+    <h2>Image with a mix of non-encoded and already encoded special chars in name with non-encoded special chars in link</h2>
+
+    <p>This is not working on source website, so should not work in ZIM</p>
+    <img width="200" src="./images/urlencoding3_icône-débuter-Solidarité-Numérique_1@300x.png" />
+
+    <h2>Image with a mix of non-encoded and already encoded special chars in name and already encoded special chars in link</h2>
+
+    <p>This is not working on source website, so should not work in ZIM</p>
+    <img width="200" src="./images/urlencoding3_ico%CC%82ne-de%CC%81buter-Solidarite%CC%81-Nume%CC%81rique_1%40300x.png" />
+
+    <h2>Image with a mix of non-encoded and already encoded special chars in name and a mix of non-encoded and already encoded special chars in link</h2>
+
+    <p>This is not working on source website, so should not work in ZIM</p>
+    <img width="200" src="./images/urlencoding3_icône-débuter-Solidarite%CC%81-Nume%CC%81rique_1@300x.png" />
+
+    <hr/>
+
+    <h2>Image with many weird characters</h2>
+
+    <p>An image should be displayed below</p>
+    <img width="200" src="./images/urlencoding4_(_[_|_]_).png" />
+
+    <h2>Image with UTF-8 characters</h2>
+
+    <p>An image should be displayed below</p>
+    <img width="200" src="./images/urlencoding4_ؼ.png" />
+
+    <hr/>
+
+    <h2>Hostname with UTF-8 chars and simple image</h2>
+
+    <p>An image should be displayed below</p>
+    <img width="200" src="https://not_standard_netloc_not_encoded/images/image1.png" />
+
+    <h2>Hostname with UTF-8 chars and image with UTF-8 chars</h2>
+
+    <p>An image should be displayed below</p>
+    <img width="200" src="https://not_standard_netloc_not_encoded/images/urlencoding5_(_[_|_ؼ_]_).png" />
+
+    <h2>Hostname with UTF-8 chars and query parameter 1</h2>
+
+    <p>An image should be displayed below with a 1 in the right</p>
+    <img width="200" src="https://not_standard_netloc_not_encoded/dynimages?path=urlencoding5_(_[_|_ؼ_]_)_1.png" />
+
+    <h2>Hostname with UTF-8 chars and query parameter 2</h2>
+
+    <p>An image should be displayed below with a 2 in the right</p>
+    <img width="200" src="https://not_standard_netloc_not_encoded/dynimages?path=urlencoding5_(_[_|_ؼ_]_)_2.png" />
+
+</body>
+
+</html>

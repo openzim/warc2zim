@@ -1,0 +1,74 @@
+{$SITE_ADDRESS} {
+    header {
+        Access-Control-Allow-Origin *
+    }
+
+    file_server {
+        root /var/www/html
+    }
+
+    handle /dynimages {
+        @hasPathParam query "path=*"
+        handle @hasPathParam {
+            rewrite * /images/{http.request.uri.query.path}
+        }
+        handle {
+            respond 500 "Bad Request"
+        }
+    }
+
+    respond /200-response "Never mind" 200
+
+    respond /201-response "Never mind" 201
+
+    respond /202-response "Never mind" 202
+
+    respond /204-response 204
+
+    respond /206-response "Never mind" 206
+
+    respond /300-response "Never mind" 300
+
+    respond /303-response "Never mind" 303
+
+    respond /304-response "Never mind" 304
+
+    respond /305-response "Never mind" 305
+
+    respond /306-response "Never mind" 306
+
+    respond /400-response 400
+
+    respond /401-response 401
+
+    respond /402-response 402
+
+    respond /403-response 403
+
+    respond /404-response 404
+
+    respond /500-response 500
+
+    respond /501-response 501
+
+    respond /502-response 502
+
+    redir /301-internal-redirect-ok /internal_redirect_target.html 301
+    redir /301-external-redirect-ok https://www.example.com 301
+    redir /302-internal-redirect-ok /internal_redirect_target.html 302
+    redir /302-external-redirect-ok https://www.example.com 302
+    redir /307-internal-redirect-ok /internal_redirect_target.html 307
+    redir /307-external-redirect-ok https://www.example.com 307
+    redir /308-internal-redirect-ok /internal_redirect_target.html 308
+    redir /308-external-redirect-ok https://www.example.com 308
+
+    redir /301-internal-redirect-ko /internal_redirect_missing.html 301
+    redir /301-external-redirect-ko https://www.example.invalid 301
+    redir /302-internal-redirect-ko /internal_redirect_missing.html 302
+    redir /302-external-redirect-ko https://www.example.invalid 302
+    redir /307-internal-redirect-ko /internal_redirect_missing.html 307
+    redir /307-external-redirect-ko https://www.example.invalid 307
+    redir /308-internal-redirect-ko /internal_redirect_missing.html 308
+    redir /308-external-redirect-ko https://www.example.invalid 308
+
+}

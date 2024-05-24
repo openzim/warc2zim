@@ -1,0 +1,31 @@
+{% autoescape false %}
+{% set urlsplit = url | urlsplit %}
+
+<!-- WB Insert -->
+<script src="{{ static_prefix }}wombat.js"></script>
+<script src="{{ static_prefix }}wombatSetup.js"></script>
+<script>
+  // Get the current url we are serving from.
+  // We cannot know it at zim creation as it depends of our server.
+  const current_url = (function () {
+    var href = new URL(window.location.href);
+    href.hash = "";
+
+    return href.toString();
+  })();
+
+  const wbinfo = wombatSetup.getWombatInfo(
+    current_url,
+    "{{ orig_host }}",
+    "{{ orig_scheme }}",
+    "{{ orig_url }}",
+    current_url.substring(0, current_url.length - ("{{ path }}".length))
+  );
+
+  if (window && window._WBWombatInit) {
+    window._WBWombatInit(wbinfo);
+  }
+</script>
+{% endautoescape %}
+
+<!-- End WB Insert -->

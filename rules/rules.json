@@ -1,0 +1,44 @@
+{
+    "fuzzyRules": [
+        {
+            "pattern": ".*googlevideo.com/(videoplayback(?=\\?)).*[?&](id=[^&]+).*",
+            "replace": "youtube.fuzzy.replayweb.page/\\1?\\2"
+        },
+        {
+            "pattern": "(?:www\\.)?youtube(?:-nocookie)?\\.com/(get_video_info\\?).*(video_id=[^&]+).*",
+            "replace": "youtube.fuzzy.replayweb.page/\\1\\2"
+        },
+        {
+            "pattern": "i\\.ytimg\\.com\\/vi\\/(.*?)\\/.*?\\.(\\w*?)(?:\\?|$)",
+            "replace": "i.ytimg.com.fuzzy.replayweb.page/vi/\\1/thumbnail.\\2"
+        },
+        {
+            "pattern": "([^?]+)\\?[\\d]+$",
+            "replace": "\\1"
+        },
+        {
+            "pattern": "(?:www\\.)?youtube(?:-nocookie)?\\.com\\/(youtubei\\/[^?]+).*(videoId[^&]+).*",
+            "replace": "youtube.fuzzy.replayweb.page/\\1?\\2"
+        },
+        {
+            "pattern": "(?:www\\.)?youtube(?:-nocookie)?\\.com/embed/([^?]+).*",
+            "replace": "youtube.fuzzy.replayweb.page/embed/\\1"
+        },
+        {
+            "pattern": ".*(?:gcs-vimeo|vod|vod-progressive|vod-adaptive)\\.akamaized\\.net.*/(.+?.mp4)\\?.*range=(.*?)(?:&|$)",
+            "replace": "vimeo-cdn.fuzzy.replayweb.page/\\1?range=\\2"
+        },
+        {
+            "pattern": ".*(?:gcs-vimeo|vod|vod-progressive)\\.akamaized\\.net.*?/([\\d/]+.mp4)$",
+            "replace": "vimeo-cdn.fuzzy.replayweb.page/\\1"
+        },
+        {
+            "pattern": ".*player.vimeo.com/(video/[\\d]+)\\?.*",
+            "replace": "vimeo.fuzzy.replayweb.page/\\1"
+        },
+        {
+            "pattern": ".*i\\.vimeocdn\\.com\\/(.*)\\?.*",
+            "replace": "i.vimeocdn.fuzzy.replayweb.page/\\1"
+        }
+    ]
+}

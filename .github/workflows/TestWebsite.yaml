@@ -1,0 +1,35 @@
+name: Test website
+
+on:
+  push:
+    tags:
+      - test-website
+
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build and push Docker image
+        uses: openzim/docker-publish-action@v10
+        with:
+          image-name: openzim/test-website
+          manual-tag: latest
+          latest-on-tag: false
+          restrict-to: openzim/warc2zim
+          context: test-website
+          registries: ghcr.io
+          credentials:
+            GHCRIO_USERNAME=${{ secrets.GHCR_USERNAME }}
+            GHCRIO_TOKEN=${{ secrets.GHCR_TOKEN }}
+          repo_description: auto
+          repo_overview: auto
+
+      - name: Deploy Test website changes to openzim.org
+        uses: actions-hub/kubectl@master
+        env:
+          KUBE_CONFIG: ${{ secrets.TEST_KUBE_CONFIG }}
+        with:
+          args: rollout restart deployments test-website-deployment -n test

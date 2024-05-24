@@ -1,80 +1,80 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # vim: ai ts=4 sts=4 et sw=4 nu
 
 """ warc2zim conversion utility
 
 This utility provides a conversion from WARC records to ZIM files.
-The WARCs are converted in a 'lossless' way, no data from WARC records is lost.
-Each WARC record results in two ZIM items:
-- The WARC payload is stored under /A/<url>
-- The WARC headers + HTTP headers are stored under the /H/<url>
-
-Given a WARC response record for 'https://example.com/',
-two ZIM items are created /A/example.com/ and /H/example.com/ are created.
-
-Only WARC response and resource records are stored.
+WARC record are directly stored in a zim file as:
+- Response WARC record as item "normalized" <url>
+- Revisit record as alias (using "normalized" <url> to)
 
 If the WARC contains multiple entries for the same URL, only the first entry is added,
 and later entries are ignored. A warning is printed as well.
-
 """
 
-import os
-import sys
-import json
-import pathlib
-import logging
-import tempfile
 import datetime
-import re
+import importlib.resources
 import io
+import json
+import logging
+import mimetypes
+import os
+import pathlib
+import re
+import sys
+import tempfile
 import time
-from urllib.parse import urlsplit, urljoin, urlunsplit, urldefrag
+from http import HTTPStatus
+from pathlib import Path
+from urllib.parse import urljoin, urlsplit, urlunsplit
+from uuid import uuid4
 
-import pkg_resources
 import requests
-from warcio import ArchiveIterator, StatusAndHeaders
-from warcio.recordbuilder import RecordBuilder
-from zimscraperlib.constants import DEFAULT_DEV_ZIM_METADATA
+
+# from zimscraperlib import getLogger
+from bs4 import BeautifulSoup
+from cdxj_indexer import buffering_record_iter, iter_file_or_dir
+from jinja2 import Environment, PackageLoader
+from warcio import ArchiveIterator
+from zimscraperlib.constants import (
+    DEFAULT_DEV_ZIM_METADATA,
+    RECOMMENDED_MAX_TITLE_LENGTH,
+)
 from zimscraperlib.download import stream_file
-from zimscraperlib.i18n import setlocale, get_language_details, Locale
+from zimscraperlib.i18n import get_language_details
 from zimscraperlib.image.convertion import convert_image
 from zimscraperlib.image.transformation import resize_image
+from zimscraperlib.types import FALLBACK_MIME
 from zimscraperlib.zim.creator import Creator
-from zimscraperlib.zim.items import URLItem
-
-from bs4 import BeautifulSoup
-
-from jinja2 import Environment, PackageLoader
-
-from cdxj_indexer import iter_file_or_dir, buffering_record_iter
-
-from warc2zim.url_rewriting import FUZZY_RULES, canonicalize
-from warc2zim.items import WARCHeadersItem, WARCPayloadItem, StaticArticle
-from warc2zim.utils import (
-    get_version,
-    get_record_url,
-    get_record_mime_type,
-    parse_title,
+from zimscraperlib.zim.metadata import (
+    validate_description,
+    validate_longdescription,
+    validate_tags,
+    validate_title,
 )
 
-# Shared logger
-logger = logging.getLogger("warc2zim.converter")
+from warc2zim.constants import logger
+from warc2zim.items import StaticArticle, StaticFile, WARCPayloadItem
+from warc2zim.url_rewriting import HttpUrl, ZimPath, normalize
+from warc2zim.utils import (
+    can_process_status_code,
+    get_record_content,
+    get_record_mime_type,
+    get_record_url,
+    get_status_code,
+    get_version,
+    parse_title,
+    status_code_is_processable_redirect,
+)
 
 # HTML mime types
 HTML_TYPES = ("text/html", "application/xhtml", "application/xhtml+xml")
 
-# external sw.js filename
-SW_JS = "sw.js"
-
 # head insert template
-HEAD_INSERT_FILE = "sw_check.html"
+HEAD_INSERT_FILE = "head_insert.html"
 
 # Default ZIM metadata tags
-DEFAULT_TAGS = ["_ftindex:yes", "_category:other", "_sw:yes"]
-
-CUSTOM_CSS_URL = "https://warc2zim.kiwix.app/custom.css"
+DEFAULT_TAGS = ["_ftindex:yes", "_category:other"]
 
 DUPLICATE_EXC_STR = re.compile(
     r"^Impossible to add(.+)"
@@ -83,38 +83,51 @@ DUPLICATE_EXC_STR = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 
+ALIAS_EXC_STR = re.compile(
+    r"^Impossible to alias(.+)(.+) doesn't exist.",
+    re.MULTILINE | re.DOTALL,
+)
+
+PY2JS_RULE_RX = re.compile(r"\\(\d)", re.ASCII)
+
 
 class Converter:
     def __init__(self, args):
-        logging.basicConfig(format="[%(levelname)s] %(message)s")
         if args.verbose:
-            logger.setLevel(logging.DEBUG)
-        else:
-            logger.setLevel(logging.INFO)
+            # set log level in all configured handlers
+            for handler in logger.handlers:
+                handler.setLevel(logging.DEBUG)
 
-        self.main_url = args.url
+        main_url: str | None = str(args.url) if args.url else None
         # ensure trailing slash is added if missing
-        parts = urlsplit(self.main_url)
-        if parts.path == "":
-            parts = list(parts)
-            # set path
-            parts[2] = "/"
-            self.main_url = urlunsplit(parts)
+        if main_url:
+            parts = urlsplit(main_url)
+            if parts.path == "":
+                parts = list(parts)
+                # set path
+                parts[2] = "/"
+                main_url = urlunsplit(parts)
 
         self.name = args.name
         self.title = args.title
         self.favicon_url = args.favicon
+        self.favicon_path = None
         self.language = args.lang
         self.description = args.description
         self.long_description = args.long_description
         self.creator_metadata = args.creator
         self.publisher = args.publisher
-        self.tags = DEFAULT_TAGS + (args.tags or [])
-        self.source = args.source or self.main_url
+        self.tags = {
+            tag
+            for tag in DEFAULT_TAGS + [tag.strip() for tag in args.tags.split(";")]
+            if tag  # ignore empty tag
+        }
+        self.source: str | None = str(args.source) if args.source else None or main_url
         self.scraper = "warc2zim " + get_version()
         self.illustration = b""
+        self.main_path = normalize(HttpUrl(main_url)) if main_url else None
 
-        self.output = args.output
+        self.output = Path(args.output)
         self.zim_file = args.zim_file
 
         if not self.zim_file:
@@ -122,12 +135,13 @@ class Converter:
                 name=self.name, period="{period}"
             )
         self.zim_file = self.zim_file.format(period=time.strftime("%Y-%m"))
-        self.full_filename = os.path.join(self.output, self.zim_file)
+        self.full_filename = self.output / self.zim_file
 
         # ensure output file exists
         if not os.path.isdir(self.output):
             logger.error(
-                f"Output directory {self.output} does not exist. Exiting with error code 1"
+                f"Output directory {self.output} does not exist. Exiting with error "
+                "code 1"
             )
             sys.exit(1)
 
@@ -141,9 +155,10 @@ class Converter:
                 logger.debug(
                     f"Output is writable. Temporary file used for test: {fh.name}"
                 )
-        except Exception as e:
+        except Exception:
             logger.error(
-                f"Failed to write to output directory {self.output}. Make sure output directory is writable. Exiting with error code 1"
+                f"Failed to write to output directory {self.output}. Make sure output "
+                "directory is writable. Exiting with error code 1"
             )
             sys.exit(1)
 
@@ -157,18 +172,25 @@ class Converter:
             )
         except Exception:
             logger.error(
-                f"Failed to create ZIM file with name: {self.zim_file}. Make sure the file name is valid."
+                f"Failed to create ZIM file with name: {self.zim_file}. Make sure the "
+                "file name is valid."
             )
-            raise SystemExit(3)
+            raise SystemExit(3)  # noqa: B904
+
+        self.failed_content_path = self.output / args.failed_items
+        self.failed_content_path.mkdir(parents=True, exist_ok=True)
 
         self.inputs = args.inputs
         self.include_domains = args.include_domains
 
-        self.replay_viewer_source = args.replay_viewer_source
         self.custom_css = args.custom_css
 
-        self.indexed_urls = set({})
-        self.revisits = {}
+        self.added_zim_items: set[ZimPath] = set()
+        self.revisits: dict[ZimPath, ZimPath] = {}
+        self.expected_zim_items: set[ZimPath] = set()
+        self.redirections: dict[ZimPath, ZimPath] = {}
+        self.missing_zim_paths: set[ZimPath] | None = set() if args.verbose else None
+        self.js_modules: set[ZimPath] = set()
 
         # progress file handling
         self.stats_filename = (
@@ -179,47 +201,10 @@ class Converter:
 
         self.written_records = self.total_records = 0
 
-    def add_replayer(self):
-        if self.replay_viewer_source and re.match(
-            r"^https?\:", self.replay_viewer_source
-        ):
-            self.creator.add_item(
-                URLItem(
-                    url=self.replay_viewer_source + SW_JS,
-                    path="A/" + SW_JS,
-                    mimetype="application/javascript",
-                )
-            )
-        elif self.replay_viewer_source:
-            self.creator.add_item_for(
-                fpath=self.replay_viewer_source + SW_JS,
-                path="A/" + SW_JS,
-                mimetype="application/javascript",
-            )
-        else:
-            self.creator.add_item(
-                StaticArticle(
-                    self.env, SW_JS, self.main_url, mimetype="application/javascript"
-                )
-            )
+        self.scraper_suffix = args.scraper_suffix
 
-    def init_env(self):
-        # autoescape=False to allow injecting html entities from translated text
-        env = Environment(
-            loader=PackageLoader("warc2zim", "templates"),
-            extensions=["jinja2.ext.i18n"],
-            autoescape=False,
-        )
-
-        try:
-            env.install_gettext_translations(Locale.translation)
-        except OSError:
-            logger.warning(
-                "No translations table found for language: {0}".format(self.language)
-            )
-            env.install_null_translations()
-
-        return env
+        self.continue_on_error = bool(args.continue_on_error)
+        self.disable_metadata_checks = bool(args.disable_metadata_checks)
 
     def update_stats(self):
         """write progress as JSON to self.stats_filename if requested"""
@@ -231,7 +216,7 @@ class Converter:
                 {"written": self.written_records, "total": self.total_records}, fh
             )
 
-    def get_custom_css_record(self):
+    def add_custom_css_item(self):
         if re.match(r"^https?\://", self.custom_css):
             resp = requests.get(self.custom_css, timeout=10)
             resp.raise_for_status()
@@ -241,35 +226,42 @@ class Converter:
             with open(css_path, "rb") as fh:
                 payload = fh.read()
 
-        http_headers = StatusAndHeaders(
-            "200 OK",
-            [("Content-Type", 'text/css; charset="UTF-8"')],
-            protocol="HTTP/1.0",
-        )
-
-        return RecordBuilder().create_warc_record(
-            CUSTOM_CSS_URL,
-            "response",
-            payload=io.BytesIO(payload),
-            length=len(payload),
-            http_headers=http_headers,
+        self.creator.add_item(
+            StaticFile(content=payload, filename="custom.css", mimetype="text/css")
         )
 
     def run(self):
+
+        if not self.disable_metadata_checks:
+            # Validate ZIM metadata early so that we do not waste time doing operations
+            # for a scraper which will fail anyway in the end
+            validate_tags("Tags", self.tags)
+            if self.title:
+                validate_title("Title", self.title)
+            if self.description:
+                validate_description("Description", self.description)
+            if self.long_description:
+                validate_longdescription("LongDescription", self.long_description)
+            # Nota: we do not validate illustration since logic in the scraper is made
+            # to always provide a valid image, at least a fallback transparent PNG and
+            # final illustration is most probably not yet known at this stage
+
         if not self.inputs:
             logger.info(
-                "Arguments valid, no inputs to process. Exiting with error code 100"
+                "Arguments valid, no inputs to process. Exiting with return code 100"
             )
             return 100
 
-        self.find_main_page_metadata()
+        self.gather_information_from_warc()
+        if not self.main_path:
+            raise ValueError("Unable to find main path, aborting")
         self.title = self.title or "Untitled"
-        if len(self.title) > 30:
+        if len(self.title) > RECOMMENDED_MAX_TITLE_LENGTH:
             self.title = f"{self.title[0:29]}…"
         self.retrieve_illustration()
         self.convert_illustration()
 
-        # make sure Language metadata is ISO-639-3 and setup translations
+        # make sure Language metadata is ISO-639-3
         try:
             lang_data = get_language_details(self.language)
             self.language = lang_data["iso-639-3"]
@@ -277,28 +269,27 @@ class Converter:
             logger.error(f"Invalid language setting `{self.language}`. Using `eng`.")
             self.language = "eng"
 
-        # try to set locale to language. Might fail (missing locale)
-        try:
-            setlocale(pathlib.Path(__file__).parent, lang_data.get("iso-639-1"))
-        except Exception:
-            ...
+        # autoescape=False to allow injecting html entities from translated text
+        self.env = Environment(
+            loader=PackageLoader("warc2zim", "templates"),
+            autoescape=False,  # noqa: S701
+        )
 
-        self.env = self.init_env()
+        self.env.filters["urlsplit"] = urlsplit
+        self.env.filters["tobool"] = lambda val: "true" if val else "false"
 
-        # init head insert
-        template = self.env.get_template(HEAD_INSERT_FILE)
-        self.head_insert = ("<head>" + template.render()).encode("utf-8")
-        if self.custom_css:
-            self.css_insert = (
-                f'\n<link type="text/css" href="{CUSTOM_CSS_URL}" '
-                'rel="Stylesheet" />\n</head>'
-            ).encode("utf-8")
-        else:
-            self.css_insert = None
+        # init head inserts
+        self.pre_head_template = self.env.get_template(HEAD_INSERT_FILE)
+        self.post_head_template = self.env.from_string(
+            '\n<link type="text/css" href="{{ static_prefix }}custom.css"'
+            ' rel="stylesheet" />\n'
+            if self.custom_css
+            else ""
+        )
 
         self.creator = Creator(
             self.full_filename,
-            main_path="A/index.html",
+            main_path=self.main_path.value,
         )
 
         self.creator.config_metadata(
@@ -309,63 +300,115 @@ class Converter:
             LongDescription=self.long_description,
             Creator=self.creator_metadata,
             Publisher=self.publisher,
-            Date=datetime.date.today(),
+            Date=datetime.date.today(),  # noqa: DTZ011
             Illustration_48x48_at_1=self.illustration,
-            Tags=";".join(self.tags),
+            Tags=self.tags,
             Source=self.source,
-            Scraper=f"warc2zim {get_version()}",
+            Scraper=f"warc2zim {get_version()}{self.scraper_suffix or ''}",
         ).start()
 
-        self.add_replayer()
-
-        for filename in pkg_resources.resource_listdir("warc2zim", "templates"):
-            if filename == HEAD_INSERT_FILE or filename == SW_JS:
-                continue
-
-            self.creator.add_item(StaticArticle(self.env, filename, self.main_url))
-
-        for record in self.iter_all_warc_records():
-            self.add_items_for_warc_record(record)
-
-        # process revisits, headers only
-        for url, record in self.revisits.items():
-            if canonicalize(url) not in self.indexed_urls:
-                logger.debug(
-                    "Adding revisit {0} -> {1}".format(
-                        url, record.rec_headers["WARC-Refers-To-Target-URI"]
-                    )
+        for filename in importlib.resources.files("warc2zim.statics").iterdir():
+            with importlib.resources.as_file(filename) as file:
+                self.creator.add_item(
+                    StaticArticle(filename=file, main_path=self.main_path.value)
                 )
+
+        if self.custom_css:
+            self.add_custom_css_item()
+
+        for record in iter_warc_records(self.inputs):
+            try:
+                self.add_items_for_warc_record(record)
+            except Exception as exc:
+                logger.error(
+                    f"Problem encountered while processing {get_record_url(record)}.",
+                    exc_info=exc,
+                )
+                if logger.isEnabledFor(logging.DEBUG):
+                    content_extension = mimetypes.guess_extension(
+                        get_record_mime_type(record), strict=False
+                    ) or mimetypes.guess_extension(FALLBACK_MIME)
+                    content_path = (
+                        self.failed_content_path / f"{uuid4()}{content_extension}"
+                    )
+                    content_path.write_bytes(get_record_content(record))
+                    logger.debug(
+                        f"### REC Headers ###\n{record.rec_headers}\n"
+                        f"### HTTP Headers ###\n{record.http_headers}\n"
+                        "### Content ###\n"
+                        f"Content has been stored b64-encoded at {content_path}"
+                    )
+                if not self.continue_on_error:
+                    logger.error(
+                        "Scraper will stop. Pass --verbose flag for more details."
+                    )
+                    raise
+
+        # process redirects
+        for redirect_source, redirect_target in self.redirections.items():
+            self.creator.add_redirect(
+                redirect_source.value, redirect_target.value, is_front=False
+            )
+            self.added_zim_items.add(redirect_source)
+
+        # process revisits
+        for normalized_url, target_url in self.revisits.items():
+            if normalized_url not in self.added_zim_items:
+                logger.debug(f"Adding alias {normalized_url} -> {target_url}")
                 try:
-                    self.creator.add_item(WARCHeadersItem(record))
+                    self.creator.add_alias(
+                        normalized_url.value, "", target_url.value, {}
+                    )
                 except RuntimeError as exc:
-                    if not DUPLICATE_EXC_STR.match(str(exc)):
+                    if not ALIAS_EXC_STR.match(str(exc)):
                         raise exc
-                self.indexed_urls.add(canonicalize(url))
+                self.added_zim_items.add(normalized_url)
 
         logger.debug(f"Found {self.total_records} records in WARCs")
 
         self.creator.finish()
 
-    def iter_all_warc_records(self):
-        # add custom css records
-        if self.custom_css:
-            yield self.get_custom_css_record()
+    def gather_information_from_warc(self):
+        main_page_found = False
+        for record in iter_warc_records(self.inputs):
 
-        yield from iter_warc_records(self.inputs)
+            # only response records can be considered as main_path and as existing ZIM
+            # path
+            if record.rec_type not in ("response", "revisit"):
+                continue
 
-    def find_main_page_metadata(self):
-        for record in self.iter_all_warc_records():
+            url = get_record_url(record)
+            zim_path = normalize(HttpUrl(url))
+
+            status_code = get_status_code(record)
+            if not can_process_status_code(status_code):
+                continue
+
+            if status_code_is_processable_redirect(status_code):
+                # check for duplicates, might happen due to fuzzy rules
+                if zim_path not in self.redirections:
+                    if redirect_location := record.http_headers.get("Location"):
+                        redirection_zim_path = normalize(
+                            HttpUrl(urljoin(url, redirect_location))
+                        )
+                        self.redirections[zim_path] = redirection_zim_path
+                    else:
+                        logger.warning(f"Redirection target is empty for {zim_path}")
+            else:
+                self.expected_zim_items.add(zim_path)
+
+            if main_page_found:
+                continue
+
             if record.rec_type == "revisit":
                 continue
 
-            # if no main_url, use first 'text/html' record as the main page by default
+            # if no main_path, use first 'text/html' record as the main page by default
             # not guaranteed to always work
             mime = get_record_mime_type(record)
 
-            url = record.rec_headers["WARC-Target-URI"]
-
             if (
-                not self.main_url
+                not self.main_path
                 and mime == "text/html"
                 and record.payload_length != 0
                 and (
@@ -373,40 +416,93 @@ class Converter:
                     or record.http_headers.get_statuscode() == "200"
                 )
             ):
-                self.main_url = url
+                self.main_path = zim_path
 
-            if urldefrag(self.main_url).url != url:
+            if self.main_path != zim_path:
                 continue
 
             # if we get here, found record for the main page
+
+            # if main page is a redirect, update the main url accordingly
+            if record.http_headers:
+                status_code = int(record.http_headers.get_statuscode())
+                if status_code in [
+                    HTTPStatus.MOVED_PERMANENTLY,
+                    HTTPStatus.TEMPORARY_REDIRECT,
+                    HTTPStatus.FOUND,
+                ]:
+                    original_path = self.main_path
+                    self.main_path = normalize(
+                        HttpUrl(
+                            urljoin(
+                                get_record_url(record),
+                                record.http_headers.get_header("Location").strip(),
+                            )
+                        )
+                    )
+                    logger.warning(
+                        f"HTTP {status_code} occurred on main page; "
+                        f"replacing {original_path} with {self.main_path}"
+                    )
+                    continue
 
             # if main page is not html, still allow (eg. could be text, img),
             # but print warning
             if mime not in HTML_TYPES:
                 logger.warning(
-                    "Main page is not an HTML Page, mime type is: {0} "
-                    "- Skipping Favicon and Language detection".format(mime)
+                    f"Main page is not an HTML Page, mime type is: {mime} "
+                    "- Skipping Favicon and Language detection"
                 )
-                return
+                main_page_found = True
+                continue
 
-            record.buffered_stream.seek(0)
-            content = record.buffered_stream.read()
+            content = get_record_content(record)
 
             if not self.title:
                 self.title = parse_title(content)
 
-            self.find_icon_and_language(content)
+            self.find_icon_and_language(record, content)
 
-            logger.debug("Title: {0}".format(self.title))
-            logger.debug("Language: {0}".format(self.language))
-            logger.debug("Favicon: {0}".format(self.favicon_url))
-            return
+            logger.debug(f"Title: {self.title}")
+            logger.debug(f"Language: {self.language}")
+            logger.debug(f"Favicon: {self.favicon_url or self.favicon_path}")
+            main_page_found = True
 
-        raise KeyError(
-            f"Unable to find WARC record for main page: {self.main_url}, aborting"
-        )
+        if not main_page_found:
+            raise KeyError(
+                f"Unable to find WARC record for main page: {self.main_path}, aborting"
+            )
 
-    def find_icon_and_language(self, content):
+        redirections_to_ignore = set()
+        for redirect_source, redirect_target in self.redirections.items():
+            # if the URL is already expected, then just ignore the redirection
+            if redirect_source in self.expected_zim_items:
+                redirections_to_ignore.add(redirect_source)
+
+            final_redirect_target = redirect_target
+            # process redirection iteratively since the target of the redirection
+            # might be a redirection itself
+            while (
+                final_redirect_target in self.redirections
+                and final_redirect_target != redirect_source
+            ):
+                final_redirect_target = self.redirections[final_redirect_target]
+
+            if final_redirect_target in self.expected_zim_items:
+                # if final redirection target is including inside the ZIM, simply add
+                # the redirection source to the list of expected ZIM items so that URLs
+                # are properly rewritten
+                self.expected_zim_items.add(redirect_source)
+            else:
+                # otherwise add it to a temporary list of items that will have to be
+                # dropped from the list of redirections to create
+                redirections_to_ignore.add(redirect_source)
+
+        # update the list of redirections to create
+        for redirect_source in redirections_to_ignore:
+            self.redirections.pop(redirect_source)
+
+    def find_icon_and_language(self, record, content):
         soup = BeautifulSoup(content, "html.parser")
 
         if not self.favicon_url:
@@ -415,16 +511,35 @@ class Converter:
             if not icon:
                 icon = soup.find("link", rel="icon")
 
-            if icon and icon.attrs.get("href"):
-                self.favicon_url = urljoin(self.main_url, icon.attrs["href"])
+            if (
+                icon
+                and icon.attrs.get(  # pyright: ignore[reportGeneralTypeIssues, reportAttributeAccessIssue]
+                    "href"
+                )
+            ):
+                icon_url = icon.attrs[  # pyright: ignore[reportGeneralTypeIssues ,reportAttributeAccessIssue]
+                    "href"
+                ]
             else:
-                self.favicon_url = urljoin(self.main_url, "/favicon.ico")
+                icon_url = "/favicon.ico"
+
+            # transform icon URL into WARC path
+            self.favicon_path = normalize(
+                HttpUrl(
+                    urljoin(
+                        get_record_url(record),
+                        icon_url,
+                    )
+                )
+            )
 
         if not self.language:
             # HTML5 Standard
             lang_elem = soup.find("html", attrs={"lang": True})
             if lang_elem:
-                self.language = lang_elem.attrs["lang"]
+                self.language = lang_elem.attrs[  # pyright: ignore[reportGeneralTypeIssues ,reportAttributeAccessIssue]
+                    "lang"
+                ]
                 return
 
             # W3C recommendation
@@ -432,64 +547,74 @@ class Converter:
                 "meta", {"http-equiv": "content-language", "content": True}
             )
             if lang_elem:
-                self.language = lang_elem.attrs["content"]
+                self.language = lang_elem.attrs[  # pyright: ignore[reportGeneralTypeIssues ,reportAttributeAccessIssue]
+                    "content"
+                ]
                 return
 
             # SEO Recommendations
             lang_elem = soup.find("meta", {"name": "language", "content": True})
             if lang_elem:
-                self.language = lang_elem.attrs["content"]
+                self.language = lang_elem.attrs[  # pyright: ignore[reportGeneralTypeIssues ,reportAttributeAccessIssue]
+                    "content"
+                ]
                 return
 
     def retrieve_illustration(self):
-        """sets self.illustration from self.favicon_url either from WARC or download
+        """sets self.illustration either from WARC or download
 
         Uses fallback in case of errors/missing"""
-        if not self.favicon_url:
-            self.favicon_url = "fallback.png"
-            self.illustration = DEFAULT_DEV_ZIM_METADATA["Illustration_48x48_at_1"]
-            return
-        # look into WARC records first
-        for record in self.iter_all_warc_records():
-            url = get_record_url(record)
-            if not url or record.rec_type == "revisit":
-                continue
-            if url == self.favicon_url:
-                logger.debug(f"Found WARC record for favicon: {self.favicon_url}")
-                if record and record.http_headers.get_statuscode() != "200":
-                    logger.warning("WARC record for favicon is unuable. Skipping")
-                    self.favicon_url = "fallback.png"
-                    self.illustration = DEFAULT_DEV_ZIM_METADATA[
-                        "Illustration_48x48_at_1"
-                    ]
-                    return
-                if hasattr(record, "buffered_stream"):
-                    record.buffered_stream.seek(0)
-                    self.illustration = record.buffered_stream.read()
-                else:
-                    self.illustration = record.content_stream().read()
-                return
 
-        # favicon_url not in WARC ; downloading
-        try:
-            dst = io.BytesIO()
-            if not stream_file(self.favicon_url, byte_stream=dst)[0]:
-                raise IOError("No bytes received downloading favicon")
-            self.illustration = dst.getvalue()
-        except Exception as exc:
-            logger.warning(f"Unable to retrieve favicon. Using fallback: {exc}")
-            self.favicon_url = "fallback.png"
+        if self.favicon_url or self.favicon_path:
+            # look into WARC records
+            for record in iter_warc_records(self.inputs):
+                if record.rec_type != "response":
+                    continue
+                url = get_record_url(record)
+                path = normalize(HttpUrl(url))
+                if path == self.favicon_path or url == self.favicon_url:
+                    logger.debug("Found WARC record for favicon")
+                    if (
+                        record.http_headers
+                        and record.http_headers.get_statuscode() != "200"
+                    ):  # pragma: no cover
+                        logger.warning("WARC record for favicon is unusable")
+                        break
+                    self.illustration = get_record_content(record)
+                    break
+
+            # download favicon_url (might be custom URL, not present in WARC records)
+            if not self.illustration and self.favicon_url:
+                try:
+                    dst = io.BytesIO()
+                    if not stream_file(self.favicon_url, byte_stream=dst)[0]:
+                        raise OSError(
+                            "No bytes received downloading favicon"
+                        )  # pragma: no cover
+                    self.illustration = dst.getvalue()
+                except Exception as exc:
+                    logger.warning("Unable to download favicon", exc_info=exc)
+
+        if not self.illustration:
+            logger.warning("Illustration not found, using default")
             self.illustration = DEFAULT_DEV_ZIM_METADATA["Illustration_48x48_at_1"]
-            return
+
+        # Illustration is now set, no need to keep url/path anymore
+        del self.favicon_url
+        del self.favicon_path
 
     def convert_illustration(self):
         """convert self.illustration into a 48x48px PNG with fallback"""
         src = io.BytesIO(self.illustration)
         dst = io.BytesIO()
         try:
-            convert_image(src, dst, fmt="PNG")
+            convert_image(
+                src,  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
+                dst,  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
+                fmt="PNG",  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
+            )
             resize_image(dst, width=48, height=48, method="cover")
-        except Exception as exc:
+        except Exception as exc:  # pragma: no cover
             logger.warning(f"Failed to convert or resize favicon: {exc}")
             self.illustration = DEFAULT_DEV_ZIM_METADATA["Illustration_48x48_at_1"]
         else:
@@ -506,17 +631,20 @@ class Converter:
             return False
 
         location = record.http_headers.get("Location", "")
-        return canonicalize(url) == canonicalize(location)
+        location = urljoin(url, location)
+        return normalize(HttpUrl(url)) == normalize(HttpUrl(location))
 
     def add_items_for_warc_record(self, record):
+
+        if record.rec_type not in ("response", "revisit"):
+            return
+
         url = get_record_url(record)
         if not url:
             logger.debug(f"Skipping record with empty WARC-Target-URI {record}")
             return
 
-        if canonicalize(url) in self.indexed_urls:
-            logger.debug("Skipping duplicate {0}, already added to ZIM".format(url))
-            return
+        item_zim_path = normalize(HttpUrl(url))
 
         # if include_domains is set, only include urls from those domains
         if self.include_domains:
@@ -524,21 +652,46 @@ class Converter:
             if not any(
                 parts.netloc.endswith(domain) for domain in self.include_domains
             ):
-                logger.debug("Skipping url {0}, outside included domains".format(url))
+                logger.debug(f"Skipping url {url}, outside included domains")
                 return
 
-        if record.rec_type != "revisit":
+        if item_zim_path in self.added_zim_items:
+            logger.debug(f"Skipping duplicate {url}, already added to ZIM")
+            return
+
+        if record.rec_type == "response":
+            status_code = get_status_code(record)
+            if not isinstance(status_code, HTTPStatus):
+                logger.warning(
+                    f"Skipping record with unexpected HTTP return code {status_code} "
+                    f"{item_zim_path}"
+                )
+                return
+
+            if not can_process_status_code(status_code):
+                logger.debug(
+                    f"Skipping record with unprocessable HTTP return code {status_code}"
+                    f" {item_zim_path}"
+                )
+                return
+
+            if status_code_is_processable_redirect(status_code):
+                # no log, we will process it afterwards
+                return
+
             if self.is_self_redirect(record, url):
                 logger.debug("Skipping self-redirect: " + url)
                 return
 
-            try:
-                self.creator.add_item(WARCHeadersItem(record))
-            except RuntimeError as exc:
-                if not DUPLICATE_EXC_STR.match(str(exc)):
-                    raise exc
-
-            payload_item = WARCPayloadItem(record, self.head_insert, self.css_insert)
+            payload_item = WARCPayloadItem(
+                item_zim_path,
+                record,
+                self.pre_head_template,
+                self.post_head_template,
+                self.expected_zim_items,
+                self.missing_zim_paths,
+                self.js_modules,
+            )
 
             if len(payload_item.content) != 0:
                 try:
@@ -549,36 +702,16 @@ class Converter:
                 self.total_records += 1
                 self.update_stats()
 
-            self.indexed_urls.add(canonicalize(url))
+            self.added_zim_items.add(item_zim_path)
 
         elif (
-            record.rec_headers["WARC-Refers-To-Target-URI"] != url
-            and url not in self.revisits
-        ):
-            self.revisits[url] = record
-
-        self.add_fuzzy_match_record(url)
-
-    def add_fuzzy_match_record(self, url):
-        fuzzy_url = url
-        for rule in FUZZY_RULES:
-            fuzzy_url = rule["match"].sub(rule["replace"], url)
-            if fuzzy_url != url:
-                break
-
-        if fuzzy_url == url:
-            return
-
-        http_headers = StatusAndHeaders("302 Redirect", {"Location": url})
-
-        date = datetime.datetime.utcnow().isoformat()
-        builder = RecordBuilder()
-        record = builder.create_revisit_record(
-            fuzzy_url, "3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ", url, date, http_headers
-        )
-
-        self.revisits[fuzzy_url] = record
-        logger.debug("Adding fuzzy redirect {0} -> {1}".format(fuzzy_url, url))
+            record.rec_type == "revisit"
+            and record.rec_headers["WARC-Refers-To-Target-URI"] != url
+            and item_zim_path not in self.revisits
+        ):  # pragma: no branch
+            self.revisits[item_zim_path] = normalize(
+                HttpUrl(record.rec_headers["WARC-Refers-To-Target-URI"])
+            )
 
 
 def iter_warc_records(inputs):
@@ -586,5 +719,5 @@ def iter_warc_records(inputs):
     for filename in iter_file_or_dir(inputs):
         with open(filename, "rb") as fh:
             for record in buffering_record_iter(ArchiveIterator(fh), post_append=True):
-                if record.rec_type in ("resource", "response", "revisit"):
+                if record and record.rec_type in ("resource", "response", "revisit"):
                     yield record

@@ -7,8 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+-  Allow to specify a scraper suffix for the ZIM scraper metadata at the CLI (#168)
+
 ### Changed
 
+- Adopted Python bootstrap conventions (#152)
+- Change wording in logs about the return code 100 (which is not an error code)
 - Added checks in `converter.py` to verify output directory existence, logging appropriate error messages and cleanly exit if checks fail.
 - Added check for invalid zim file names
 - Changed default publisher metadata from 'Kiwix' to 'openZIM'

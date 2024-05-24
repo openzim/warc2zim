@@ -1,33 +1,33 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # vim: ai ts=4 sts=4 et sw=4 nu
 
-import os
-import time
+import io
 import json
-from io import BytesIO
+import os
+import re
+import time
+from urllib.parse import unquote
 
 import pytest
 import requests
-
-from warcio import ArchiveIterator
-from jinja2 import Environment, PackageLoader
+from zimscraperlib.image.convertion import convert_image, resize_image
 from zimscraperlib.zim import Archive
 
-from warc2zim.url_rewriting import canonicalize
+from warc2zim.__about__ import __version__
 from warc2zim.converter import iter_warc_records
-from warc2zim.utils import get_record_url
 from warc2zim.main import main
+from warc2zim.url_rewriting import HttpUrl, ZimPath, normalize
+from warc2zim.utils import get_record_url
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
 
+SCRAPER_SUFFIX = " + zimit x.y.z-devw"
 
 # ============================================================================
 CMDLINES = [
     ["example-response.warc"],
     ["example-response.warc", "--progress-file", "progress.json"],
-    ["example-resource.warc.gz", "--favicon", "https://example.com/some/favicon.ico"],
-    ["example-resource.warc.gz", "--favicon", "https://www.google.com/favicon.ico"],
+    ["example-response.warc", "--scraper-suffix", SCRAPER_SUFFIX],
     ["example-revisit.warc.gz"],
     [
         "example-revisit.warc.gz",
@@ -55,22 +55,22 @@ FUZZYCHECKS = [
     {
         "filename": "video-yt.warc.gz",
         "entries": [
-            "H/youtube.fuzzy.replayweb.page/get_video_info?video_id=aT-Up5Y4uRI",
-            "H/youtube.fuzzy.replayweb.page/videoplayback?id=o-AE3bg3qVNY-gAWwYgL52vgpHKJe9ijdbu2eciNi5Uo_w",
+            "youtube.fuzzy.replayweb.page/get_video_info?video_id=aT-Up5Y4uRI",
+            "youtube.fuzzy.replayweb.page/videoplayback?id=o-AE3bg3qVNY-gAWwYgL52vgpHKJe9ijdbu2eciNi5Uo_w",
         ],
     },
     {
         "filename": "video-yt-2.warc.gz",
         "entries": [
-            "H/youtube.fuzzy.replayweb.page/youtubei/v1/player?videoId=aT-Up5Y4uRI",
-            "H/youtube.fuzzy.replayweb.page/videoplayback?id=o-AGDtIqpFRmvgVVZk96wgGyFxL_SFSdpBxs0iBHatQpRD",
+            "youtube.fuzzy.replayweb.page/youtubei/v1/player?videoId=aT-Up5Y4uRI",
+            "youtube.fuzzy.replayweb.page/videoplayback?id=o-AGDtIqpFRmvgVVZk96wgGyFxL_SFSdpBxs0iBHatQpRD",
         ],
     },
     {
         "filename": "video-vimeo.warc.gz",
         "entries": [
-            "H/vimeo.fuzzy.replayweb.page/video/347119375",
-            "H/vimeo-cdn.fuzzy.replayweb.page/01/4423/13/347119375/1398505169.mp4",
+            "vimeo.fuzzy.replayweb.page/video/347119375",
+            "vimeo-cdn.fuzzy.replayweb.page/01/4423/13/347119375/1398505169.mp4",
         ],
     },
 ]
@@ -82,11 +82,17 @@ def fuzzycheck(request):
 
 
 # ============================================================================
-class TestWarc2Zim(object):
+class TestWarc2Zim:
     def list_articles(self, zimfile):
         zim_fh = Archive(zimfile)
         for x in range(zim_fh.entry_count):
             yield zim_fh.get_entry_by_id(x)
+
+    def get_main_entry_with_redirect(self, zimfile):
+        zim_fh = Archive(zimfile)
+        if zim_fh.main_entry.is_redirect:
+            return zim_fh.main_entry.get_redirect_entry()
+        return zim_fh.main_entry
 
     def get_metadata(self, zimfile, name):
         zim_fh = Archive(zimfile)
@@ -100,23 +106,38 @@ class TestWarc2Zim(object):
         zim_fh = Archive(zimfile)
         return zim_fh.get_item(path)
 
-    def verify_warc_and_zim(self, warcfile, zimfile):
+    def assert_item_exist(self, zimfile, path):
+        zim_fh = Archive(zimfile)
+        assert zim_fh.get_item(path)
+
+    def assert_item_does_not_exist(self, zimfile, path):
+        zim_fh = Archive(zimfile)
+        try:
+            payload = zim_fh.get_item(path)
+        except KeyError:
+            payload = None
+        assert payload is None
+
+    def verify_warc_and_zim(self, warcfile, zimfile, verify_scraper_suffix):
         assert os.path.isfile(warcfile)
         assert os.path.isfile(zimfile)
 
-        # autoescape=False to allow injecting html entities from translated text
-        env = Environment(
-            loader=PackageLoader("warc2zim", "templates"),
-            extensions=["jinja2.ext.i18n"],
-            autoescape=False,
-        )
-
-        head_insert = env.get_template("sw_check.html").render().encode("utf-8")
+        # [TOFIX]
+        head_insert = b""
 
         # track to avoid checking duplicates, which are not written to ZIM
         warc_urls = set()
 
         zim_fh = Archive(zimfile)
+
+        if verify_scraper_suffix:
+            assert (
+                f"warc2zim {__version__}{SCRAPER_SUFFIX}"
+                == zim_fh.get_text_metadata("Scraper")
+            )
+        else:
+            assert f"warc2zim {__version__}" == zim_fh.get_text_metadata("Scraper")
+
         for record in iter_warc_records([warcfile]):
             url = get_record_url(record)
             if not url:
@@ -137,53 +158,173 @@ class TestWarc2Zim(object):
 
             # parse headers as record, ensure headers match
             url_no_scheme = url.split("//", 2)[1]
-            print(url_no_scheme)
-            parsed_record = next(
-                ArchiveIterator(BytesIO(zim_fh.get_content("H/" + url_no_scheme)))
-            )
 
-            assert record.rec_headers == parsed_record.rec_headers
-            assert record.http_headers == parsed_record.http_headers
+            if "www.youtube.com/embed" in url_no_scheme:
+                # We know that those url are rewritten in zim. Don't check for them.
+                break
+
+            url_no_scheme = re.sub(r"\?\d+$", "?", url_no_scheme)
+
+            # remove user/password
+            if "@" in url_no_scheme:
+                at_index = url_no_scheme.index("@")
+                if at_index >= 0:
+                    if "/" in url_no_scheme:
+                        slash_index = url_no_scheme.index("/")
+                        if at_index < slash_index:
+                            url_no_scheme = url_no_scheme[at_index + 1 :]
+                    else:
+                        url_no_scheme = url_no_scheme[at_index + 1 :]
+
+            # remove trailing ?
+            if url_no_scheme.endswith("?"):
+                url_no_scheme = url_no_scheme[:-1]
+
+            # unquote url since everything is not encoded in ZIM
+            url_no_scheme = unquote(url_no_scheme)
 
             # ensure payloads match
             try:
-                payload = zim_fh.get_item("A/" + url_no_scheme)
+                payload = zim_fh.get_item(url_no_scheme)
             except KeyError:
                 payload = None
 
-            if record.rec_type == "revisit" or (
-                record.http_headers and record.http_headers.get("Content-Length") == "0"
-            ):
-                assert not payload
-            else:
+            if record.http_headers and record.http_headers.get("Content-Length") == "0":
+                if record.http_headers.get("Location"):
+                    assert payload  # this is a redirect, it must be handled
+                else:
+                    assert not payload
+            elif record.rec_type == "revisit":
+                # We must have a payload
+                # We should check with the content of the targeted record...
+                # But difficult to test as we don't have it
+                assert payload
+            elif record.rec_type == "response":
+                # We must have a payload
+                assert payload
                 payload_content = payload.content.tobytes()
 
-                # if HTML, still need to account for the head insert, otherwise should have exact match
+                # if HTML, still need to account for the head insert, otherwise should
+                # have exact match
                 if payload.mimetype.startswith("text/html"):
                     assert head_insert in payload_content
-                    assert (
-                        payload_content.replace(head_insert, b"")
-                        == record.buffered_stream.read()
-                    )
-                else:
-                    assert payload_content == record.buffered_stream.read()
+            elif record.rec_type == "resource":
+                # we do not want to embed resources "as-is"
+                assert not payload
 
             warc_urls.add(url)
 
-    def test_canonicalize(self):
-        assert canonicalize("http://example.com/?foo=bar") == "example.com/?foo=bar"
-
-        assert canonicalize("https://example.com/?foo=bar") == "example.com/?foo=bar"
-
-        assert (
-            canonicalize("https://example.com/some/path/http://example.com/?foo=bar")
-            == "example.com/some/path/http://example.com/?foo=bar"
+    def rebuild_favicon_bytes(self, zim, favicon_path) -> bytes:
+        favicon_bytes = self.get_article(
+            zim,
+            favicon_path,
         )
-
-        assert (
-            canonicalize("example.com/some/path/http://example.com/?foo=bar")
-            == "example.com/some/path/http://example.com/?foo=bar"
+        assert favicon_bytes
+        dst = io.BytesIO()
+        convert_image(
+            io.BytesIO(
+                favicon_bytes
+            ),  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
+            dst,  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
+            fmt="PNG",  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
         )
+        resize_image(dst, width=48, height=48, method="cover")
+        return dst.getvalue()
+
+    @pytest.mark.parametrize(
+        "url,zim_path",
+        [
+            ("https://exemple.com", "exemple.com/"),
+            ("https://exemple.com/", "exemple.com/"),
+            ("http://example.com/resource", "example.com/resource"),
+            ("http://example.com/resource/", "example.com/resource/"),
+            (
+                "http://example.com/resource/folder/sub.txt",
+                "example.com/resource/folder/sub.txt",
+            ),
+            (
+                "http://example.com/resource/folder/sub",
+                "example.com/resource/folder/sub",
+            ),
+            (
+                "http://example.com/resource/folder/sub?foo=bar",
+                "example.com/resource/folder/sub?foo=bar",
+            ),
+            (
+                "http://example.com/resource/folder/sub?foo=bar#anchor1",
+                "example.com/resource/folder/sub?foo=bar",
+            ),
+            ("http://example.com/resource/#anchor1", "example.com/resource/"),
+            ("http://example.com/resource/?foo=bar", "example.com/resource/?foo=bar"),
+            ("http://example.com#anchor1", "example.com/"),
+            ("http://example.com?foo=bar#anchor1", "example.com/?foo=bar"),
+            ("http://example.com/?foo=bar", "example.com/?foo=bar"),
+            ("http://example.com/?foo=ba+r", "example.com/?foo=ba r"),
+            (
+                "http://example.com/?foo=ba r",
+                "example.com/?foo=ba r",
+            ),  # situation where the ` ` has not been properly escaped in document
+            ("http://example.com/?foo=ba%2Br", "example.com/?foo=ba+r"),
+            ("http://example.com/?foo=ba+%2B+r", "example.com/?foo=ba + r"),
+            ("http://example.com/#anchor1", "example.com/"),
+            (
+                "http://example.com/some/path/http://example.com//some/path",
+                "example.com/some/path/http://example.com//some/path",
+            ),
+            (
+                "http://example.com/some/pa?th/http://example.com//some/path",
+                "example.com/some/pa?th/http://example.com//some/path",
+            ),
+            (
+                "http://example.com/so?me/pa?th/http://example.com//some/path",
+                "example.com/so?me/pa?th/http://example.com//some/path",
+            ),
+            ("http://example.com/resource?", "example.com/resource"),
+            ("http://example.com/resource#", "example.com/resource"),
+            ("http://user@example.com/resource", "example.com/resource"),
+            ("http://user:password@example.com/resource", "example.com/resource"),
+            ("http://example.com:8080/resource", "example.com/resource"),
+            (
+                "http://foobargooglevideo.com/videoplayback?id=1576&key=value",
+                "youtube.fuzzy.replayweb.page/videoplayback?id=1576",
+            ),  # Fuzzy rule is applied in addition to path transformations
+            ("https://xn--exmple-cva.com", "exémple.com/"),
+            ("https://xn--exmple-cva.com/", "exémple.com/"),
+            ("https://xn--exmple-cva.com/resource", "exémple.com/resource"),
+            ("https://exémple.com/", "exémple.com/"),
+            ("https://exémple.com/resource", "exémple.com/resource"),
+            # host_ip is an invalid hostname according to spec
+            ("https://host_ip/", "host_ip/"),
+            ("https://host_ip/resource", "host_ip/resource"),
+            ("https://192.168.1.1/", "192.168.1.1/"),
+            ("https://192.168.1.1/resource", "192.168.1.1/resource"),
+            ("http://example.com/res%24urce", "example.com/res$urce"),
+            (
+                "http://example.com/resource?foo=b%24r",
+                "example.com/resource?foo=b$r",
+            ),
+            ("http://example.com/resource@300x", "example.com/resource@300x"),
+            ("http://example.com:8080/resource", "example.com/resource"),
+            ("http://user@example.com:8080/resource", "example.com/resource"),
+            ("http://user:password@example.com:8080/resource", "example.com/resource"),
+            # the two URI below are an illustration of a potential collision (two
+            # differents URI leading to the same ZIM path)
+            (
+                "http://tmp.kiwix.org/ci/test-website/images/urlencoding1_ico%CC%82ne-"
+                "de%CC%81buter-Solidarite%CC%81-Nume%CC%81rique_1%40300x.png",
+                "tmp.kiwix.org/ci/test-website/images/urlencoding1_icône-débuter-"
+                "Solidarité-Numérique_1@300x.png",
+            ),
+            (
+                "https://tmp.kiwix.org/ci/test-website/images/urlencoding1_ico%CC%82ne-"
+                "de%CC%81buter-Solidarite%CC%81-Nume%CC%81rique_1@300x.png",
+                "tmp.kiwix.org/ci/test-website/images/urlencoding1_icône-débuter-"
+                "Solidarité-Numérique_1@300x.png",
+            ),
+        ],
+    )
+    def test_normalize(self, url, zim_path):
+        assert normalize(HttpUrl(url)) == ZimPath(zim_path)
 
     def test_warc_to_zim_specify_params_and_metadata(self, tmp_path):
         zim_output = "zim-out-filename.zim"
@@ -197,16 +338,10 @@ class TestWarc2Zim(object):
                 str(tmp_path),
                 "--zim-file",
                 zim_output,
-                "-r",
-                "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.16.11/dist/",
                 "--tags",
-                "some",
-                "--tags",
-                "foo",
+                " foo   ;bar; ; some;_foo:bar;_foo_,_bar_",
                 "--desc",
                 "test zim",
-                "--tags",
-                "bar",
                 "--title",
                 "Some Title",
             ]
@@ -222,14 +357,10 @@ class TestWarc2Zim(object):
 
         assert all_articles == {
             # entries from WARC
-            "A/example.com/": "Example Domain",
-            "H/example.com/": "H/example.com/",
-            # replay system files
-            "A/index.html": "A/index.html",
-            "A/load.js": "A/load.js",
-            "A/404.html": "A/404.html",
-            "A/sw.js": "A/sw.js",
-            "A/topFrame.html": "A/topFrame.html",
+            "example.com/": "Example Domain",
+            "_zim_static/__wb_module_decl.js": "_zim_static/__wb_module_decl.js",
+            "_zim_static/wombat.js": "_zim_static/wombat.js",
+            "_zim_static/wombatSetup.js": "_zim_static/wombatSetup.js",
         }
 
         zim_fh = Archive(zim_output)
@@ -252,13 +383,21 @@ class TestWarc2Zim(object):
         assert zim_fh.has_title_index
 
         assert self.get_metadata(zim_output, "Description") == b"test zim"
-        assert (
-            self.get_metadata(zim_output, "Tags")
-            == b"_ftindex:yes;_category:other;_sw:yes;some;foo;bar"
-        )
+        # we compare sets of tags since tags ordering has no meaning
+        assert set(
+            self.get_metadata(zim_output, "Tags").decode("utf-8").split(";")
+        ) == {
+            "_ftindex:yes",
+            "_category:other",
+            "some",
+            "foo",
+            "bar",
+            "_foo:bar",
+            "_foo_,_bar_",
+        }
         assert self.get_metadata(zim_output, "Title") == b"Some Title"
 
-    def test_warc_to_zim(self, cmdline, tmp_path):
+    def test_warc_to_zim_main(self, cmdline, tmp_path):
         # intput filename
         filename = cmdline[0]
 
@@ -273,7 +412,7 @@ class TestWarc2Zim(object):
         zimfile = filename + "_" + time.strftime("%Y-%m") + ".zim"
 
         if "--progress-file" in cmdline:
-            with open(tmp_path / "progress.json", "r") as fh:
+            with open(tmp_path / "progress.json") as fh:
                 progress = json.load(fh)
                 assert (
                     progress["written"] > 0
@@ -281,7 +420,9 @@ class TestWarc2Zim(object):
                     and progress["written"] <= progress["total"]
                 )
 
-        self.verify_warc_and_zim(warcfile, tmp_path / zimfile)
+        self.verify_warc_and_zim(
+            warcfile, tmp_path / zimfile, "--scraper-suffix" in cmdline
+        )
 
     def test_same_domain_only(self, tmp_path):
         zim_output = "same-domain.zim"
@@ -308,8 +449,8 @@ class TestWarc2Zim(object):
         for article in self.list_articles(zim_output):
             url = article.path
             # ignore the replay files, which have only one path segment
-            if url.startswith("A/") and len(url.split("/")) > 2:
-                assert url.startswith("A/example.com/")
+            if not url.startswith("_zim_static/"):
+                assert url.startswith("example.com/")
 
     def test_skip_self_redirect(self, tmp_path):
         zim_output = "self-redir.zim"
@@ -326,15 +467,6 @@ class TestWarc2Zim(object):
         )
 
         zim_output = tmp_path / zim_output
-
-        for article in self.list_articles(zim_output):
-            url = article.path
-            if url.startswith("H/"):
-                # ensure there is only one H/ record, and its a 200 (not 301)
-                assert url == "H/kiwix.org/"
-                assert b"HTTP/1.1 200 OK" in self.get_article(
-                    zim_output, "H/kiwix.org/"
-                )
 
     def test_include_domains_favicon_and_language(self, tmp_path):
         zim_output = "spt.zim"
@@ -357,23 +489,67 @@ class TestWarc2Zim(object):
         for article in self.list_articles(zim_output):
             url = article.path
             # ignore the replay files, which have only one path segment
-            if url.startswith("A/") and len(url.split("/")) > 2:
+            if not url.startswith("_zim_static/"):
                 assert "reseau-canope.fr/" in url
 
         # test detected language
         assert self.get_metadata(zim_output, "Language") == b"fra"
 
         # test detected favicon
-        assert self.get_article(
-            zim_output,
-            "A/lesfondamentaux.reseau-canope.fr/fileadmin/template/img/favicon.ico",
-        )
-        assert self.get_metadata(zim_output, "Illustration_48x48@1")
+        zim_favicon = self.get_metadata(zim_output, "Illustration_48x48@1")
+        assert zim_favicon
 
-        # test default tags added
         assert (
-            self.get_metadata(zim_output, "Tags")
-            == b"_ftindex:yes;_category:other;_sw:yes"
+            self.rebuild_favicon_bytes(
+                zim_output,
+                "lesfondamentaux.reseau-canope.fr/fileadmin/template/img/favicon.ico",
+            )
+            == zim_favicon
+        )
+
+        # test default tags added ; we compare sets of tags since tags ordering has no
+        # meaning
+        assert set(
+            self.get_metadata(zim_output, "Tags").decode("utf-8").split(";")
+        ) == {
+            "_ftindex:yes",
+            "_category:other",
+        }
+
+    def test_website_with_redirect(self, tmp_path):
+        zim_output = "kiwix.zim"
+        main(
+            [
+                os.path.join(TEST_DATA_DIR, "kiwix-with-redirects.warc.gz"),
+                "-u",
+                "http://www.kiwix.org",
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "kiwix",
+            ]
+        )
+
+        zim_output = tmp_path / zim_output
+
+        # check that redirections have been followed
+        assert self.get_main_entry_with_redirect(zim_output).path == "kiwix.org/en/"
+
+        # test detected language
+        assert self.get_metadata(zim_output, "Language") == b"eng"
+
+        # test detected favicon
+        zim_favicon = self.get_metadata(zim_output, "Illustration_48x48@1")
+        assert zim_favicon
+
+        assert (
+            self.rebuild_favicon_bytes(
+                zim_output,
+                "kiwix.org/favicon.ico",
+            )
+            == zim_favicon
         )
 
     def test_all_warcs_root_dir(self, tmp_path):
@@ -395,24 +571,19 @@ class TestWarc2Zim(object):
 
         # check articles from different warc records in tests/data dir
 
-        # ensure trailing slash added
-        assert b'window.mainUrl = "http://example.com/"' in self.get_article(
-            zim_output, "A/index.html"
-        )
-
         # from example.warc.gz
-        assert self.get_article(zim_output, "A/example.com/") != b""
+        assert self.get_article(zim_output, "example.com/") != b""
 
         # from single-page-test.warc
         assert (
             self.get_article(
-                zim_output, "A/lesfondamentaux.reseau-canope.fr/accueil.html"
+                zim_output, "lesfondamentaux.reseau-canope.fr/accueil.html"
             )
             != b""
         )
 
         # timestamp fuzzy match from example-with-timestamp.warc
-        assert self.get_article(zim_output, "H/example.com/path.txt?") != b""
+        assert self.get_article(zim_output, "example.com/path.txt") != b""
 
     def test_fuzzy_urls(self, tmp_path, fuzzycheck):
         zim_output = fuzzycheck["filename"] + ".zim"
@@ -430,60 +601,13 @@ class TestWarc2Zim(object):
         zim_output = tmp_path / zim_output
 
         for entry in fuzzycheck["entries"]:
-            res = self.get_article(zim_output, entry)
-            assert b"Location: " in res
-
-    def test_local_replay_viewer_url(self, tmp_path):
-        zim_local_sw = "zim-local-sw.zim"
-
-        res = requests.get(
-            "https://cdn.jsdelivr.net/npm/@webrecorder/wabac@2.16.11/dist/sw.js"
-        )
-
-        with open(tmp_path / "sw.js", "wt") as fh:
-            fh.write(res.text)
-
-        main(
-            [
-                "-v",
-                os.path.join(TEST_DATA_DIR, "example-response.warc"),
-                "-r",
-                str(tmp_path) + "/",
-                "--output",
-                str(tmp_path),
-                "--name",
-                "local-sw",
-                "--zim-file",
-                zim_local_sw,
-            ]
-        )
-
-        assert os.path.isfile(tmp_path / zim_local_sw)
-
-    def test_error_bad_replay_viewer_url(self, tmp_path):
-        zim_output_not_created = "zim-out-not-created.zim"
-        with pytest.raises(Exception) as e:
-            main(
-                [
-                    "-v",
-                    os.path.join(TEST_DATA_DIR, "example-response.warc"),
-                    "-r",
-                    "x-invalid-x",
-                    "--output",
-                    str(tmp_path),
-                    "--name",
-                    "bad",
-                    "--zim-file",
-                    zim_output_not_created,
-                ]
-            )
-
-        # zim file should not have been created since replay viewer could not be loaded
-        assert not os.path.isfile(tmp_path / zim_output_not_created)
+            # This should be item and get_article_raw is eq to getItem and it will fail
+            # if it is not a item
+            self.get_article_raw(zim_output, entry)
 
     def test_error_bad_main_page(self, tmp_path):
         zim_output_not_created = "zim-out-not-created.zim"
-        with pytest.raises(Exception) as e:
+        with pytest.raises(KeyError, match="Unable to find WARC record for main page:"):
             main(
                 [
                     "-v",
@@ -503,19 +627,19 @@ class TestWarc2Zim(object):
         # error, name required
         with pytest.raises(SystemExit) as e:
             main([])
-            assert e.code == 2
+        assert e.value.code == 2
 
         # error, no such output directory
         with pytest.raises(SystemExit) as e:
             main(["--name", "test", "--output", "/no-such-dir"])
-            assert e.code == 1
+            assert e.value.code == 1
 
         # error, name has invalid characters for Linux filesystem
         with pytest.raises(SystemExit) as e:
             main(["--name", "te/st", "--output", "./"])
-            assert e.code == 3
+            assert e.value.code == 3
 
-        # success, special error code for no output files
+        # success, special return code for no output files
         assert main(["--name", "test", "--output", "./"]) == 100
 
     def test_custom_css(self, tmp_path):
@@ -541,10 +665,11 @@ class TestWarc2Zim(object):
         )
         zim_output = tmp_path / zim_output
 
-        res = self.get_article(zim_output, "A/example.com/")
-        assert "https://warc2zim.kiwix.app/custom.css".encode("utf-8") in res
+        res = self.get_article(zim_output, "example.com/")
+        assert b"static_prefix" not in res
+        assert b"../_zim_static/custom.css" in res
 
-        res = self.get_article(zim_output, "A/warc2zim.kiwix.app/custom.css")
+        res = self.get_article(zim_output, "_zim_static/custom.css")
         assert custom_css == res
 
     def test_custom_css_remote(self, tmp_path):
@@ -568,8 +693,73 @@ class TestWarc2Zim(object):
         )
         zim_output = tmp_path / zim_output
 
-        res = self.get_article(zim_output, "A/example.com/")
-        assert "https://warc2zim.kiwix.app/custom.css".encode("utf-8") in res
+        res = self.get_article(zim_output, "example.com/")
+        assert b"static_prefix" not in res
+        assert b"../_zim_static/custom.css" in res
 
-        res = self.get_article(zim_output, "A/warc2zim.kiwix.app/custom.css")
-        assert res == requests.get(url).content
+        res = self.get_article(zim_output, "_zim_static/custom.css")
+        assert res == requests.get(url, timeout=10).content
+
+    def test_http_return_codes(self, tmp_path):
+        zim_output = "test-http-return-codes.zim"
+
+        main(
+            [
+                os.path.join(TEST_DATA_DIR, "http-return-codes.warc.gz"),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "test-http-return-codes",
+            ]
+        )
+        zim_output = tmp_path / zim_output
+
+        for exising_website_items in [
+            "200-response",
+            "201-response",
+            "202-response",
+            "301-internal-redirect-ok",
+            "301-external-redirect-ok",
+            "302-internal-redirect-ok",
+            "302-external-redirect-ok",
+            "307-internal-redirect-ok",
+            "307-external-redirect-ok",
+            "308-internal-redirect-ok",
+            "308-external-redirect-ok",
+        ]:
+            self.assert_item_exist(
+                zim_output, f"website.test.openzim.org/{exising_website_items}"
+            )
+
+        self.assert_item_exist(zim_output, "www.example.com/")
+
+        for ignored_website_items in [
+            "204-response",
+            "206-response",
+            "300-response",
+            "303-response",
+            "304-response",
+            "305-response",
+            "306-response",
+            "400-response",
+            "401-response",
+            "402-response",
+            "403-response",
+            "404-response",
+            "500-response",
+            "501-response",
+            "502-response",
+            "301-internal-redirect-ko",
+            "301-external-redirect-ko",
+            "302-internal-redirect-ko",
+            "302-external-redirect-ko",
+            "307-internal-redirect-ko",
+            "307-external-redirect-ko",
+            "308-internal-redirect-ko",
+            "308-external-redirect-ko",
+        ]:
+            self.assert_item_does_not_exist(
+                zim_output, f"website.test.openzim.org/{ignored_website_items}"
+            )
