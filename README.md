@@ -12,8 +12,34 @@ warc2zim provides a way to convert WARC files to ZIM, storing the WARC payload a
 Additionally, the [ReplayWeb.page](https://replayweb.page) is also added to the ZIM, creating a self-contained ZIM
 that can render its content in a modern browser.
 
+## Capabilities
+
+While we would like to support as many websites as possible, making an offline archive of a website obviously has some limitations.
+
+Scenario which are known to work well:
+- HTML and CSS documents
+- JS manipulating the DOM and/or doing simple fetch (preferably GET) requests
+  - E.g. JS manipulating the DOM to modify images, fetch remote stuff (JSON data, ...) is supposed to work
+  - POST requests support is fairly limited (at best, scraper replays the same response as it has been recorded)
+- Puny-encoded hostnames
+- Encoded URL path
+- URL query string
+- URL fragments
+- JS modules
+- HTML base href
+
 ## Known limitations
 
+- Any web site expecting a server to store live data and wanting to modifying those data (form, read/write api, ...) is not supported
+- Website using dynamic resources (dynamic URLs) fetch based on user-agent configuration (e.g. viewport), timestamp, unique ID
+  - E.g. if the viewport size is sent in every requests to fetch website images, this will not work since the URL built during the scrape will most likely be different than the URL built when the end-user read the ZIM content, and the ZIM reader won't find associated resource
+  - Scraper tries to do its best on few popular websites (e.g. Youtube embedded player) by getting rid of dynamic parts in URL during URL rewriting (with what is called fuzzy rules), but support is fairly very limited
+- For simplification, scraper assumes that:
+  - servers do not mix multiple ports with two different resources at same hostname and path. E.g. if `http://www.acme.com:80/resource1` and `http://www.acme.com:8080/resource1` both exist AND lead to different resources, the scraper will include in the ZIM only the first resource fetched and silently ignore all other resources in conflict
+  - corollary: servers do not mix HTTP and HTTPS with two different resources at same hostname and path. E.g. if `http://www.acme.com/resource1` and `https://www.acme.com/resource1` both exist AND lead to different resources, the scraper will include in the ZIM only the first resource fetched and silently ignore all other resources in conflict
+- Scraper does not store HTTP response headers: these headers are not stored inside the ZIM / not replayed ; any website requiring these will be broken
+- Scraper does not take into account HTTP request headers: if different request header values leads to two different page / resource, scraper is ignoring this information
+- User-Agent: corollary of the point above on HTTP request headers, scraper supposes a single User-Agent has been used to create the WARC files ; if the website is providing different content based on the User-Agent, only one will be used
 - HTTP return codes have known limitations:
   - in the `2xx` range, only `200`, `201`, `202` and `203` are supported ; others are simply ignored
   - in the `3xx` range, only `301`, `302`, `306` and `307` are supported if they redirect to a payload which is present in the WARC ; others are simply ignored
@@ -25,6 +51,17 @@ that can render its content in a modern browser.
     - Named character references are always lower-cased
     - This processing has some bad side-effects when attribute values were not escaped in the original HTML document. E.g. `<img src="image.png?param1=value1&param2=value2">` is transformed into `<img src="image.png%3Fparam1%3Dvalue1%C2%B6m2%3Dvalue2">` because URL was supposed to be `image.png?param1=value1¶m2=value2` because `&para` has been decoded to `¶`. HTML should have been `<img src="image.png?param1=value1&amp;param2=value2">` for the URL to be `image.png?param1=value1&param2=value2`
     - See https://github.com/openzim/warc2zim/issues/219 for more discussions / details / pointers
+- HTTP/2 support is working but limited to same limitations mentioned above
+- HTML/JS importmaps are not yet supported (see https://github.com/openzim/warc2zim/issues/230)
+- Redirections with `meta http-equiv` are not yet supported (see https://github.com/openzim/warc2zim/issues/237)
+- Web workers are not yet supported (see https://github.com/openzim/warc2zim/issues/272)
+- Service workers are not supported and will most probably never be
+
+It is also important to note that warc2zim is inherently limited to what is present inside the WARC. A bad WARC can only produce a bad ZIM. Garbage in, garbage out.
+
+It is hence very important to properly configure the system used to create the WARC. If zimit is used (and hence WebRecorder Browsertrix crawler), it is very important to properly configure scope type, mobile device used, behaviors (including custom ones needed on some sites) and login profile.
+
+Adding a custom CSS is also strongly recommended to hide features which won't work offline (e.g. search box which relies on a live search server).
 
 ## Usage
 
