@@ -275,6 +275,10 @@ class ArticleUrlRewriter:
         try:
             item_url = item_url.strip()
 
+            # Make case of standalone fragments more straightforward
+            if item_url.startswith("#"):
+                return item_url
+
             item_scheme = urlsplit(item_url).scheme
             if item_scheme and item_scheme not in ("http", "https"):
                 return item_url
