@@ -71,4 +71,9 @@
     redir /308-internal-redirect-ko /internal_redirect_missing.html 308
     redir /308-external-redirect-ko https://www.example.invalid 308
 
+    redir /bad-redir-loop-A /bad-redir-loop-B 307
+    redir /bad-redir-loop-B /bad-redir-loop-C 307
+    redir /bad-redir-loop-C /bad-redir-loop-D 307
+    redir /bad-redir-loop-D /bad-redir-loop-B 307
+
 }

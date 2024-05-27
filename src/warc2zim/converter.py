@@ -508,7 +508,7 @@ class Converter:
                 # to check than finishing in a dead loop
                 if final_redirect_target == self.redirections[final_redirect_target]:
                     logger.warning(
-                        f"Redirection to self found for {final_redirect_target}"
+                        f"Redirection to self found for {final_redirect_target.value}"
                     )
                     break
                 redirection_items.append(final_redirect_target)
@@ -534,8 +534,8 @@ class Converter:
                 # otherwise add it to a temporary list of items that will have to be
                 # dropped from the list of redirections to create
                 logger.warning(
-                    f"Redirection target of {redirect_source} is missing "
-                    f"({final_redirect_target} is not expected in the ZIM)"
+                    f"Redirection target of {redirect_source.value} is missing "
+                    f"({final_redirect_target.value} is not expected in the ZIM)"
                 )
                 redirections_to_ignore.add(redirect_source)
 
