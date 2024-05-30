@@ -9,7 +9,7 @@
             "replace": "youtube.fuzzy.replayweb.page/\\1\\2"
         },
         {
-            "pattern": "i\\.ytimg\\.com\\/vi\\/(.*?)\\/.*?\\.(\\w*?)(?:\\?|$)",
+            "pattern": "i\\.ytimg\\.com\\/vi\\/(.*?)\\/.*?\\.(\\w*?)(?:\\?.*|$)",
             "replace": "i.ytimg.com.fuzzy.replayweb.page/vi/\\1/thumbnail.\\2"
         },
         {
