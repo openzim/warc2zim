@@ -72,6 +72,9 @@ export function urlRewriteFunction(
 ) {
   if (!url) return url;
 
+  // Transform URL which might be an object (detected on Chromium browsers at least)
+  url = String(url);
+
   // Special stuff which is not really a URI but exists in the wild
   if (['#', '{', '*'].includes(url.substring(0, 1))) return url;
 
