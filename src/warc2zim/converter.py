@@ -482,33 +482,49 @@ class Converter:
 
         logger.debug(f"Preparing {len(self.redirections)} redirections")
         for redirect_source, redirect_target in self.redirections.items():
+
+            # if the redirect source has already been detected as a thing to ignore,
+            # simply continue
+            if redirect_source in redirections_to_ignore:
+                continue
+
             # if the URL is already expected, then just ignore the redirection
             if redirect_source in self.expected_zim_items:
                 redirections_to_ignore.add(redirect_source)
+                continue
 
             final_redirect_target = redirect_target
+            # accumulator to detect nested redirection loops
+            redirection_items = [redirect_source]
             # process redirection iteratively since the target of the redirection
             # might be a redirection itself
             while (
                 final_redirect_target in self.redirections
-                and final_redirect_target != redirect_source
+                and final_redirect_target not in redirection_items
+                and final_redirect_target not in self.expected_zim_items
             ):
                 # If redirection target is identical, we have finished looping
                 # This should not happen here / be handled upper-level, but it is better
                 # to check than finishing in a dead loop
                 if final_redirect_target == self.redirections[final_redirect_target]:
                     logger.warning(
-                        f"Redirection to self found for {final_redirect_target}"
+                        f"Redirection to self found for {final_redirect_target.value}"
                     )
                     break
+                redirection_items.append(final_redirect_target)
                 final_redirect_target = self.redirections[final_redirect_target]
 
-            if final_redirect_target == redirect_source:
+            if final_redirect_target in redirection_items:
                 # If the redirect target is the source ... we obviously have an issue
                 logger.warning(
-                    f"Redirection loop found for {redirect_source}, will be ignored"
+                    f"Redirection loop found for {redirect_source.value}, corresponding"
+                    " ZIMPaths will be ignored."
                 )
-                redirections_to_ignore.add(redirect_source)
+                for item in redirection_items:
+                    logger.warning(
+                        f"  - {item.value} redirects to {self.redirections[item].value}"
+                    )
+                    redirections_to_ignore.add(item)
             elif final_redirect_target in self.expected_zim_items:
                 # if final redirection target is including inside the ZIM, simply add
                 # the redirection source to the list of expected ZIM items so that URLs
@@ -518,8 +534,8 @@ class Converter:
                 # otherwise add it to a temporary list of items that will have to be
                 # dropped from the list of redirections to create
                 logger.warning(
-                    f"Redirection target of {redirect_source} is missing "
-                    f"({final_redirect_target} is not expected in the ZIM)"
+                    f"Redirection target of {redirect_source.value} is missing "
+                    f"({final_redirect_target.value} is not expected in the ZIM)"
                 )
                 redirections_to_ignore.add(redirect_source)
 

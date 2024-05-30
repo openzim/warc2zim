@@ -763,3 +763,36 @@ class TestWarc2Zim:
             self.assert_item_does_not_exist(
                 zim_output, f"website.test.openzim.org/{ignored_website_items}"
             )
+
+    def test_redirection_loops(self, tmp_path):
+        zim_output = "test-redir-loops.zim"
+
+        main(
+            [
+                os.path.join(TEST_DATA_DIR, "redir-loops.warc.gz"),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "test-redir-loops",
+            ]
+        )
+        zim_output = tmp_path / zim_output
+
+        for exising_website_items in [
+            "redirection-loops.html",
+        ]:
+            self.assert_item_exist(
+                zim_output, f"website.test.openzim.org/{exising_website_items}"
+            )
+
+        for ignored_website_items in [
+            "/bad-redir-loop-A",
+            "/bad-redir-loop-B",
+            "/bad-redir-loop-C",
+            "/bad-redir-loop-D",
+        ]:
+            self.assert_item_does_not_exist(
+                zim_output, f"website.test.openzim.org/{ignored_website_items}"
+            )
