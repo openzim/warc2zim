@@ -80,30 +80,6 @@ def test_no_rewrite(no_rewrite_content, no_js_notify):
             "<ul style='list-style: \">\"'>",
             '<ul style="list-style: &quot;&gt;&quot;;">',
         ),
-        ContentForTests(
-            '<script>{"window": "https://kiwix.org/path"}</script>',
-            (
-                "<script>var _____WB$wombat$assign$function_____ = function(name) "
-                "{return (self._wb_wombat && self._wb_wombat.local_init && "
-                "self._wb_wombat.local_init(name)) || self[name]; };\n"
-                "if (!self.__WB_pmw) { self.__WB_pmw = function(obj) "
-                "{ this.__WB_source = obj; return this; } }\n"
-                "{\n"
-                """let window = _____WB$wombat$assign$function_____("window");\n"""
-                "let globalThis = _____WB$wombat$assign$function_____"
-                """("globalThis");\n"""
-                """let self = _____WB$wombat$assign$function_____("self");\n"""
-                """let document = _____WB$wombat$assign$function_____("document");\n"""
-                """let location = _____WB$wombat$assign$function_____("location");\n"""
-                """let top = _____WB$wombat$assign$function_____("top");\n"""
-                """let parent = _____WB$wombat$assign$function_____("parent");\n"""
-                """let frames = _____WB$wombat$assign$function_____("frames");\n"""
-                """let opener = _____WB$wombat$assign$function_____("opener");\n"""
-                "let arguments;\n\n"
-                """{"window": "https://kiwix.org/path"}\n"""
-                "}</script>"
-            ),
-        ),
     ]
 )
 def escaped_content(request):
@@ -122,6 +98,52 @@ def test_escaped_content(escaped_content, no_js_notify):
         .content
     )
     assert transformed == escaped_content.expected_str
+
+
+@pytest.fixture(
+    params=[
+        ContentForTests(
+            '<script>document.title="HELLO";</script>',
+            (
+                "<script>var _____WB$wombat$assign$function_____ = function(name) "
+                "{return (self._wb_wombat && self._wb_wombat.local_init && "
+                "self._wb_wombat.local_init(name)) || self[name]; };\n"
+                "if (!self.__WB_pmw) { self.__WB_pmw = function(obj) "
+                "{ this.__WB_source = obj; return this; } }\n"
+                "{\n"
+                """let window = _____WB$wombat$assign$function_____("window");\n"""
+                "let globalThis = _____WB$wombat$assign$function_____"
+                """("globalThis");\n"""
+                """let self = _____WB$wombat$assign$function_____("self");\n"""
+                """let document = _____WB$wombat$assign$function_____("document");\n"""
+                """let location = _____WB$wombat$assign$function_____("location");\n"""
+                """let top = _____WB$wombat$assign$function_____("top");\n"""
+                """let parent = _____WB$wombat$assign$function_____("parent");\n"""
+                """let frames = _____WB$wombat$assign$function_____("frames");\n"""
+                """let opener = _____WB$wombat$assign$function_____("opener");\n"""
+                "let arguments;\n\n"
+                """document.title="HELLO";\n"""
+                "}</script>"
+            ),
+        ),
+    ]
+)
+def js_rewrites(request):
+    yield request.param
+
+
+def test_js_rewrites(js_rewrites, no_js_notify):
+    transformed = (
+        HtmlRewriter(
+            ArticleUrlRewriter(HttpUrl(f"http://{js_rewrites.article_url}"), set()),
+            "",
+            "",
+            no_js_notify,
+        )
+        .rewrite(js_rewrites.input_str)
+        .content
+    )
+    assert transformed == js_rewrites.expected_str
 
 
 def long_path_replace_test_content(input_: str, rewriten_url: str, article_url: str):
