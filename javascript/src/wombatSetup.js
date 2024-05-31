@@ -288,7 +288,7 @@ export function getWombatInfo(
     enable_auto_fetch: true,
     convert_post_to_get: true,
     target_frame: '___wb_replay_top_frame',
-    isSW: true,
+    isSW: false,
   };
 }
 
