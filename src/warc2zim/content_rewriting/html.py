@@ -88,9 +88,14 @@ class HtmlRewriter(HTMLParser):
         self.html_rewrite_context = tag  # default value if not overriden later on
         if tag == "script":
             script_type = self.extract_attr(attrs, "type")
-            self.html_rewrite_context = {"json": "json", "module": "js-module"}.get(
-                script_type or "", "js-classic"
-            )
+            self.html_rewrite_context = {
+                "application/json": "json",
+                "json": "json",
+                "module": "js-module",
+                "application/javascript": "js-classic",
+                "text/javascript": "js-classic",
+                "": "js-classic",
+            }.get(script_type or "", "unknown")
         elif tag == "link":
             link_rel = self.extract_attr(attrs, "rel")
             if link_rel == "modulepreload":
