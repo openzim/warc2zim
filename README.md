@@ -7,10 +7,13 @@
 [![PyPI - Supported Python versions](https://img.shields.io/pypi/pyversions/warc2zim.svg)](https://pypi.org/project/warc2zim)
 
 
-warc2zim provides a way to convert WARC files to ZIM, storing the WARC payload and WARC+HTTP headers separately.
+warc2zim converts WARC files to ZIM file. The resulting ZIM contains all WARC records, with "programming" records (HTML/CSS/JS/...) rewriten for proper offline operation.
 
-Additionally, the [ReplayWeb.page](https://replayweb.page) is also added to the ZIM, creating a self-contained ZIM
-that can render its content in a modern browser.
+The resulting ZIM is self-contained and can render properly in offline situations.
+
+Since warc2zim 2.0.0, service workers and HTTPs are not needed anymore for proper ZIM rendering (this was a big constraint of ZIM produced by warc2zim 1.x).
+
+WARC format being an archive of any website property, warc2zim is the perfect companion to turn any website into an offline content (see e.g. https://www.github.com/openzim/zimit for a scraper bundling the approach, transform a website URL into an offline ZIM content in a single command).
 
 ## Capabilities
 
@@ -58,7 +61,7 @@ Scenario which are known to work well:
 - Web workers are not yet supported (see https://github.com/openzim/warc2zim/issues/272)
 - Service workers are not supported and will most probably never be
 - Inline JS code inside an onxxx HTML event (e.g. onclick, onhover, ...) is rewritten, so for instance redirection to another handled with these events is working
-  - However since URL rewriting is performed with dynamic JS rewriting, at this stage scraper has no clue on what is inside the ZIM and what is external ; all URLs are hence supposed to be internal, which might break some dynamic redirection to an online website 
+  - However since URL rewriting is performed with dynamic JS rewriting, at this stage scraper has no clue on what is inside the ZIM and what is external ; all URLs are hence supposed to be internal, which might break some dynamic redirection to an online website
 
 It is also important to note that warc2zim is inherently limited to what is present inside the WARC. A bad WARC can only produce a bad ZIM. Garbage in, garbage out.
 

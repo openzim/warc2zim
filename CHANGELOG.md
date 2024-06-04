@@ -5,19 +5,22 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (as of version 1.4.0).
 
-## [Unreleased]
+## [2.0.0] - 2024-06-04
 
 ### Added
 
--  Allow to specify a scraper suffix for the ZIM scraper metadata at the CLI (#168)
+- Allow to specify a scraper suffix for the ZIM scraper metadata at the CLI (#168)
+- New test website to test many known situations supposed to be handled (#166)
 
 ### Changed
 
+- Replace **Service Worker** approach by **scraper-side rewriting** of static content (https://github.com/kiwix/overview/issues/95)
 - Adopted Python bootstrap conventions (#152)
+- Upgrade dependencies, especially move to **Python 3.12** (only) and zimscraperlib 3.3.2
 - Change wording in logs about the return code 100 (which is not an error code)
-- Added checks in `converter.py` to verify output directory existence, logging appropriate error messages and cleanly exit if checks fail.
-- Added check for invalid zim file names
-- Changed default publisher metadata from 'Kiwix' to 'openZIM'
+- Added checks in `converter.py` to verify output directory existence, logging appropriate error messages and cleanly exit if checks fail. (#106)
+- Added check for invalid zim file names (#232)
+- Changed default publisher metadata from 'Kiwix' to 'openZIM' (#150)
 
 ## [1.5.5] - 2024-01-18
 
