@@ -47,6 +47,7 @@ else:
             ]
         )
     )
+    print("JS rules generation completed successfully")
 
 py_code_template = """# THIS IS AN AUTOMATICALLY GENERATED FILE, DO NOT MODIFY DIRECTLY
 
@@ -67,3 +68,4 @@ else:
     (py_parent / "rules.py").absolute().write_text(
         JINJA_ENV.from_string(py_code_template).render(FUZZY_RULES=FUZZY_RULES)
     )
+    print("Python rules generation completed successfully")
