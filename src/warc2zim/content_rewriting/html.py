@@ -128,6 +128,7 @@ class HtmlRewriter(HTMLParser):
             self.transform_attrs(
                 attrs,
                 self.url_rewriter_existing if tag == "a" else self.url_rewriter_all,
+                ["integrity"] if tag == "script" or "link" else [],
             )
         )
 
@@ -226,10 +227,12 @@ class HtmlRewriter(HTMLParser):
         self,
         attrs: AttrsList,
         url_rewriter: UrlRewriterProto,
+        exclude_attrs: list[str],
     ) -> str:
         processed_attrs = (
             self.process_attr(attr_name, attr_value, url_rewriter)
             for attr_name, attr_value in attrs
+            if attr_name not in exclude_attrs
         )
         return " ".join(self.format_attr(*attr) for attr in processed_attrs)
 
