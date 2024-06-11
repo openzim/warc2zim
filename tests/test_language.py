@@ -15,6 +15,12 @@ from warc2zim.language import parse_language
         pytest.param("Chinese", "zho", id="chinese_full_1"),
         pytest.param("chinEse", "zho", id="chinese_full_2"),
         pytest.param("patois", "eng", id="unrecognized_bad_name"),
+        pytest.param("unknown,fra,unknown", "fra", id="ignore_unknown"),
+        pytest.param("eng,fra", "eng,fra", id="two_langs_1"),
+        pytest.param("fra,eng", "fra,eng", id="two_langs_2"),  # order must be preserved
+        pytest.param("  eng ,   fra    ", "eng,fra", id="two_langs_spaces"),
+        pytest.param("eng,fra,English", "eng,fra", id="duplicates"),
+        pytest.param("eng;fra", "eng", id="unrecognized_bad_separator"),
     ],
 )
 def test_parse_language(input_lang, expected_lang):
