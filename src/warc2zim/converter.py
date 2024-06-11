@@ -41,7 +41,6 @@ from zimscraperlib.constants import (
     RECOMMENDED_MAX_TITLE_LENGTH,
 )
 from zimscraperlib.download import stream_file
-from zimscraperlib.i18n import get_language_details
 from zimscraperlib.image.convertion import convert_image
 from zimscraperlib.image.transformation import resize_image
 from zimscraperlib.types import FALLBACK_MIME
@@ -55,6 +54,7 @@ from zimscraperlib.zim.metadata import (
 
 from warc2zim.constants import logger
 from warc2zim.items import StaticArticle, StaticFile, WARCPayloadItem
+from warc2zim.language import parse_language
 from warc2zim.url_rewriting import HttpUrl, ZimPath, normalize
 from warc2zim.utils import (
     can_process_status_code,
@@ -261,13 +261,8 @@ class Converter:
         self.retrieve_illustration()
         self.convert_illustration()
 
-        # make sure Language metadata is ISO-639-3
-        try:
-            lang_data = get_language_details(self.language)
-            self.language = lang_data["iso-639-3"]
-        except Exception:
-            logger.error(f"Invalid language setting `{self.language}`. Using `eng`.")
-            self.language = "eng"
+        # make sure Language metadata is valid ZIM Metadata
+        self.language = parse_language(self.language)
 
         # autoescape=False to allow injecting html entities from translated text
         self.env = Environment(
