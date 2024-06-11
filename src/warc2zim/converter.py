@@ -47,6 +47,7 @@ from zimscraperlib.types import FALLBACK_MIME
 from zimscraperlib.zim.creator import Creator
 from zimscraperlib.zim.metadata import (
     validate_description,
+    validate_language,
     validate_longdescription,
     validate_tags,
     validate_title,
@@ -242,6 +243,9 @@ class Converter:
                 validate_description("Description", self.description)
             if self.long_description:
                 validate_longdescription("LongDescription", self.long_description)
+            if self.language:
+                self.language = parse_language(self.language)
+                validate_language("Language", self.language)
             # Nota: we do not validate illustration since logic in the scraper is made
             # to always provide a valid image, at least a fallback transparent PNG and
             # final illustration is most probably not yet known at this stage
@@ -253,6 +257,8 @@ class Converter:
             return 100
 
         self.gather_information_from_warc()
+        # validate language again, should it have been automatically retrieved from WARC
+        validate_language("Language", self.language)
         if not self.main_path:
             raise ValueError("Unable to find main path, aborting")
         self.title = self.title or "Untitled"
@@ -260,9 +266,6 @@ class Converter:
             self.title = f"{self.title[0:29]}…"
         self.retrieve_illustration()
         self.convert_illustration()
-
-        # make sure Language metadata is valid ZIM Metadata
-        self.language = parse_language(self.language)
 
         # autoescape=False to allow injecting html entities from translated text
         self.env = Environment(
@@ -579,9 +582,11 @@ class Converter:
             # HTML5 Standard
             lang_elem = soup.find("html", attrs={"lang": True})
             if lang_elem:
-                self.language = lang_elem.attrs[  # pyright: ignore[reportGeneralTypeIssues ,reportAttributeAccessIssue]
-                    "lang"
-                ]
+                self.language = parse_language(
+                    lang_elem.attrs[  # pyright: ignore[reportGeneralTypeIssues ,reportAttributeAccessIssue]
+                        "lang"
+                    ]
+                )
                 return
 
             # W3C recommendation
@@ -589,17 +594,21 @@ class Converter:
                 "meta", {"http-equiv": "content-language", "content": True}
             )
             if lang_elem:
-                self.language = lang_elem.attrs[  # pyright: ignore[reportGeneralTypeIssues ,reportAttributeAccessIssue]
-                    "content"
-                ]
+                self.language = parse_language(
+                    lang_elem.attrs[  # pyright: ignore[reportGeneralTypeIssues ,reportAttributeAccessIssue]
+                        "content"
+                    ]
+                )
                 return
 
             # SEO Recommendations
             lang_elem = soup.find("meta", {"name": "language", "content": True})
             if lang_elem:
-                self.language = lang_elem.attrs[  # pyright: ignore[reportGeneralTypeIssues ,reportAttributeAccessIssue]
-                    "content"
-                ]
+                self.language = parse_language(
+                    lang_elem.attrs[  # pyright: ignore[reportGeneralTypeIssues ,reportAttributeAccessIssue]
+                        "content"
+                    ]
+                )
                 return
 
     def retrieve_illustration(self):
