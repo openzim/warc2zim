@@ -257,7 +257,12 @@ class Converter:
             return 100
 
         self.gather_information_from_warc()
-        # validate language again, should it have been automatically retrieved from WARC
+        # Fallback language
+        if not self.language:
+            logger.warning("No valid ZIM language, fallbacking to `eng`.")
+
+            self.language = "eng"
+        # validate language definitely, could have been retrieved from WARC or fallback
         validate_language("Language", self.language)
         if not self.main_path:
             raise ValueError("Unable to find main path, aborting")
