@@ -129,6 +129,16 @@ class HtmlRewriter(HTMLParser):
                 attrs,
                 self.url_rewriter_existing if tag == "a" else self.url_rewriter_all,
                 ["integrity"] if tag == "script" or "link" else [],
+                rewrite_content_attr=(
+                    tag == "meta"
+                    and any(
+                        attr_name.lower() == "http-equiv"
+                        and attr_value
+                        and attr_value.lower() == "content-type"
+                        for (attr_name, attr_value) in attrs
+                    )
+                ),
+                rewrite_charset_attr=(tag == "meta"),
             )
         )
 
@@ -190,6 +200,9 @@ class HtmlRewriter(HTMLParser):
         attr_name: str,
         attr_value: str | None,
         url_rewriter: UrlRewriterProto,
+        *,
+        rewrite_content_attr: bool,
+        rewrite_charset_attr: bool,
     ) -> tuple[str, str | None]:
         if not attr_value:
             return (attr_name, attr_value)
@@ -215,6 +228,14 @@ class HtmlRewriter(HTMLParser):
             return (attr_name, self.css_rewriter.rewrite_inline(attr_value))
         if attr_name.startswith("on") and not attr_name.startswith("on-"):
             return (attr_name, self.js_rewriter.rewrite(attr_value))
+        if attr_name == "content" and rewrite_content_attr:
+            # rewrite <meta http-equiv="Content-Type" content="text/html; charset=xx" />
+            # inside ZIM, charset is always UTF-8
+            return (attr_name, "text/html; charset=UTF-8")
+        if attr_name == "charset" and rewrite_charset_attr:
+            # rewrite <meta charset="xx" />
+            # inside ZIM, charset is always UTF-8
+            return (attr_name, "UTF-8")
         return (attr_name, attr_value)
 
     def format_attr(self, name: str, value: str | None) -> str:
@@ -228,9 +249,18 @@ class HtmlRewriter(HTMLParser):
         attrs: AttrsList,
         url_rewriter: UrlRewriterProto,
         exclude_attrs: list[str],
+        *,
+        rewrite_content_attr: bool,
+        rewrite_charset_attr: bool,
     ) -> str:
         processed_attrs = (
-            self.process_attr(attr_name, attr_value, url_rewriter)
+            self.process_attr(
+                attr_name,
+                attr_value,
+                url_rewriter,
+                rewrite_content_attr=rewrite_content_attr,
+                rewrite_charset_attr=rewrite_charset_attr,
+            )
             for attr_name, attr_value in attrs
             if attr_name not in exclude_attrs
         )

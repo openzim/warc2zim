@@ -838,3 +838,57 @@ def test_rewrite_onxxx_event(rewrite_onxxx_content, no_js_notify):
         .content
         == rewrite_onxxx_content.expected_str
     )
+
+
+@pytest.fixture(
+    params=[
+        ContentForTests(
+            '<html><head><meta charset="UTF-8"></head><body>whatever</body></html>',
+        ),
+        ContentForTests(
+            '<html><head><meta charset="ISO-8859-1"></head>'
+            "<body>whatever</body></html>",
+            '<html><head><meta charset="UTF-8"></head><body>whatever</body></html>',
+        ),
+        ContentForTests(
+            "<html><head>"
+            '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">'
+            "</head><body>whatever</body></html>",
+        ),
+        ContentForTests(
+            "<html><head>"
+            '<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">'
+            "</head><body>whatever</body></html>",
+            "<html><head>"
+            '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">'
+            "</head><body>whatever</body></html>",
+        ),
+        ContentForTests(
+            '<html><head><bla charset="ISO-8859-1"></head><body>whatever</body></html>',
+        ),  # do not rewrite other tags mentionning a charset
+        ContentForTests(
+            "<html><head>"
+            '<meta http-equiv="Foo" content="text/html; charset=ISO-8859-1">'
+            "</head><body>whatever</body></html>",
+        ),  # do not rewrite other http-equiv mentionning a charset
+    ]
+)
+def rewrite_meta_charset_content(request):
+    yield request.param
+
+
+def test_rewrite_meta_charset(rewrite_meta_charset_content, no_js_notify):
+    assert (
+        HtmlRewriter(
+            ArticleUrlRewriter(
+                HttpUrl(f"http://{rewrite_meta_charset_content.article_url}"),
+                set(),
+            ),
+            "",
+            "",
+            no_js_notify,
+        )
+        .rewrite(rewrite_meta_charset_content.input_str)
+        .content
+        == rewrite_meta_charset_content.expected_str
+    )
