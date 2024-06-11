@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Drop `integrity` attribute in HTML `<script>` and `<link>` tags (#298)
+- Use automatic detection of content encoding also for JS, JSON and CSS files (#301)
 
 ## [2.0.0] - 2024-06-04
 
