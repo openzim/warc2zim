@@ -122,6 +122,64 @@ class Rewriter:
         return ("", self.content)
 
     def get_rewrite_mode(self, record, mimetype):
+        """Get current record rewrite mode
+
+        The rewrite mode is used to decide which kind of resource we have (html, css,
+        js, ...) and this is used to decide how it should be parsed and rewritten.
+        """
+        mimetype_rewrite_mode = self.get_mimetype_rewrite_mode(record, mimetype)
+
+        resourcetype = record.rec_headers["WARC-Resource-Type"]
+        if not resourcetype:
+            return mimetype_rewrite_mode  # fallback for WARCs without resource type
+        if not isinstance(resourcetype, str):
+            raise Exception(f"Unsupported resourcetype class: {type(resourcetype)}")
+        resourcetype = resourcetype.lower().strip()
+
+        resourcetype_rewrite_mode = self.get_resourcetype_rewrite_mode(
+            record, resourcetype, mimetype
+        )
+
+        if mimetype_rewrite_mode != resourcetype_rewrite_mode:
+            logger.warning(
+                f"Rewrite mode has changed in 2.0.1 for {self.path.value} record: was "
+                f"{mimetype_rewrite_mode}, now is {resourcetype_rewrite_mode} ("
+                f"mimetype: {mimetype}, resourcetype: {resourcetype})"
+            )
+
+    def get_resourcetype_rewrite_mode(self, record, resourcetype, mimetype):
+        """Get current record rewrite mode based on WARC-Resource-Type and mimetype"""
+
+        if resourcetype == "document":
+            # TODO : Handle header "Accept" == "application/json"
+            if getattr(record, "method", "GET") == "GET":
+                return "html"
+
+            return None
+
+        if resourcetype == "stylesheet":
+            return "css"
+
+        if resourcetype in ["script", "fetch"] and (
+            mimetype == "application/json" or self.path.value.endswith(".json")
+        ):
+            return "json"
+
+        if resourcetype == "script" and mimetype in [
+            "text/javascript",
+            "application/javascript",
+            "application/x-javascript",
+        ]:
+            if extract_jsonp_callback(self.orig_url_str):
+                return "jsonp"
+
+            return "javascript"
+
+        return None
+
+    def get_mimetype_rewrite_mode(self, record, mimetype):
+        """Get current record rewrite mode based on mimetype"""
+
         if mimetype == "text/html":
             if getattr(record, "method", "GET") == "POST":
                 return None
