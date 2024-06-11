@@ -186,7 +186,7 @@ class Rewriter:
 
     @no_title
     def rewrite_css(self) -> str | bytes:
-        return CssRewriter(self.url_rewriter, base_href=None).rewrite(self.content)
+        return CssRewriter(self.url_rewriter, base_href=None).rewrite(self.content_str)
 
     @no_title
     def rewrite_js(self, opts: dict[str, Any]) -> str | bytes:
@@ -197,11 +197,11 @@ class Rewriter:
             notify_js_module=self.js_module_found,
             base_href=None,
         )
-        return rewriter.rewrite(self.content.decode(), opts)
+        return rewriter.rewrite(self.content_str, opts)
 
     @no_title
     def rewrite_jsonp(self) -> str | bytes:
-        content = self.content.decode()
+        content = self.content_str
         match = JSONP_REGEX.match(content)
         if not match:
             return content
