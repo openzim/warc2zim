@@ -1,6 +1,6 @@
 [build-system]
 # jinja2 is required to generate JS and Python rules at build time
-requires = ["hatchling", "hatch-openzim==0.2.1", "jinja2==3.1.3"]
+requires = ["hatchling", "hatch-openzim==0.2.1", "jinja2==3.1.4"]
 build-backend = "hatchling.build"
 
 [project]
@@ -10,16 +10,16 @@ description = "Convert WARC to ZIM"
 readme = "README.md"
 dependencies = [
   "warcio==1.7.4",
-  "requests==2.31.0",
+  "requests==2.32.3",
   "zimscraperlib==3.3.2",
-  "jinja2==3.1.3",
+  "jinja2==3.1.4",
   "chardet==5.2.0",
   # to support possible brotli content in warcs, must be added separately
   "brotlipy==0.7.0",
   "cdxj_indexer==1.4.5",
   "tinycss2==1.3.0",
   "beautifulsoup4==4.12.3", # used to parse base href
-  "lxml==5.2.1", # used by beautifulsoup4 for parsing html
+  "lxml==5.2.2", # used by beautifulsoup4 for parsing html
 ]
 dynamic = ["authors", "classifiers", "keywords", "license", "version", "urls"]
 
@@ -39,17 +39,17 @@ scripts = [
 ]
 lint = [
   "black==24.4.2",
-  "ruff==0.4.3",
+  "ruff==0.4.8",
 ]
 check = [
-  "pyright==1.1.361",
+  "pyright==1.1.367",
 ]
 test = [
-  "pytest==8.2.0",
-  "coverage==7.5.0",
+  "pytest==8.2.2",
+  "coverage==7.5.3",
 ]
 dev = [
-  "pre-commit==3.6.2",
+  "pre-commit==3.7.1",
   "debugpy==1.8.1",
   "warc2zim[scripts]",
   "warc2zim[lint]",
