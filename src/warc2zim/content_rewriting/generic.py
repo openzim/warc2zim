@@ -162,12 +162,12 @@ class Rewriter:
         if resourcetype == "stylesheet":
             return "css"
 
-        if resourcetype in ["script", "fetch"] and (
+        if resourcetype in ["script", "fetch", "xhr"] and (
             mimetype == "application/json" or self.path.value.endswith(".json")
         ):
             return "json"
 
-        if resourcetype == "script" and mimetype in [
+        if resourcetype in ["script", "xhr"] and mimetype in [
             "text/javascript",
             "application/javascript",
             "application/x-javascript",
