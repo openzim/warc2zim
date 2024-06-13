@@ -796,3 +796,31 @@ class TestWarc2Zim:
             self.assert_item_does_not_exist(
                 zim_output, f"website.test.openzim.org/{ignored_website_items}"
             )
+
+    def test_content_resource_types(self, tmp_path):
+        zim_output = "tests_en_content-resource-types.zim"
+
+        main(
+            [
+                os.path.join(TEST_DATA_DIR, "content-resource-types.warc.gz"),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "tests_en_content-resource-types",
+            ]
+        )
+        zim_output = tmp_path / zim_output
+
+        res = self.get_article(
+            zim_output, "website.test.openzim.org/content-types/index.html"
+        )
+        assert b"<!-- WB Insert -->" in res  # simple check that rewriting has been done
+
+        for js_file in [
+            "website.test.openzim.org/content-types/script1.js",
+            "website.test.openzim.org/content-types/script2.js",
+        ]:
+            res = self.get_article(zim_output, js_file)
+            assert b"wombat" in res  # simple check that rewriting has been done

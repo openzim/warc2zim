@@ -147,6 +147,8 @@ class Rewriter:
                 f"mimetype: {mimetype}, resourcetype: {resourcetype})"
             )
 
+        return resourcetype_rewrite_mode
+
     def get_resourcetype_rewrite_mode(self, record, resourcetype, mimetype):
         """Get current record rewrite mode based on WARC-Resource-Type and mimetype"""
 
