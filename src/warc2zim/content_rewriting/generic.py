@@ -147,6 +147,8 @@ class Rewriter:
                 f"mimetype: {mimetype}, resourcetype: {resourcetype})"
             )
 
+        return resourcetype_rewrite_mode
+
     def get_resourcetype_rewrite_mode(self, record, resourcetype, mimetype):
         """Get current record rewrite mode based on WARC-Resource-Type and mimetype"""
 
@@ -160,12 +162,12 @@ class Rewriter:
         if resourcetype == "stylesheet":
             return "css"
 
-        if resourcetype in ["script", "fetch"] and (
+        if resourcetype in ["script", "fetch", "xhr"] and (
             mimetype == "application/json" or self.path.value.endswith(".json")
         ):
             return "json"
 
-        if resourcetype == "script" and mimetype in [
+        if resourcetype in ["script", "xhr"] and mimetype in [
             "text/javascript",
             "application/javascript",
             "application/x-javascript",
