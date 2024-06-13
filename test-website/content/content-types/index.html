@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Test website</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="../icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="../icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="../icons/favicon-16x16.png">
+  <link rel="manifest" href="../icons/site.webmanifest">
+  <link rel="shortcut icon" href="../icons/favicon.ico">
+  <link rel="stylesheet" href="./style1.css">
+  <link rel="stylesheet" href="./style2.css">
+  <style>
+    .status {
+        color: red;
+    }
+    .status.green {
+        color: green;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h2>Tests of records with some missing or bad content-type headers</h2>
+
+  <p>
+    An image should be displayed here:
+    <img src="image1.png">
+  </p>
+  <p>
+    And mostly same image should be displayed here:
+    <img src="image2.png">
+  </p>
+  <p>Open <a href="./small.pdf">a PDF</a></p>
+  <p class="green1">This text must be in green.</p>
+  <p class="green2">This text must also be in green.</p>
+  <p>Something should be loaded here from JS: <span class="status" id="span01" >I'm not OK</span></p>
+  <p>Something also should be loaded here from JS: <span class="status" id="span02" >I'm not OK</span></p>
+  <script src="./script1.js"></script>
+  <script src="./script2.js"></script>
+</body>
+</html>

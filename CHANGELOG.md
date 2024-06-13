@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Use the new `WARC-Resource-Type` header to decide rewrite mode (when present in WARC) (#296)
+
 ### Fixed
 
 - Drop `integrity` attribute in HTML `<script>` and `<link>` tags (#298)

@@ -76,4 +76,12 @@
     redir /bad-redir-loop-C /bad-redir-loop-D 307
     redir /bad-redir-loop-D /bad-redir-loop-B 307
 
+    header /content-types/script1.js Content-Type application/javascript
+    header /content-types/script2.js Content-Type text/javascript
+    header /content-types/style1.css Content-Type text/css
+    header /content-types/style2.css Content-Type idontexist
+    header /content-types/image1.png Content-Type idontexist
+    header /content-types/image2.png Content-Type text/html
+    header /content-types/content2.json Content-Type idontexist
+
 }
