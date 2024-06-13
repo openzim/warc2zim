@@ -5,11 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (as of version 1.4.0).
 
-## [Unreleased]
+## [2.0.1] - 2024-06-13
+
+### Added
+
+- Add support for multiple languages in `--lang` CLI argument (#300)
 
 ### Changed
 
 - Use the new `WARC-Resource-Type` header to decide rewrite mode (when present in WARC) (#296)
+- Upgrade Python dependencies + wombat.js 3.7.5
 
 ### Fixed
 
