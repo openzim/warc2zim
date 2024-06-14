@@ -63,6 +63,7 @@ class Rewriter:
         existing_zim_paths: set[ZimPath],
         missing_zim_paths: set[ZimPath] | None,
         js_modules: set[ZimPath],
+        charsets_to_try: list[str],
     ):
         self.content = get_record_content(record)
 
@@ -78,24 +79,11 @@ class Rewriter:
 
         self.rewrite_mode = self.get_rewrite_mode(record, mimetype)
         self.js_modules = js_modules
+        self.charsets_to_try = charsets_to_try
 
     @property
     def content_str(self) -> str:
-        try:
-            result = to_string(self.content, self.encoding)
-            if self.encoding and result.encoding and result.encoding != self.encoding:
-                logger.warning(
-                    f"Encoding issue, '{result.encoding}' has been used instead of "
-                    f"'{self.encoding}' to decode content of '{self.orig_url_str}'"
-                )
-            if result.chars_ignored:
-                logger.warning(
-                    "Encoding issue, some chars had to be ignored to properly decode "
-                    f"content of '{self.orig_url_str}' with '{result.encoding}'"
-                )
-            return result.value
-        except ValueError as e:
-            raise RuntimeError(f"Impossible to decode item {self.path.value}") from e
+        return to_string(self.content, self.encoding, self.charsets_to_try)
 
     def rewrite(
         self, pre_head_template: Template, post_head_template: Template

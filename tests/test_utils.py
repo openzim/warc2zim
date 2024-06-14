@@ -1,4 +1,7 @@
+import json
+from collections.abc import Generator
 from dataclasses import dataclass
+from pathlib import Path
 
 import pytest
 
@@ -25,7 +28,9 @@ class EncodedForTest:
 @pytest.fixture(
     params=[
         "Simple ascii content",
-        "A content with non ascii char éœo€ð",
+        "A content with non ascii chars éœo€ð",
+        "Latin1 contént",
+        "Latin2 conteňt",
         "这是中文文本",  # "This is a chinese text" (in chinese)
     ]
 )
@@ -40,6 +45,7 @@ def content(request):
         "utf-16",
         "utf-32",
         "latin1",
+        "latin2",
         "gb2312",
         "gbk",
     ]
@@ -53,192 +59,38 @@ def simple_encoded_content(content, encoding):
     return EncodedForTest(content, encoding)
 
 
-def test_decode(simple_encoded_content):
+def test_decode_http_header(simple_encoded_content):
     if not simple_encoded_content.valid:
         # Nothing to test
         return
-    result = to_string(simple_encoded_content.encoded, None)
-    assert result.value == simple_encoded_content.content
-    assert result.encoding
-    assert not result.chars_ignored
-
-
-@pytest.fixture(
-    params=[
-        "ascii",
-        "utf-8",
-        "utf-16",
-        "utf-32",
-        "latin1",
-        "gb2312",
-        "gbk",
-        "wrong-encoding",
-    ]
-)
-def declared_encoding(request):
-    return request.param
-
-
-# This is a set of content/encoding/decoding that we know to fail.
-# For exemple, the content "Simple ascii content" encoded using ascii, can be decoded
-# by utf-16. However, it doesn't mean that it decoded it correctly.
-# In this case, "utf-16" decoded it as "...."
-# And this combination is not only based on the tuple encoding/decoding.
-# The content itself may inpact if we can decode the bytes, and so if we try heuristics
-# or not. No real choice to maintain a dict of untestable configuration.
-FAILING_DECODE_COMBINATION = {
-    # Encodings/decodings failing for simple ascii content
-    "Simple ascii content": {
-        # Decoding failing for simple ascii content encoded in ascii
-        "ascii": ["utf-16"],
-        # Decoding failing for simple ascii content encoded in utf-8
-        "utf-8": [
-            "utf-16",
-            "utf-32",
-            "gb2312",
-            "gbk",
-        ],
-        "utf-16": ["latin1"],
-        "utf-32": ["utf-16", "latin1"],
-        "latin1": ["utf-16"],
-        "gb2312": ["utf-16"],
-        "gbk": ["utf-16"],
-    },
-    "A content with non ascii char éœo€ð": {
-        "ascii": [],
-        "utf-8": ["utf-16", "latin1"],
-        "utf-16": ["latin1"],
-        "utf-32": ["utf-16", "latin1"],
-        "latin1": [],
-        "gb2312": [],
-        "gbk": [],
-    },
-    "这是中文文本": {
-        "ascii": [],
-        "utf-8": ["utf-16", "latin1"],
-        "utf-16": ["latin1"],
-        "utf-32": ["utf-16", "latin1"],
-        "latin1": [],
-        "gb2312": ["utf-16", "latin1"],
-        "gbk": ["utf-16", "latin1"],
-    },
-}
+    assert (
+        to_string(simple_encoded_content.encoded, simple_encoded_content.encoding, [])
+        == simple_encoded_content.content
+    )
 
 
 @dataclass
-class DeclaredEncodedForTest(EncodedForTest):
-    declared_encoding: str
-    correct: bool
-
-    def __init__(self, content: str, encoding: str, declared_encoding: str):
-        super().__init__(content, encoding)
-        self.declared_encoding = declared_encoding
-        self.correct = self.valid
-        if (
-            self.valid
-            and content in FAILING_DECODE_COMBINATION
-            and declared_encoding in FAILING_DECODE_COMBINATION[content][encoding]
-        ):
-            self.correct = False
+class DeclaredHtmlEncodedForTest(EncodedForTest):
+    def __init__(self, content: str, encoding: str):
+        html_content = f'<html><meta charset="{encoding}"><body>{content}</body></html>'
+        super().__init__(html_content, encoding)
 
 
 @pytest.fixture
-def declared_encoded_content(content, encoding, declared_encoding):
-    return DeclaredEncodedForTest(content, encoding, declared_encoding)
+def declared_html_encoded_content(content, encoding):
+    return DeclaredHtmlEncodedForTest(content, encoding)
 
 
-def test_declared_decode(declared_encoded_content):
-    test_case = declared_encoded_content
-    if not test_case.valid:
-        return
-
-    result = to_string(test_case.encoded, test_case.declared_encoding)
-    if test_case.correct:
-        assert result.value == test_case.content
-        assert result.encoding
-        assert not result.chars_ignored
-
-
-# This is a set of content/encoding/decoding that we know to fail.
-# For exemple, the content "Simple ascii content" encoded using ascii, can be decoded
-# by utf-16. However, it doesn't mean that it decoded it correctly.
-# In this case, "utf-16" decoded it as "...."
-# And this combination is not only based on the tuple encoding/decoding.
-# The content itself may inpact if we can decode the bytes, and so if we try heuristics
-# or not. No real choice to maintain a dict of untestable configuration.
-FAILING_DECODE_HTML_COMBINATION = {
-    # All encoding/declared_encodingcoding failing for simple ascii content
-    "Simple ascii content": {
-        "ascii": [],
-        "utf-8": [],
-        "utf-16": [],
-        "utf-32": [],
-        "latin1": [],
-        "gb2312": [],
-        "gbk": [],
-    },
-    "A content with non ascii char éœo€ð": {
-        "ascii": [],
-        "utf-8": ["latin1"],
-        "utf-16": [],
-        "utf-32": [],
-        "latin1": [],
-        "gb2312": [],
-        "gbk": [],
-    },
-    "这是中文文本": {
-        "ascii": [],
-        "utf-8": ["latin1"],
-        "utf-16": [],
-        "utf-32": [],
-        "latin1": [],
-        "gb2312": ["latin1"],
-        "gbk": ["latin1"],
-    },
-}
-
-
-@dataclass
-class DeclaredHtmlEncodedForTest(DeclaredEncodedForTest):
-    declared_encoding: str
-    correct: bool
-
-    def __init__(self, content: str, encoding: str, declared_encoding: str):
-        html_content = (
-            f'<html><meta charset="{declared_encoding}"><body>{content}</body></html>'
-        )
-
-        super().__init__(html_content, encoding, declared_encoding)
-        self.correct = self.valid
-        if (
-            self.valid
-            and declared_encoding in FAILING_DECODE_HTML_COMBINATION[content][encoding]
-        ):
-            self.correct = False
-
-
-@pytest.fixture
-def declared_html_encoded_content(content, encoding, declared_encoding):
-    return DeclaredHtmlEncodedForTest(content, encoding, declared_encoding)
-
-
-def test_declared_decode_html(declared_html_encoded_content):
+def test_decode_html_header(declared_html_encoded_content):
     test_case = declared_html_encoded_content
     if not test_case.valid:
         return
-
-    result = to_string(test_case.encoded, None)
-    if test_case.correct:
-        assert result.value == test_case.content
-        assert result.encoding
-        assert not result.chars_ignored
+    assert to_string(test_case.encoded, None, []) == test_case.content
 
 
-def test_decode_str(content, declared_encoding):
-    result = to_string(content, declared_encoding)
-    assert result.value == content
-    assert result.encoding is None
-    assert not result.chars_ignored
+def test_decode_str(content, encoding):
+    result = to_string(content, encoding, [])
+    assert result == content
 
 
 def test_binary_content():
@@ -246,21 +98,77 @@ def test_binary_content():
     content = bytes([0xEF, 0xBB, 0xBF]) + content
     # [0xEF, 0xBB, 0xBF] is a BOM marker for utf-8
     # It will trick chardet to be really confident it is utf-8.
-    # However, this cannot be decoded using utf-8
-    with pytest.raises(ValueError):
-        assert to_string(content, None)
-
-    # Make coverage pass on code avoiding us to try the same encoding twice
-    result = to_string(content, "UTF-8-SIG")
-    assert result.encoding == "UTF-8-SIG"
-    assert result.chars_ignored
+    # However, this cannot be properly decoded using utf-8 ; but a value is still
+    # returned, since upstream server promised this is utf-8
+    assert to_string(content, "UTF-8", [])
 
 
 def test_single_bad_character():
     content = bytes([0xEF, 0xBB, 0xBF]) + b"prem" + bytes([0xC3]) + "ière".encode()
     # [0xEF, 0xBB, 0xBF] is a BOM marker for utf-8-sig
     # 0xC3 is a bad character (nothing in utf-8-sig at this position)
-    result = to_string(content, "utf-8-sig")
-    assert result.value == "première"
-    assert result.encoding == "utf-8-sig"
-    assert result.chars_ignored
+    result = to_string(content, "utf-8-sig", [])
+    assert result == "prem�ière"
+
+
+def test_decode_charset_to_try(simple_encoded_content):
+    if not simple_encoded_content.valid:
+        # Nothing to test
+        return
+    assert (
+        to_string(
+            simple_encoded_content.encoded, None, [simple_encoded_content.encoding]
+        )
+        == simple_encoded_content.content
+    )
+
+
+def test_decode_weird_encoding_not_declared_not_in_try_list():
+    with pytest.raises(ValueError):
+        to_string("Latin1 contént".encode("latin1"), None, ["UTF-8"])
+
+
+def test_decode_weird_encoding_not_declared_in_try_list():
+    content = "Latin1 contént"
+    assert to_string(content.encode("latin1"), None, ["UTF-8", "latin1"]) == content
+
+
+@dataclass
+class CharsetsTestData:
+    filename: str
+    probable_charset: str | None  # probable charset to use
+    known_charset: str | None  # charset we know is being used (fake file typically)
+    http_charset: (
+        str | None
+    )  # encoding to pass as http header because file is missing details and encoding is
+    # not standard
+    expected_strings: list[str]
+
+
+def get_testdata() -> Generator[CharsetsTestData, None, None]:
+    data = json.loads(
+        (Path(__file__).parent / "encodings" / "definition.json").read_bytes()
+    )
+    for file in data["files"]:
+        yield CharsetsTestData(
+            filename=file["filename"],
+            probable_charset=file.get("probable_charset", None),
+            known_charset=file.get("known_charset", None),
+            http_charset=file.get("http_charset", None),
+            expected_strings=file.get("expected_strings", []),
+        )
+
+
+def get_testdata_id(test_data: CharsetsTestData) -> str:
+    return test_data.filename
+
+
+@pytest.mark.parametrize("testdata", get_testdata(), ids=get_testdata_id)
+def test_decode_files(testdata: CharsetsTestData):
+    result = to_string(
+        (Path(__file__).parent / "encodings" / testdata.filename).read_bytes(),
+        testdata.http_charset,
+        ["UTF-8", "latin1"],
+    )
+    for expected_string in testdata.expected_strings:
+        assert expected_string in result

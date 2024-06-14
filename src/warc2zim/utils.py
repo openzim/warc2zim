@@ -5,9 +5,7 @@ from __future__ import annotations
 
 import re
 from http import HTTPStatus
-from typing import NamedTuple
 
-import chardet
 from bs4 import BeautifulSoup
 from warcio.recordloader import ArcWarcRecord
 
@@ -17,12 +15,6 @@ ENCODING_RE = re.compile(
     r"(charset|encoding)=(?P<quote>['\"]?)(?P<encoding>[a-wA-Z0-9_\-]+)(?P=quote)",
     re.ASCII,
 )
-
-
-class StringConversionResult(NamedTuple):
-    value: str
-    encoding: str | None
-    chars_ignored: bool
 
 
 def get_version():
@@ -132,84 +124,58 @@ def get_record_encoding(record: ArcWarcRecord) -> str | None:
         return m.group("encoding")
 
 
-def to_string(input_: str | bytes, encoding: str | None) -> StringConversionResult:
+def to_string(
+    input_: str | bytes, http_encoding: str | None, charsets_to_try: list[str]
+) -> str:
     """
-    Decode content to string, trying to be the more tolerant possible to invalid
-    declared encoding.
+    Decode content to string based on charset declared in content or fallback.
 
-    This try to decode the content using 3 methods:
-     - From http headers in the warc record (given as `encoding` argument)
-     - From encoding declaration inside the content (hopping that content can be
-       losely decode using ascii to something usable)
-     - From statistical analysis of the content (made by chardet)
+    This method tries to not be smarter than necessary.
 
-    If all these methods fails, try again with the encoding passed via http headers but
-    ignore all unrecognized characters.
+    First, it tries to find an charset declaration inside the first bytes of the content
+    (hopping that content first bytes can be losely decoded using few known encoding to
+    something usable). If found, it is used to decode and any bad character is
+    automatically replaced, assuming document editor is right.
 
-    Returns the decoded content, the encoding used (or None if the input was already
-    decoded) and a boolean indicating wether unrecognized characters had to been ignored
-    or not.
+    Second, if no charset declaration has been found in content, it uses the charset
+    declared in HTTP `Content-Type` header. This is passed to this method as
+    `http_encoding` argument. If present, it is used to decode and any bad character is
+    automatically replaced, assuming web server is right.
+
+    Finally, we fallback to use `charsets_to_try` argument, which is a list of charsets
+    to try. Each charset is tried in order, but any bad character found is raising an
+    error. If none of these charsets achieves to decode the content, an exception is
+    raised.
+
+    Returns the decoded content.
 
     """
-    http_encoding = encoding
 
-    tried_encodings: set[str] = set()
     if isinstance(input_, str):
-        return StringConversionResult(input_, None, False)
+        return input_
 
     if not input_:
         # Empty bytes are easy to decode
-        return StringConversionResult("", None, False)
-
-    if encoding:
-        try:
-            return StringConversionResult(input_.decode(encoding), encoding, False)
-        except (ValueError, LookupError):
-            tried_encodings.add(encoding)
-            pass
+        return ""
 
     # Search for encoding from content first bytes based on regexp
-    content_start = input_[:1024].decode("ascii", errors="replace")
-    if m := ENCODING_RE.search(content_start):
-        encoding = m.group("encoding")
-        if encoding and encoding not in tried_encodings:
-            try:
-                return StringConversionResult(input_.decode(encoding), encoding, False)
-            except (ValueError, LookupError):
-                tried_encodings.add(encoding)
-                pass
+    for encoding in ["ascii", "utf-16", "utf-32"]:
+        content_start = input_[:1024].decode(encoding, errors="replace")
+        if m := ENCODING_RE.search(content_start):
+            head_encoding = m.group("encoding")
+            return input_.decode(head_encoding, errors="replace")
 
-    # Try to detect the most probable encoding with chardet (and only most probable
-    # one, since otherwise we will likely find an encoding which pass but produces only
-    # garbage with most characters badly decoded just due to a wrongly encoded character
-    # see https://github.com/openzim/warc2zim/issues/221)
-    # Nota: we use the detect_all method of chardet even if we are interesting only in
-    # the most probable encoding, because (as-of chardet 5.2.0 at least) the detect
-    # chardet method seems to be more naive, and detect_all gives better results in our
-    # tests
-    chardet_encodings = chardet.detect_all(input_)
-    if len(chardet_encodings):
-        chardet_encoding = chardet_encodings[0]["encoding"]
-        if chardet_encoding and chardet_encoding not in tried_encodings:
-            try:
-                return StringConversionResult(
-                    input_.decode(chardet_encoding), chardet_encoding, False
-                )
-            except (ValueError, LookupError):
-                tried_encodings.add(chardet_encoding)
-                pass
-
-    # Try again encoding detected by chardet (most probable one), but this time ignore
-    # all bad chars
     if http_encoding:
+        return input_.decode(http_encoding, errors="replace")
+
+    # Try all charsets_to_try passed
+    for charset_to_try in charsets_to_try:
         try:
-            return StringConversionResult(
-                input_.decode(http_encoding, errors="ignore"), http_encoding, True
-            )
+            return input_.decode(charset_to_try)
         except (ValueError, LookupError):
             pass
 
-    raise ValueError(f"Impossible to decode content {input_[:200]}")
+    raise ValueError(f"No suitable charset found to decode content {input_[:200]}")
 
 
 def get_record_content(record: ArcWarcRecord):

@@ -35,10 +35,6 @@ It provide two main features:
 
 Except that, scraper directly uses WarcRecord (returned by cdxj_indexer, implemented in warcio) to access metadata and such.
 
-## chardet
-
-[chardet Python library](https://pypi.org/project/chardet/) is used to detect character encoding of files when it is absent (only HTML file typically specify its encoding) or incoherent.
-
 ## zimscraperlib
 
 [zimscraperlib Python library](https://pypi.org/project/zimscraperlib) is used for ZIM operations.
