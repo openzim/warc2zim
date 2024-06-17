@@ -64,6 +64,9 @@ class Rewriter:
         missing_zim_paths: set[ZimPath] | None,
         js_modules: set[ZimPath],
         charsets_to_try: list[str],
+        *,
+        ignore_content_header_charsets: bool,
+        ignore_http_header_charsets: bool,
     ):
         self.content = get_record_content(record)
 
@@ -80,10 +83,18 @@ class Rewriter:
         self.rewrite_mode = self.get_rewrite_mode(record, mimetype)
         self.js_modules = js_modules
         self.charsets_to_try = charsets_to_try
+        self.ignore_content_header_charsets = ignore_content_header_charsets
+        self.ignore_http_header_charsets = ignore_http_header_charsets
 
     @property
     def content_str(self) -> str:
-        return to_string(self.content, self.encoding, self.charsets_to_try)
+        return to_string(
+            self.content,
+            self.encoding,
+            self.charsets_to_try,
+            ignore_content_header_charsets=self.ignore_content_header_charsets,
+            ignore_http_header_charsets=self.ignore_http_header_charsets,
+        )
 
     def rewrite(
         self, pre_head_template: Template, post_head_template: Template

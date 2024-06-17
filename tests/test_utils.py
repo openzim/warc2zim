@@ -64,7 +64,32 @@ def test_decode_http_header(simple_encoded_content):
         # Nothing to test
         return
     assert (
-        to_string(simple_encoded_content.encoded, simple_encoded_content.encoding, [])
+        to_string(
+            simple_encoded_content.encoded,
+            simple_encoded_content.encoding,
+            [],
+            ignore_http_header_charsets=False,
+            ignore_content_header_charsets=False,
+        )
+        == simple_encoded_content.content
+    )
+
+
+def test_decode_bad_http_header(simple_encoded_content):
+    if not simple_encoded_content.valid:
+        # Nothing to test
+        return
+    assert (
+        to_string(
+            simple_encoded_content.encoded,
+            # HTTP header always pretend it has been encoded with latin1
+            "latin1",
+            # but we luckily have the proper "try-charset"
+            [simple_encoded_content.encoding],
+            # and we've disabled the use of HTTP header
+            ignore_http_header_charsets=True,
+            ignore_content_header_charsets=False,
+        )
         == simple_encoded_content.content
     )
 
@@ -85,11 +110,58 @@ def test_decode_html_header(declared_html_encoded_content):
     test_case = declared_html_encoded_content
     if not test_case.valid:
         return
-    assert to_string(test_case.encoded, None, []) == test_case.content
+    assert (
+        to_string(
+            test_case.encoded,
+            None,
+            [],
+            ignore_http_header_charsets=False,
+            ignore_content_header_charsets=False,
+        )
+        == test_case.content
+    )
+
+
+@dataclass
+class BadlyDeclaredHtmlEncodedForTest(EncodedForTest):
+    def __init__(self, content: str, encoding: str):
+        # pretend to be encoded with `encoding`
+        html_content = f"<html><meta charset={encoding}><body>{content}</body></html>"
+        # but in fact you are encoded with ISO-8859-1
+        super().__init__(html_content, "ISO-8859-1")
+
+
+@pytest.fixture
+def badly_declared_html_encoded_content(content, encoding):
+    return BadlyDeclaredHtmlEncodedForTest(content, encoding)
+
+
+def test_decode_bad_html_header(badly_declared_html_encoded_content):
+    test_case = badly_declared_html_encoded_content
+    if not test_case.valid:
+        return
+    assert (
+        to_string(
+            test_case.encoded,
+            None,
+            # Indicate proper charset to use in try-charsets
+            ["ISO-8859-1"],
+            ignore_http_header_charsets=False,
+            # Disable charset defined in content first bytes
+            ignore_content_header_charsets=True,
+        )
+        == test_case.content
+    )
 
 
 def test_decode_str(content, encoding):
-    result = to_string(content, encoding, [])
+    result = to_string(
+        content,
+        encoding,
+        [],
+        ignore_http_header_charsets=False,
+        ignore_content_header_charsets=False,
+    )
     assert result == content
 
 
@@ -100,14 +172,26 @@ def test_binary_content():
     # It will trick chardet to be really confident it is utf-8.
     # However, this cannot be properly decoded using utf-8 ; but a value is still
     # returned, since upstream server promised this is utf-8
-    assert to_string(content, "UTF-8", [])
+    assert to_string(
+        content,
+        "UTF-8",
+        [],
+        ignore_http_header_charsets=False,
+        ignore_content_header_charsets=False,
+    )
 
 
 def test_single_bad_character():
     content = bytes([0xEF, 0xBB, 0xBF]) + b"prem" + bytes([0xC3]) + "ière".encode()
     # [0xEF, 0xBB, 0xBF] is a BOM marker for utf-8-sig
     # 0xC3 is a bad character (nothing in utf-8-sig at this position)
-    result = to_string(content, "utf-8-sig", [])
+    result = to_string(
+        content,
+        "utf-8-sig",
+        [],
+        ignore_http_header_charsets=False,
+        ignore_content_header_charsets=False,
+    )
     assert result == "prem�ière"
 
 
@@ -117,7 +201,11 @@ def test_decode_charset_to_try(simple_encoded_content):
         return
     assert (
         to_string(
-            simple_encoded_content.encoded, None, [simple_encoded_content.encoding]
+            simple_encoded_content.encoded,
+            None,
+            [simple_encoded_content.encoding],
+            ignore_http_header_charsets=False,
+            ignore_content_header_charsets=False,
         )
         == simple_encoded_content.content
     )
@@ -125,12 +213,27 @@ def test_decode_charset_to_try(simple_encoded_content):
 
 def test_decode_weird_encoding_not_declared_not_in_try_list():
     with pytest.raises(ValueError):
-        to_string("Latin1 contént".encode("latin1"), None, ["UTF-8"])
+        to_string(
+            "Latin1 contént".encode("latin1"),
+            None,
+            ["UTF-8"],
+            ignore_http_header_charsets=False,
+            ignore_content_header_charsets=False,
+        )
 
 
 def test_decode_weird_encoding_not_declared_in_try_list():
     content = "Latin1 contént"
-    assert to_string(content.encode("latin1"), None, ["UTF-8", "latin1"]) == content
+    assert (
+        to_string(
+            content.encode("latin1"),
+            None,
+            ["UTF-8", "latin1"],
+            ignore_http_header_charsets=False,
+            ignore_content_header_charsets=False,
+        )
+        == content
+    )
 
 
 @dataclass
@@ -169,6 +272,8 @@ def test_decode_files(testdata: CharsetsTestData):
         (Path(__file__).parent / "encodings" / testdata.filename).read_bytes(),
         testdata.http_charset,
         ["UTF-8", "latin1"],
+        ignore_http_header_charsets=False,
+        ignore_content_header_charsets=False,
     )
     for expected_string in testdata.expected_strings:
         assert expected_string in result

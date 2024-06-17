@@ -34,6 +34,9 @@ class WARCPayloadItem(StaticItem):
         missing_zim_paths: set[ZimPath] | None,
         js_modules: set[ZimPath],
         charsets_to_try: list[str],
+        *,
+        ignore_content_header_charsets: bool,
+        ignore_http_header_charsets: bool,
     ):
         super().__init__()
 
@@ -46,6 +49,8 @@ class WARCPayloadItem(StaticItem):
             missing_zim_paths,
             js_modules,
             charsets_to_try,
+            ignore_content_header_charsets=ignore_content_header_charsets,
+            ignore_http_header_charsets=ignore_http_header_charsets,
         ).rewrite(pre_head_template, post_head_template)
 
     def get_hints(self):
