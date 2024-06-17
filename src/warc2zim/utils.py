@@ -128,6 +128,7 @@ def to_string(
     input_: str | bytes,
     http_encoding: str | None,
     charsets_to_try: list[str],
+    content_header_bytes_length: int,
     *,
     ignore_content_header_charsets: bool,
     ignore_http_header_charsets: bool,
@@ -166,7 +167,9 @@ def to_string(
     # Search for encoding from content first bytes based on regexp
     if not ignore_content_header_charsets:
         for encoding in ["ascii", "utf-16", "utf-32"]:
-            content_start = input_[:1024].decode(encoding, errors="replace")
+            content_start = input_[:content_header_bytes_length].decode(
+                encoding, errors="replace"
+            )
             if m := ENCODING_RE.search(content_start):
                 head_encoding = m.group("encoding")
                 return input_.decode(head_encoding, errors="replace")

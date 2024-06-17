@@ -127,6 +127,13 @@ def main(raw_args=None):
     )
 
     parser.add_argument(
+        "--content-header-bytes-length",
+        help="How many bytes to consider when searching for content charsets in header",
+        type=int,
+        default=1024,
+    )
+
+    parser.add_argument(
         "--ignore-http-header-charsets",
         help="Ignore the charsets specified in HTTP `Content-Type` headers, typically "
         "because they are wrong",

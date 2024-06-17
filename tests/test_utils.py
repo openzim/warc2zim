@@ -68,6 +68,7 @@ def test_decode_http_header(simple_encoded_content):
             simple_encoded_content.encoded,
             simple_encoded_content.encoding,
             [],
+            1024,
             ignore_http_header_charsets=False,
             ignore_content_header_charsets=False,
         )
@@ -86,6 +87,7 @@ def test_decode_bad_http_header(simple_encoded_content):
             "latin1",
             # but we luckily have the proper "try-charset"
             [simple_encoded_content.encoding],
+            1024,
             # and we've disabled the use of HTTP header
             ignore_http_header_charsets=True,
             ignore_content_header_charsets=False,
@@ -115,6 +117,7 @@ def test_decode_html_header(declared_html_encoded_content):
             test_case.encoded,
             None,
             [],
+            1024,
             ignore_http_header_charsets=False,
             ignore_content_header_charsets=False,
         )
@@ -146,6 +149,7 @@ def test_decode_bad_html_header(badly_declared_html_encoded_content):
             None,
             # Indicate proper charset to use in try-charsets
             ["ISO-8859-1"],
+            1024,
             ignore_http_header_charsets=False,
             # Disable charset defined in content first bytes
             ignore_content_header_charsets=True,
@@ -159,6 +163,7 @@ def test_decode_str(content, encoding):
         content,
         encoding,
         [],
+        1024,
         ignore_http_header_charsets=False,
         ignore_content_header_charsets=False,
     )
@@ -176,6 +181,7 @@ def test_binary_content():
         content,
         "UTF-8",
         [],
+        1024,
         ignore_http_header_charsets=False,
         ignore_content_header_charsets=False,
     )
@@ -189,6 +195,7 @@ def test_single_bad_character():
         content,
         "utf-8-sig",
         [],
+        1024,
         ignore_http_header_charsets=False,
         ignore_content_header_charsets=False,
     )
@@ -204,6 +211,7 @@ def test_decode_charset_to_try(simple_encoded_content):
             simple_encoded_content.encoded,
             None,
             [simple_encoded_content.encoding],
+            1024,
             ignore_http_header_charsets=False,
             ignore_content_header_charsets=False,
         )
@@ -217,6 +225,7 @@ def test_decode_weird_encoding_not_declared_not_in_try_list():
             "Latin1 contént".encode("latin1"),
             None,
             ["UTF-8"],
+            1024,
             ignore_http_header_charsets=False,
             ignore_content_header_charsets=False,
         )
@@ -229,6 +238,7 @@ def test_decode_weird_encoding_not_declared_in_try_list():
             content.encode("latin1"),
             None,
             ["UTF-8", "latin1"],
+            1024,
             ignore_http_header_charsets=False,
             ignore_content_header_charsets=False,
         )
@@ -272,8 +282,55 @@ def test_decode_files(testdata: CharsetsTestData):
         (Path(__file__).parent / "encodings" / testdata.filename).read_bytes(),
         testdata.http_charset,
         ["UTF-8", "latin1"],
+        1024,
         ignore_http_header_charsets=False,
         ignore_content_header_charsets=False,
     )
     for expected_string in testdata.expected_strings:
         assert expected_string in result
+
+
+def test_decode_charset_too_far_away_without_fallback():
+    content = '<html><meta charset="latin1"><body>content</body></html>'
+    with pytest.raises(ValueError, match="No suitable charset"):
+        to_string(
+            content.encode("latin1"),
+            None,
+            [],
+            24,
+            ignore_http_header_charsets=False,
+            ignore_content_header_charsets=False,
+        )
+
+
+def test_decode_charset_too_far_away_with_fallback():
+    content = '<html><meta charset="latin1"><body>content</body></html>'
+    assert (
+        to_string(
+            content.encode("latin1"),
+            None,
+            ["latin1"],
+            24,
+            ignore_http_header_charsets=False,
+            ignore_content_header_charsets=False,
+        )
+        == content
+    )
+
+
+def test_decode_charset_far_away():
+    content = (
+        f'<html>{"".join("-" for i in range(1024))}<meta charset="latin1">'
+        "<body>content</body></html>"
+    )
+    assert (
+        to_string(
+            content.encode("latin1"),
+            None,
+            [],
+            1200,
+            ignore_http_header_charsets=False,
+            ignore_content_header_charsets=False,
+        )
+        == content
+    )

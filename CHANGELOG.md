@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add `--ignore-content-header-charsets` option to disable automatic retrieval of content charsets from content first bytes (#318)
+- Add `--content-header-bytes-length` option to specify how many first bytes to consider when searching for content charsets in header (#320)
 - Add `--ignore-http-header-charsets` option to disable automatic retrieval of content charsets from content HTTP `Content-Type` headers (#318)
 
 ### Changed

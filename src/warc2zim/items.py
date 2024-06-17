@@ -34,6 +34,7 @@ class WARCPayloadItem(StaticItem):
         missing_zim_paths: set[ZimPath] | None,
         js_modules: set[ZimPath],
         charsets_to_try: list[str],
+        content_header_bytes_length: int,
         *,
         ignore_content_header_charsets: bool,
         ignore_http_header_charsets: bool,
@@ -49,6 +50,7 @@ class WARCPayloadItem(StaticItem):
             missing_zim_paths,
             js_modules,
             charsets_to_try,
+            content_header_bytes_length,
             ignore_content_header_charsets=ignore_content_header_charsets,
             ignore_http_header_charsets=ignore_http_header_charsets,
         ).rewrite(pre_head_template, post_head_template)
