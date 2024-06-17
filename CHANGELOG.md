@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `--ignore-content-header-charsets` option to disable automatic retrieval of content charsets from content first bytes (#318)
 - Add `--ignore-http-header-charsets` option to disable automatic retrieval of content charsets from content HTTP `Content-Type` headers (#318)
 
+### Changed
+
+- Simplify logic deciding content charset, stop guessing with chardet (#312)
+
+### Fixed
+
+- Rewrite only content with mimetype `text-html` when `WARC-Resource-Type` is `html` (#313)
+
 ## [2.0.1] - 2024-06-13
 
 ### Added
