@@ -1,0 +1,87 @@
+{
+    "files": [
+        {
+            "filename": "file01.js",
+            "source": "https://www.marxists.org/espanol/menu.js",
+            "date": "2024-06",
+            "probable_charset": "ISO-8859-1",
+            "expected_strings": [
+                "Afanásiev, Víktor",
+                "Andrópov, Yuri",
+                "Amaguaña, Tránsito",
+                "Cunhal, Álvaro",
+                "De la Cruz, Juana Inés",
+                "Faure, Sèbastien"
+            ]
+        },
+        {
+            "filename": "file02.js",
+            "source": "https://www.cloudflare.com/vendor/onetrust/scripttemplates/202308.2.0/otBannerSdk.js",
+            "date": "2024-06",
+            "probable_charset": "UTF-8",
+            "expected_strings": [
+                "_Container:\"#ot-ven-lst\",P_Ven_Bx:\"ot-ven-box\",P_Ven_Name:\".ot-ven-name\"",
+                "ist,IabType:e.IabType,InactiveText:e.InactiveText,IsConsentLoggingEnabled:e.IsConsentLoggingEnabl",
+                "0;\\n                    transition: visibility 0s \"+e+\"ms, opacity \"+e+\"ms linear;\\n                \",!0);var",
+                "r.prototype.escapeRegExp=function(e){return e.replace(/[-/\\\\^$*+?.()|[\\]{}]/g,\"\\\\$&\")}"
+            ]
+        },
+        {
+            "filename": "file03.html",
+            "source": "https://www.solidarite-numerique.fr/tutoriels/comprendre-les-cookies/?thematique=internet",
+            "date": "2024-06",
+            "probable_charset": "UTF-8",
+            "contains_bad_chars": true,
+            "expected_strings": [
+                "Vous souhaitez changer de navigateur et utiliser Firefox ? Ce tutoriel vous détaille la procédure d'installation et la configuration pour une premi�..."
+            ]
+        },
+        {
+            "filename": "file04.js",
+            "source": "https://static.mailerlite.com/js/w/ml_jQuery.inputmask.bundle.min.js?v3.3.1",
+            "date": "2024-06",
+            "probable_charset": "ascii",
+            "expected_strings": [
+                "1,this.isOptional=b||!1,this.isQuantifier=c||!1,this.isAlterna",
+                "is;if(na=!1,g.clearMaskOnLostFocus&&document.activeElement!==b){var c=x().slice(),d=b.inputmask._v"
+            ]
+        },
+        {
+            "filename": "file05.js",
+            "source": "https://static.sketchfab.com/static/builds/web/dist/ac0f732c4fc1a30c77920d75c1a9be83-v2.js",
+            "date": "2024-06",
+            "probable_charset": "ascii",
+            "expected_strings": [
+                "isTickUsed||(this._isTickUsed=!0,this._schedule(this.drainQueues))},s.prototype._reset=function(){this._is"
+            ]
+        },
+        {
+            "filename": "file06.html",
+            "source": "https://website.test.openzim.org/chinese-encoding.html",
+            "date": "2024-06",
+            "known_charset": "gb2312",
+            "expected_strings": [
+                "simplified chinese characters: 汉字"
+            ]
+        },
+        {
+            "filename": "file07.html",
+            "source": "https://website.test.openzim.org/chinese-encoding.html without <meta> header",
+            "date": "2024-06",
+            "known_charset": "gb2312",
+            "http_charset": "gb2312",
+            "expected_strings": [
+                "simplified chinese characters: 汉字"
+            ]
+        },
+        {
+            "filename": "file08.js",
+            "source": "https://community.mozilla.org/wp-content/plugins/events-manager/includes/js/events-manager.min.js?ver=6.4.1",
+            "date": "2024-06",
+            "probable_charset": "UTF-8",
+            "expected_strings": [
+                "t Array]\"===Object.prototype.toString.call(e)},s={a:\"[aḀḁĂăÂâǍǎȺⱥȦȧẠạÄäÀàÁáĀāÃãÅåąĄÃąĄ]\",b:\"[b␢β"
+            ]
+        }
+    ]
+}

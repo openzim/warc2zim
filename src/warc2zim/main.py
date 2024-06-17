@@ -110,6 +110,14 @@ def main(raw_args=None):
         dest="disable_metadata_checks",
     )
 
+    parser.add_argument(
+        "--charsets-to-try",
+        help="List of charsets to try decode content when charset is not defined at "
+        "document or HTTP level. Single string, values separated by a comma. Default: "
+        "UTF-8,ISO-8859-1",
+        default="UTF-8,ISO-8859-1",
+    )
+
     args = parser.parse_args(args=raw_args)
     converter = Converter(args)
     return converter.run()

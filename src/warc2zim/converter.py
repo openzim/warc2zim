@@ -192,6 +192,9 @@ class Converter:
         self.redirections: dict[ZimPath, ZimPath] = {}
         self.missing_zim_paths: set[ZimPath] | None = set() if args.verbose else None
         self.js_modules: set[ZimPath] = set()
+        self.charsets_to_try: list[str] = [
+            charset_to_try.strip() for charset_to_try in args.charsets_to_try.split(",")
+        ]
 
         # progress file handling
         self.stats_filename = (
@@ -747,6 +750,7 @@ class Converter:
                 self.expected_zim_items,
                 self.missing_zim_paths,
                 self.js_modules,
+                self.charsets_to_try,
             )
 
             if len(payload_item.content) != 0:

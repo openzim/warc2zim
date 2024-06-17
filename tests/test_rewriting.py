@@ -38,6 +38,7 @@ def rewrite_generator():
             set(),
             set(),
             set(),
+            ["UTF-8", "ISO-8859-1"],
         ).rewrite(Template(""), Template(""))
 
     yield generate_and_call
