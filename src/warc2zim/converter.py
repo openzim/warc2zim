@@ -195,6 +195,7 @@ class Converter:
         self.charsets_to_try: list[str] = [
             charset_to_try.strip() for charset_to_try in args.charsets_to_try.split(",")
         ]
+        self.content_header_bytes_length: int = int(args.content_header_bytes_length)
 
         # progress file handling
         self.stats_filename = (
@@ -753,6 +754,7 @@ class Converter:
                 self.missing_zim_paths,
                 self.js_modules,
                 self.charsets_to_try,
+                self.content_header_bytes_length,
                 ignore_content_header_charsets=self.ignore_content_header_charsets,
                 ignore_http_header_charsets=self.ignore_http_header_charsets,
             )
