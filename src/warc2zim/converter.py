@@ -209,6 +209,8 @@ class Converter:
 
         self.continue_on_error = bool(args.continue_on_error)
         self.disable_metadata_checks = bool(args.disable_metadata_checks)
+        self.ignore_content_header_charsets = bool(args.ignore_content_header_charsets)
+        self.ignore_http_header_charsets = bool(args.ignore_http_header_charsets)
 
     def update_stats(self):
         """write progress as JSON to self.stats_filename if requested"""
@@ -751,6 +753,8 @@ class Converter:
                 self.missing_zim_paths,
                 self.js_modules,
                 self.charsets_to_try,
+                ignore_content_header_charsets=self.ignore_content_header_charsets,
+                ignore_http_header_charsets=self.ignore_http_header_charsets,
             )
 
             if len(payload_item.content) != 0:

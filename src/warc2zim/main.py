@@ -118,6 +118,22 @@ def main(raw_args=None):
         default="UTF-8,ISO-8859-1",
     )
 
+    parser.add_argument(
+        "--ignore-content-header-charsets",
+        help="Ignore the charsets specified in content headers - first bytes - "
+        "typically because they are wrong",
+        action="store_true",
+        default=False,
+    )
+
+    parser.add_argument(
+        "--ignore-http-header-charsets",
+        help="Ignore the charsets specified in HTTP `Content-Type` headers, typically "
+        "because they are wrong",
+        action="store_true",
+        default=False,
+    )
+
     args = parser.parse_args(args=raw_args)
     converter = Converter(args)
     return converter.run()

@@ -39,6 +39,8 @@ def rewrite_generator():
             set(),
             set(),
             ["UTF-8", "ISO-8859-1"],
+            ignore_http_header_charsets=False,
+            ignore_content_header_charsets=False,
         ).rewrite(Template(""), Template(""))
 
     yield generate_and_call
