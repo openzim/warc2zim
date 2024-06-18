@@ -38,7 +38,7 @@ scripts = [
 ]
 lint = [
   "black==24.4.2",
-  "ruff==0.4.8",
+  "ruff==0.4.9",
 ]
 check = [
   "pyright==1.1.367",
