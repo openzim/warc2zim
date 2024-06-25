@@ -4,6 +4,7 @@
 import io
 import json
 import os
+import pathlib
 import re
 import time
 from urllib.parse import unquote
@@ -624,6 +625,27 @@ class TestWarc2Zim:
             )
             == 4
         )
+
+    def test_error_main_page_unprocessable(self, tmp_path):
+        zim_output_not_created = "zim-out-not-created.zim"
+        assert (
+            main(
+                [
+                    "-v",
+                    os.path.join(TEST_DATA_DIR, "main-entry-403.warc.gz"),
+                    "-u",
+                    "https://wikizilla.org/wiki/Doug",
+                    "--output",
+                    str(tmp_path),
+                    "--name",
+                    "bad",
+                    "--zim-file",
+                    zim_output_not_created,
+                ]
+            )
+            == 4
+        )
+        assert not (pathlib.Path(tmp_path) / zim_output_not_created).exists()
 
     def test_args_only(self):
         # error, name required
