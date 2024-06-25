@@ -21,8 +21,8 @@ test('nominalWbInfo', (t) => {
   );
   t.is(wmInfo.coll, '');
   t.is(wmInfo.convert_post_to_get, true);
-  t.is(wmInfo.enable_auto_fetch, true);
-  t.is(wmInfo.isSW, true);
+  t.is(wmInfo.enable_auto_fetch, false);
+  t.is(wmInfo.isSW, false);
   t.is(wmInfo.is_framed, false);
   t.is(wmInfo.is_live, false);
   t.is(wmInfo.mod, '');

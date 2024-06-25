@@ -288,14 +288,21 @@ export function getWombatInfo(
     // The host of the original url
     wombat_host: orig_host,
 
-    // Extra options ?
-    wombat_opts: {},
+    // We are not running inside a service worker, wombat needs to know about it since
+    // some "magic" URLs like blobs are not available
+    isSW: false,
 
-    // ?
-    enable_auto_fetch: true,
+    // Convert all post request to get request
     convert_post_to_get: true,
+
+    // Not used, we are not replaying in a frame
     target_frame: '___wb_replay_top_frame',
-    isSW: true,
+
+    // Not used, we are not running in live mode
+    enable_auto_fetch: false,
+
+    // Extra options, not used
+    wombat_opts: {},
   };
 }
 
