@@ -607,7 +607,7 @@ class TestWarc2Zim:
 
     def test_error_bad_main_page(self, tmp_path):
         zim_output_not_created = "zim-out-not-created.zim"
-        with pytest.raises(KeyError, match="Unable to find WARC record for main page:"):
+        assert (
             main(
                 [
                     "-v",
@@ -622,6 +622,8 @@ class TestWarc2Zim:
                     zim_output_not_created,
                 ]
             )
+            == 4
+        )
 
     def test_args_only(self):
         # error, name required
