@@ -1,17 +1,17 @@
-import json
 import re
 import sys
 from pathlib import Path
 
+import yaml
 from jinja2 import Environment
 
-rules_src = Path(__file__).with_name("rules.json")
+rules_src = Path(__file__).with_name("rules.yaml")
 if not rules_src.exists():
     # This skip is usefull mostly for CI operations when installing only Python deps
     print("Skipping rules generation, rule file is missing")
     sys.exit()
 
-FUZZY_RULES = json.loads(rules_src.read_text())["fuzzyRules"]
+FUZZY_RULES = yaml.safe_load(rules_src.read_text())["fuzzyRules"]
 
 PY2JS_RULE_RX = re.compile(r"\\(\d)", re.ASCII)
 

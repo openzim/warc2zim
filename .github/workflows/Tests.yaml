@@ -62,7 +62,7 @@ jobs:
       - name: Install dependencies (and project)
         run: |
           pip install -U pip build
-          pip install -e .
+          pip install -e .[scripts]
 
       - name: Generate fuzzy rules
         run: python rules/generate_rules.py
