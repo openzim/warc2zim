@@ -1,6 +1,7 @@
 [build-system]
 # jinja2 is required to generate JS and Python rules at build time
-requires = ["hatchling", "hatch-openzim==0.2.1", "jinja2==3.1.4"]
+# PyYAML is used to parse fuzzy rules and generate Python/JS code
+requires = ["hatchling", "hatch-openzim==0.2.1", "jinja2==3.1.4", "PyYAML==6.0.1"]
 build-backend = "hatchling.build"
 
 [project]
@@ -12,7 +13,7 @@ dependencies = [
   "warcio==1.7.4",
   "requests==2.32.3",
   "zimscraperlib==3.3.2",
-  "jinja2==3.1.4",
+  "jinja2==3.1.4", # also update version in build-system above and in build_js.sh
   # to support possible brotli content in warcs, must be added separately
   "brotlipy==0.7.0",
   "cdxj_indexer==1.4.5",
@@ -35,6 +36,7 @@ email="info@webrecorder.net"
 [project.optional-dependencies]
 scripts = [
   "invoke==2.2.0",
+  "PyYAML==6.0.1", # used to parse fuzzy rules and generate Python/JS code ; also update version in build-system above and in build_js.sh
 ]
 lint = [
   "black==24.4.2",

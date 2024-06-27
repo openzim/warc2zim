@@ -2,7 +2,7 @@
 
 ## Fuzzy rules
 
-Fuzzy rules are stored in `rules/rules.json`. This configuration file is then used by `rules/generateRules.py` to generate Python and JS code.
+Fuzzy rules are stored in `rules/rules.yaml`. This configuration file is then used by `rules/generateRules.py` to generate Python and JS code.
 
 Should you update these fuzzy rules, you hence have to:
 - regenerate Python and JS files by running `python rules/generateRules.py`
