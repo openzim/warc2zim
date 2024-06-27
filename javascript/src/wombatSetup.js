@@ -281,14 +281,21 @@ export function getWombatInfo(
     // The host of the original url
     wombat_host: orig_host,
 
+    // We are not running inside a service worker, wombat needs to know about it since
+    // some "magic" URLs like blobs are not available
+    isSW: false,
+
     // Extra options ?
     wombat_opts: {},
 
-    // ?
-    enable_auto_fetch: true,
+    // Not used, we are not running in live mode
+    enable_auto_fetch: false,
+
+    // Convert all post request to get request
     convert_post_to_get: true,
+
+    // Not used, we are usualy not replaying in a frame
     target_frame: '___wb_replay_top_frame',
-    isSW: true,
   };
 }
 
