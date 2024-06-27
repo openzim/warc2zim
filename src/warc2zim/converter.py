@@ -92,6 +92,12 @@ ALIAS_EXC_STR = re.compile(
 PY2JS_RULE_RX = re.compile(r"\\(\d)", re.ASCII)
 
 
+class UnprocessableWarcError(Exception):
+    """Exception raised when it is not possible to process WARC file(s) received"""
+
+    ...
+
+
 class Converter:
     def __init__(self, args):
         if args.verbose:
@@ -262,7 +268,12 @@ class Converter:
             )
             return 100
 
-        self.gather_information_from_warc()
+        try:
+            self.gather_information_from_warc()
+        except UnprocessableWarcError as exc:
+            logger.error(exc)
+            return 4
+
         # Fallback language
         if not self.language:
             logger.warning("No valid ZIM language, fallbacking to `eng`.")
@@ -391,6 +402,10 @@ class Converter:
 
             status_code = get_status_code(record)
             if not can_process_status_code(status_code):
+                if record.rec_type == "response" and self.main_path == zim_path:
+                    raise UnprocessableWarcError(
+                        f"Main URL returned an unprocessable HTTP code: {status_code}"
+                    )
                 continue
 
             if status_code_is_processable_redirect(status_code):
@@ -480,10 +495,16 @@ class Converter:
             logger.debug(f"Favicon: {self.favicon_url or self.favicon_path}")
             main_page_found = True
 
+        if len(self.expected_zim_items) == 0:
+            raise UnprocessableWarcError(
+                "No entry found to push to the ZIM, WARC file(s) is unprocessable "
+                "and looks probably mostly empty"
+            )
+
         logger.info(f"Expecting {len(self.expected_zim_items)} ZIM entries to files")
 
         if not main_page_found:
-            raise KeyError(
+            raise UnprocessableWarcError(
                 f"Unable to find WARC record for main page: {self.main_path}, aborting"
             )
 
