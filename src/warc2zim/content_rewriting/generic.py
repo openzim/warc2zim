@@ -154,7 +154,7 @@ class Rewriter:
     def get_resourcetype_rewrite_mode(self, record, resourcetype, mimetype):
         """Get current record rewrite mode based on WARC-Resource-Type and mimetype"""
 
-        if resourcetype == "document" and mimetype == "text/html":
+        if resourcetype in ["document", "xhr"] and mimetype == "text/html":
             # TODO : Handle header "Accept" == "application/json"
             if getattr(record, "method", "GET") == "GET":
                 return "html"
@@ -164,12 +164,12 @@ class Rewriter:
         if resourcetype == "stylesheet":
             return "css"
 
-        if resourcetype in ["script", "fetch", "xhr", "manifest"] and (
+        if resourcetype in ["script", "fetch", "other", "xhr", "manifest"] and (
             mimetype == "application/json" or self.path.value.endswith(".json")
         ):
             return "json"
 
-        if resourcetype in ["script", "xhr"] and mimetype in [
+        if resourcetype in ["script", "other", "xhr"] and mimetype in [
             "text/javascript",
             "application/javascript",
             "application/x-javascript",

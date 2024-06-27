@@ -40,6 +40,18 @@ Computation of the ZIM path is hence mostly straightforward:
 - decode the hostname which is puny-encoded
 - decode the path and query parameter which might be url-encoded
 
+## Rewriting documents
+
+Some documents (HTML, CSS, JS and JSON for now) needs to be rewritten, e.g. to rewrite URLs, adapt some code to the ZIM context, ...
+
+The first important step when processing a WARC entry to add it as a ZIM entry is hence to properly detect which kind of document we are dealing with.
+
+This is done in the `get_rewrite_mode` function of the `Rewriter` class. Before 2.0.1, scraper was relying only on mimetype as returned in `Content-Type` HTTP response.
+
+Unfortunately, this caused problems where some server are returning wrong information is this header, e.g. Cloudflare seems to frequently return `text/html` for woff2 fonts ; this causes the scraper to fail, because it is impossible to know in advance that we should ignore these errors, we could have a real document which should be rewriten but is failing.
+
+Since 2.0.1, we've enriched the logic by using the new WARC header `WARC-Resource-Type` which contains the type of resources "as perceived by the browser" (from https://chromedevtools.github.io/devtools-protocol/tot/Network/#type-ResourceType, see https://github.com/webrecorder/browsertrix-crawler/pull/481). Unfortunately this information is not sufficient because of some very generic value returned like `fetch` or `xhr`. Scraper stills need to mix this information with the mimetype. Ideally, we would have prefer to find a single source of truth not relying on something returned by the server, but it is not available for now (see https://github.com/openzim/warc2zim/issues/340 for a discussion on this topic).
+
 ### URL rewriting
 
 In addition to the computation of the relative path from the current document URL to the URL to rewrite, URL rewriting also consists in computing the proper ZIM path (with same operation as above) and properly encoding it so that the resulting URL respects [RFC 3986](https://datatracker.ietf.org/doc/html/rfc3986). Some important stuff has to be noted in this encoding.
