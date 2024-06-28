@@ -2,7 +2,12 @@ from textwrap import dedent
 
 import pytest
 
-from warc2zim.content_rewriting.html import HtmlRewriter, extract_base_href
+from warc2zim.content_rewriting.html import (
+    AttrsList,
+    HtmlRewriter,
+    HTMLRewritingRules,
+    extract_base_href,
+)
 from warc2zim.url_rewriting import ArticleUrlRewriter, HttpUrl, ZimPath
 
 from .utils import ContentForTests
@@ -891,4 +896,94 @@ def test_rewrite_meta_charset(rewrite_meta_charset_content, no_js_notify):
         .rewrite(rewrite_meta_charset_content.input_str)
         .content
         == rewrite_meta_charset_content.expected_str
+    )
+
+
+rules = HTMLRewritingRules()
+
+
+@rules.drop_attribute()
+def drop_all_named_attribute(attr_name: str):
+    return attr_name == "all_named"
+
+
+@rules.drop_attribute()
+def drop_all_tag_name_attribute(tag: str):
+    return tag == "all_tag"
+
+
+@rules.drop_attribute()
+def drop_tag_name_attribute(tag: str, attr_name: str):
+    return tag == "drop_tag" and attr_name == "drop_name"
+
+
+@rules.drop_attribute()
+def drop_attr_name_and_value_attribute(attr_name: str, attr_value: str | None):
+    return (
+        attr_name == "drop_value"
+        and attr_value is not None
+        and attr_value.startswith("drop")
+    )
+
+
+@rules.drop_attribute()
+def drop_if_other_attribute(attr_name: str, attrs: AttrsList):
+    return attr_name == "drop_if_other" and any(
+        other_name == "other" for other_name, _ in attrs
+    )
+
+
+@pytest.mark.parametrize(
+    "tag, attr_name, attr_value, attrs, should_drop",
+    [
+        pytest.param("all_tag", "foo", "bar", [], True, id="drop_by_tag_name"),
+        pytest.param("other_tag", "foo", "bar", [], False, id="dont_drop_by_tag_name"),
+        pytest.param("foo", "all_named", "bar", [], True, id="drop_by_attr_name"),
+        pytest.param(
+            "foo", "other_name", "bar", [], False, id="dont_drop_by_attr_name"
+        ),
+        pytest.param(
+            "drop_tag", "drop_name", "bar", [], True, id="drop_by_tag_and_attr_name"
+        ),
+        pytest.param(
+            "drop_tag", "foo", "bar", [], False, id="dont_drop_by_tag_and_attr_name"
+        ),
+        pytest.param("foo", "drop_value", "drop_me", [], True, id="drop_by_attr_value"),
+        pytest.param(
+            "foo", "drop_value", "dont_drop", [], False, id="dont_drop_by_attr_value"
+        ),
+        pytest.param(
+            "foo", "drop_value", "dont_drop", [], False, id="dont_drop_by_attr_value"
+        ),
+        pytest.param(
+            "foo",
+            "drop_if_other",
+            "bar",
+            [("foo", None), ("other", "foo"), ("bar", "foo")],
+            True,
+            id="drop_if_other",
+        ),
+        pytest.param(
+            "foo",
+            "drop_if_other",
+            "bar",
+            [("foo", None), ("bar", "foo")],
+            False,
+            id="dont_drop_if_not_other",
+        ),
+    ],
+)
+def test_html_drop_rules(
+    tag: str,
+    attr_name: str,
+    attr_value: str | None,
+    attrs: AttrsList,
+    *,
+    should_drop: bool,
+):
+    assert (
+        rules.should_drop_attribute(
+            tag=tag, attr_name=attr_name, attr_value=attr_value, attrs=attrs
+        )
+        is should_drop
     )
