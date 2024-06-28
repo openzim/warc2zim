@@ -1,9 +1,11 @@
 import io
 from collections import namedtuple
 from collections.abc import Callable
+from dataclasses import dataclass
 from functools import partial
 from html import escape
 from html.parser import HTMLParser
+from inspect import signature
 
 from bs4 import BeautifulSoup
 
@@ -126,9 +128,9 @@ class HtmlRewriter(HTMLParser):
             self.send(" ")
         self.send(
             self.transform_attrs(
+                tag,
                 attrs,
                 self.url_rewriter_existing if tag == "a" else self.url_rewriter_all,
-                ["integrity"] if tag == "script" or "link" else [],
                 rewrite_content_attr=(
                     tag == "meta"
                     and any(
@@ -246,9 +248,9 @@ class HtmlRewriter(HTMLParser):
 
     def transform_attrs(
         self,
+        tag: str,
         attrs: AttrsList,
         url_rewriter: UrlRewriterProto,
-        exclude_attrs: list[str],
         *,
         rewrite_content_attr: bool,
         rewrite_charset_attr: bool,
@@ -262,7 +264,9 @@ class HtmlRewriter(HTMLParser):
                 rewrite_charset_attr=rewrite_charset_attr,
             )
             for attr_name, attr_value in attrs
-            if attr_name not in exclude_attrs
+            if not rules.should_drop_attribute(
+                tag=tag, attr_name=attr_name, attr_value=attr_value, attrs=attrs
+            )
         )
         return " ".join(self.format_attr(*attr) for attr in processed_attrs)
 
@@ -273,3 +277,78 @@ class HtmlRewriter(HTMLParser):
             if attr_name == name:
                 return value
         return default
+
+
+DropAttributeCallable = Callable[..., bool]
+
+
+def call_func(func: Callable, args: dict):
+    """Utility function to call a function with only matching keyword arguments"""
+    return func(
+        **{
+            arg_name: arg_value
+            for arg_name, arg_value in args.items()
+            if arg_name in signature(func).parameters
+        }
+    )
+
+
+@dataclass(frozen=True)
+class DropAttributeRule:
+    """A rule specifying when an HTML attribute should be dropped"""
+
+    func: DropAttributeCallable
+
+
+class HTMLRewritingRules:
+    """A class holding the definitions of all rules to rewrite HTML documents"""
+
+    def __init__(self) -> None:
+        self.drop_attribute_rules: set[DropAttributeRule] = set()
+
+    def drop_attribute(
+        self,
+    ) -> Callable[[DropAttributeCallable], DropAttributeCallable]:
+        """Decorator to use when defining a rule regarding attribute dropping"""
+
+        def decorator(func: DropAttributeCallable) -> DropAttributeCallable:
+            self.drop_attribute_rules.add(DropAttributeRule(func=func))
+            return func
+
+        return decorator
+
+    def should_drop_attribute(
+        self, tag: str, attr_name: str, attr_value: str | None, attrs: AttrsList
+    ) -> bool:
+        """Utility function to process all attribute dropping rules
+
+        Returns true if at least one rule is matching
+        """
+        return any(
+            call_func(
+                rule.func,
+                {
+                    "tag": tag,
+                    "attr_name": attr_name,
+                    "attr_value": attr_value,
+                    "attrs": attrs,
+                },
+            )
+            is True
+            for rule in self.drop_attribute_rules
+        )
+
+
+rules = HTMLRewritingRules()
+
+
+@rules.drop_attribute()
+def drop_script_integrity_attribute(tag: str, attr_name: str):
+    """Drop integrity attribute in <script> tags"""
+    return tag == "script" and attr_name == "integrity"
+
+
+@rules.drop_attribute()
+def drop_link_integrity_attribute(tag: str, attr_name: str):
+    """Drop integrity attribute in <link> tags"""
+    return tag == "link" and attr_name == "integrity"
