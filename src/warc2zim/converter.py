@@ -788,6 +788,10 @@ class Converter:
                         raise exc
                 self.total_records += 1
                 self.update_stats()
+            else:
+                logger.debug(
+                    f"Skipping item at {payload_item.path} whose content length is 0"
+                )
 
             self.added_zim_items.add(item_zim_path)
 
