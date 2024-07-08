@@ -141,6 +141,21 @@ def main(raw_args=None):
         default=False,
     )
 
+    parser.add_argument(
+        "--encoding-aliases",
+        help="List of encoding/charset aliases to decode WARC content. Aliases are used"
+        " when the encoding specified in upstream server exists in Python under a"
+        " different name. This parameter has the format alias_encoding=python_encoding."
+        " This parameter is single string, multiple values are separated by a comma, "
+        " like in alias1=encoding1,alias2=encoding2.",
+        type=lambda argument_value: {
+            alias_encoding.strip(): python_encoding.strip()
+            for alias_encoding, python_encoding in (
+                encoding.split("=") for encoding in argument_value.split(",")
+            )
+        },
+    )
+
     args = parser.parse_args(args=raw_args)
     converter = Converter(args)
     return converter.run()

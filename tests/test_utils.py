@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from warc2zim.utils import to_string
+from warc2zim.utils import set_encoding_aliases, to_string
 
 
 @dataclass
@@ -334,3 +334,30 @@ def test_decode_charset_far_away():
         )
         == content
     )
+
+
+def test_decode_charset_too_far_away_with_alias():
+    content = '<html><meta charset="foo"><body>content</body></html>'
+    set_encoding_aliases({"foo": "latin1"})
+    to_string(
+        content.encode("latin1"),
+        None,
+        [],
+        1024,
+        ignore_http_header_charsets=False,
+        ignore_content_header_charsets=False,
+    )
+
+
+def test_decode_charset_too_far_away_without_proper_alias():
+    content = '<html><meta charset="foo"><body>content</body></html>'
+    set_encoding_aliases({"bar": "latin1"})
+    with pytest.raises(LookupError, match="unknown encoding: foo"):
+        to_string(
+            content.encode("latin1"),
+            None,
+            [],
+            1024,
+            ignore_http_header_charsets=False,
+            ignore_content_header_charsets=False,
+        )

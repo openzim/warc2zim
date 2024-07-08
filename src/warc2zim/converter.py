@@ -65,6 +65,7 @@ from warc2zim.utils import (
     get_status_code,
     get_version,
     parse_title,
+    set_encoding_aliases,
     status_code_is_processable_redirect,
 )
 
@@ -136,6 +137,7 @@ class Converter:
 
         self.output = Path(args.output)
         self.zim_file = args.zim_file
+        set_encoding_aliases(args.encoding_aliases)
 
         if not self.zim_file:
             self.zim_file = "{name}_{period}.zim".format(
