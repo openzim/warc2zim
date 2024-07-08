@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Moved rules definition from JSON to YAML and documented update process (#216)
+- Detect charset in document header only for HTML documents (#331)
 
 ### Added
 
