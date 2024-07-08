@@ -95,7 +95,9 @@ class Rewriter:
             self.encoding,
             self.charsets_to_try,
             self.content_header_bytes_length,
-            ignore_content_header_charsets=self.ignore_content_header_charsets,
+            ignore_content_header_charsets=(
+                self.rewrite_mode != "html" or self.ignore_content_header_charsets
+            ),
             ignore_http_header_charsets=self.ignore_http_header_charsets,
         )
 
