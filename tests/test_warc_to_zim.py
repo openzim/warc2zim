@@ -21,6 +21,11 @@ from warc2zim.url_rewriting import HttpUrl, ZimPath, normalize
 from warc2zim.utils import get_record_url
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
+# special data dir for WARC files which are not supposed to be ran in the
+# `test_all_warcs_root_dir` test
+TEST_DATA_SPECIAL_DIR = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)), "data-special"
+)
 
 SCRAPER_SUFFIX = " + zimit x.y.z-devw"
 
@@ -850,3 +855,29 @@ class TestWarc2Zim:
         ]:
             res = self.get_article(zim_output, js_file)
             assert b"wombat" in res  # simple check that rewriting has been done
+
+    def test_content_encoding_aliases(self, tmp_path):
+        zim_output = "tests_en_qsl.net-encoding-alias.zim"
+
+        main(
+            [
+                os.path.join(
+                    TEST_DATA_DIR,
+                    "..",
+                    "data-special",
+                    "qsl.net-encoding-alias.warc.gz",
+                ),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--encoding-aliases",
+                "foo=bar,iso-8559-1=iso-8859-1,fii=bor",
+                "--name",
+                "tests_en_qsl.net-encoding-alias",
+            ]
+        )
+        zim_output = tmp_path / zim_output
+
+        res = self.get_article(zim_output, "www.qsl.net/vk2jem/swlogs.htm")
+        assert b"<!-- WB Insert -->" in res  # simple check that rewriting has been done

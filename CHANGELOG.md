@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - New fuzzy-rule for cheatography.com (#342), der-postillon.com (#330)
 - Properly rewrite redirect target url when present in <meta> HTML tag (#237)
+- New `--encoding-aliases` argument to pass encoding/charset aliases (#331)
 
 ### Changed
 
