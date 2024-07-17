@@ -195,3 +195,11 @@ fuzzyRules:
         fuzzified_url: cheatography.com.fuzzy.replayweb.page/scripts/useful.min.js?v=2
       - raw_url: cheatography.com/scripts/useful.min.js?q=1719438924&v=2&foo=bar
         fuzzified_url: cheatography.com.fuzzy.replayweb.page/scripts/useful.min.js?v=2
+  - name: der_postillon_com
+    pattern: blogger.googleusercontent.com\/img\/(.*\.jpg)=.*
+    replace: blogger.googleusercontent.com.fuzzy.replayweb.page/img/\1.resized
+    tests:
+      - raw_url: blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjlN4LY6kFVwL8-rinDWp3kJp1TowOVD8vq8TP8nl3Lf1sI-hx0DE1GQA1jw7DT7XvK3FjghzJ17_1pvyXyDBAV0vtigJRnFCNfMxnndBnN3NYoXUvKQQsQ7JTGXOSajdo0mNQIv8wss_AxPBMrR4-Dd_EEacV7ZMS3m_IL2dz0WsbbKn7FD7ntsfOe0JUq/s600-rw/tickerzugtier2.jpg=w487-h220-p-k-no-nu
+        fuzzified_url: blogger.googleusercontent.com.fuzzy.replayweb.page/img/b/R29vZ2xl/AVvXsEjlN4LY6kFVwL8-rinDWp3kJp1TowOVD8vq8TP8nl3Lf1sI-hx0DE1GQA1jw7DT7XvK3FjghzJ17_1pvyXyDBAV0vtigJRnFCNfMxnndBnN3NYoXUvKQQsQ7JTGXOSajdo0mNQIv8wss_AxPBMrR4-Dd_EEacV7ZMS3m_IL2dz0WsbbKn7FD7ntsfOe0JUq/s600-rw/tickerzugtier2.jpg.resized
+      - raw_url: blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjlN4LY6kFVwL8-rinDWp3kJp1TowOVD8vq8TP8nl3Lf1sI-hx0DE1GQA1jw7DT7XvK3FjghzJ17_1pvyXyDBAV0vtigJRnFCNfMxnndBnN3NYoXUvKQQsQ7JTGXOSajdo0mNQIv8wss_AxPBMrR4-Dd_EEacV7ZMS3m_IL2dz0WsbbKn7FD7ntsfOe0JUq/w72-h72-p-k-no-nu/tickerzugtier2.jpg
+        unchanged: true
