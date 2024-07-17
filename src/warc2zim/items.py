@@ -12,6 +12,7 @@ from jinja2.environment import Template
 from libzim.writer import Hint  # pyright: ignore[reportMissingImports]
 from warcio.recordloader import ArcWarcRecord
 from zimscraperlib.types import get_mime_for_name
+from zimscraperlib.zim.indexing_item import IndexingItem
 from zimscraperlib.zim.items import StaticItem
 
 from warc2zim.content_rewriting.generic import Rewriter
@@ -19,7 +20,7 @@ from warc2zim.url_rewriting import ZimPath
 from warc2zim.utils import get_record_mime_type
 
 
-class WARCPayloadItem(StaticItem):
+class WARCPayloadItem(IndexingItem):
     """WARCPayloadItem used to store the WARC payload
     Usually stored under A namespace
     """
@@ -39,7 +40,6 @@ class WARCPayloadItem(StaticItem):
         ignore_content_header_charsets: bool,
         ignore_http_header_charsets: bool,
     ):
-        super().__init__()
 
         self.path = path.value
         self.mimetype = get_record_mime_type(record)
@@ -55,8 +55,14 @@ class WARCPayloadItem(StaticItem):
             ignore_http_header_charsets=ignore_http_header_charsets,
         ).rewrite(pre_head_template, post_head_template)
 
+        # This needs to be done after previous operation because it needs rewriten
+        # content to be available to properly extract index information (for PDFs)
+        super().__init__()
+
     def get_hints(self):
-        is_front = self.mimetype.startswith("text/html")
+        is_front = self.mimetype.startswith("text/html") or self.mimetype.startswith(
+            "application/pdf"
+        )
         return {Hint.FRONT_ARTICLE: is_front}
 
 
