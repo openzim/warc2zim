@@ -183,3 +183,15 @@ fuzzyRules:
         fuzzified_url: i.vimeocdn.fuzzy.replayweb.page/image/1234
       - raw_url: i.vimeocdn.com/something/a456?foo
         fuzzified_url: i.vimeocdn.fuzzy.replayweb.page/something/a456
+  - name: cheatography_com
+    pattern: cheatography\.com\/scripts\/(.*).js.*[?&](v=[^&]+).*
+    replace : cheatography.com.fuzzy.replayweb.page/scripts/\1.js?\2
+    tests:
+      - raw_url: cheatography.com/scripts/useful.min.js?v=2&q=1719438924
+        fuzzified_url: cheatography.com.fuzzy.replayweb.page/scripts/useful.min.js?v=2
+      - raw_url: cheatography.com/scripts/foo.js?v=2&q=1719438924
+        fuzzified_url: cheatography.com.fuzzy.replayweb.page/scripts/foo.js?v=2
+      - raw_url: cheatography.com/scripts/useful.min.js?q=1719438924&v=2
+        fuzzified_url: cheatography.com.fuzzy.replayweb.page/scripts/useful.min.js?v=2
+      - raw_url: cheatography.com/scripts/useful.min.js?q=1719438924&v=2&foo=bar
+        fuzzified_url: cheatography.com.fuzzy.replayweb.page/scripts/useful.min.js?v=2
