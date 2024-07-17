@@ -21,12 +21,12 @@ def get_version():
     return __version__
 
 
-def get_record_url(record):
+def get_record_url(record) -> str:
     """Check if record has url converted from POST/PUT, and if so, use that
     otherwise return the target url"""
     if hasattr(record, "urlkey"):
         return record.urlkey
-    return record.rec_headers["WARC-Target-URI"]
+    return str(record.rec_headers["WARC-Target-URI"])
 
 
 def get_status_code(record: ArcWarcRecord) -> HTTPStatus | int | None:
