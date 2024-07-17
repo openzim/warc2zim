@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Generate fuzzy rules tests in Python and Javascript (#284)
+
 ### Fixed
 
 - Handle case where the redirect target is bad / unsupported (#332 and #356)

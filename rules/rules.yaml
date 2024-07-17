@@ -16,24 +16,170 @@
 # Generic rules are also ommitted on purpose, we don't need them
 #
 fuzzyRules:
-  - pattern: .*googlevideo.com/(videoplayback(?=\?)).*[?&](id=[^&]+).*
+  - name: googlevideo_com
+    pattern: .*googlevideo.com/(videoplayback(?=\?)).*[?&](id=[^&]+).*
     replace: youtube.fuzzy.replayweb.page/\1?\2
-  - pattern: (?:www\.)?youtube(?:-nocookie)?\.com/(get_video_info\?).*(video_id=[^&]+).*
+    tests:
+      - raw_url: foobargooglevideo.com/videoplayback?id=1576&key=value
+        fuzzified_url: youtube.fuzzy.replayweb.page/videoplayback?id=1576
+      - raw_url: foobargooglevideo.com/videoplayback?some=thing&id=1576
+        fuzzified_url: youtube.fuzzy.replayweb.page/videoplayback?id=1576
+      - raw_url: foobargooglevideo.com/videoplayback?some=thing&id=1576&key=value
+        fuzzified_url: youtube.fuzzy.replayweb.page/videoplayback?id=1576
+      - raw_url: foobargooglevideo.com/videoplaybackandfoo?some=thing&id=1576&key=value
+        unchanged: true  # videoplayback is not followed by `?`
+      - raw_url: foobargoogle_video.com/videoplaybackandfoo?some=thing&id=1576&key=value
+        unchanged: true  # No googlevideo.com in url
+  - name: youtube_video_info
+    pattern: (?:www\.)?youtube(?:-nocookie)?\.com/(get_video_info\?).*(video_id=[^&]+).*
     replace : youtube.fuzzy.replayweb.page/\1\2
-  - pattern: i\.ytimg\.com\/vi\/(.*?)\/.*?\.(\w*?)(?:\?.*|$)
+    tests:
+      - raw_url: www.youtube.com/get_video_info?video_id=123ah
+        fuzzified_url: youtube.fuzzy.replayweb.page/get_video_info?video_id=123ah
+      - raw_url: www.youtube.com/get_video_info?foo=bar&video_id=123ah
+        fuzzified_url: youtube.fuzzy.replayweb.page/get_video_info?video_id=123ah
+      - raw_url: www.youtube.com/get_video_info?video_id=123ah&foo=bar
+        fuzzified_url: youtube.fuzzy.replayweb.page/get_video_info?video_id=123ah
+      - raw_url: youtube.com/get_video_info?video_id=123ah
+        fuzzified_url: youtube.fuzzy.replayweb.page/get_video_info?video_id=123ah
+      - raw_url: youtube-nocookie.com/get_video_info?video_id=123ah
+        fuzzified_url: youtube.fuzzy.replayweb.page/get_video_info?video_id=123ah
+      - raw_url: www.youtube-nocookie.com/get_video_info?video_id=123ah
+        fuzzified_url: youtube.fuzzy.replayweb.page/get_video_info?video_id=123ah
+      - raw_url: www.youtube-nocookie.com/get_video_info?foo=bar
+        unchanged: true # no video_id parameter
+      - raw_url: www.youtubeqnocookie.com/get_video_info?video_id=123ah
+        unchanged: true # improper hostname
+  - name: youtube_thumbnails
+    pattern: i\.ytimg\.com\/vi\/(.*?)\/.*?\.(\w*?)(?:\?.*|$)
     replace : i.ytimg.com.fuzzy.replayweb.page/vi/\1/thumbnail.\2
-  - pattern: ([^?]+)\?[\d]+$
+    tests:
+      - raw_url: i.ytimg.com/vi/-KpLmsAR23I/maxresdefault.jpg?sqp=-oaymwEmCIAKENAF8quKqQMa8AEB-AH-CYAC0AWKAgwIABABGHIgTyg-MA8=&rs=AOn4CLDr-FmDmP3aCsD84l48ygBmkwHg-g
+        fuzzified_url: i.ytimg.com.fuzzy.replayweb.page/vi/-KpLmsAR23I/thumbnail.jpg
+      - raw_url: i.ytimg.com/vi/-KpLmsAR23I/maxresdefault.png?sqp=-oaymwEmCIAKENAF8quKqQMa8AEB-AH-CYAC0AWKAgwIABABGHIgTyg-MA8=&rs=AOn4CLDr-FmDmP3aCsD84l48ygBmkwHg-g
+        fuzzified_url: i.ytimg.com.fuzzy.replayweb.page/vi/-KpLmsAR23I/thumbnail.png
+      - raw_url: i.ytimg.com/vi/-KpLmsAR23I/maxresdefault.jpg
+        fuzzified_url: i.ytimg.com.fuzzy.replayweb.page/vi/-KpLmsAR23I/thumbnail.jpg
+      - raw_url: i.ytimg.com/vi/-KpLmsAR23I/max-res.default.jpg
+        fuzzified_url: i.ytimg.com.fuzzy.replayweb.page/vi/-KpLmsAR23I/thumbnail.jpg
+  - name: trim_digits_only
+    pattern: ([^?]+)\?[\d]+$
     replace : \1
-  - pattern: (?:www\.)?youtube(?:-nocookie)?\.com\/(youtubei\/[^?]+).*(videoId[^&]+).*
+    tests:
+      - raw_url: www.example.com/page?1234
+        fuzzified_url: www.example.com/page
+      - raw_url: www.example.com/page?foo=1234
+        unchanged: true
+      - raw_url: www.example.com/page1234
+        unchanged: true
+      - raw_url: www.example.com/page?foo=bar&1234
+        unchanged: true
+      - raw_url: www.example.com/page?1234=bar
+        unchanged: true
+      - raw_url: www.example.com/page?1234&foo=bar
+        unchanged: true
+  - name: youtubei
+    pattern: (?:www\.)?youtube(?:-nocookie)?\.com\/(youtubei\/[^?]+).*(videoId[^&]+).*
     replace : youtube.fuzzy.replayweb.page/\1?\2
-  - pattern: (?:www\.)?youtube(?:-nocookie)?\.com/embed/([^?]+).*
+    tests:
+      - raw_url: www.youtube-nocookie.com/youtubei/page/?videoId=123ah
+        fuzzified_url: youtube.fuzzy.replayweb.page/youtubei/page/?videoId=123ah
+      - raw_url: youtube-nocookie.com/youtubei/page/?videoId=123ah
+        fuzzified_url: youtube.fuzzy.replayweb.page/youtubei/page/?videoId=123ah
+      - raw_url: youtube.com/youtubei/page/?videoId=123ah
+        fuzzified_url: youtube.fuzzy.replayweb.page/youtubei/page/?videoId=123ah
+      - raw_url: www.youtube.com/youtubei/page/?videoId=123ah
+        fuzzified_url: youtube.fuzzy.replayweb.page/youtubei/page/?videoId=123ah
+      - raw_url: youtube.com/youtubei/page/videoId=123ah
+        fuzzified_url: youtube.fuzzy.replayweb.page/youtubei/page/?videoId=123ah
+      - raw_url: youtube.com/youtubei/page/videoIdqqq=123ah
+        fuzzified_url: youtube.fuzzy.replayweb.page/youtubei/page/?videoIdqqq=123ah
+      - raw_url: youtube.com/youtubei/page/videoId=123ah&foo=bar
+        fuzzified_url: youtube.fuzzy.replayweb.page/youtubei/page/?videoId=123ah
+      - raw_url: youtube.com/youtubei/page/?foo=bar&videoId=123ah
+        fuzzified_url: youtube.fuzzy.replayweb.page/youtubei/page/?videoId=123ah
+      - raw_url: youtube.com/youtubei/page/foo=bar&videoId=123ah
+        fuzzified_url: youtube.fuzzy.replayweb.page/youtubei/page/foo=bar&?videoId=123ah
+      - raw_url: youtube.com/youtubei/?videoId=123ah
+        unchanged: true
+  - name: youtube_embed
+    pattern: (?:www\.)?youtube(?:-nocookie)?\.com/embed/([^?]+).*
     replace : youtube.fuzzy.replayweb.page/embed/\1
-  # next one is a custom warc2zim rule intended to fix Vimeo support
-  - pattern: .*(?:gcs-vimeo|vod|vod-progressive|vod-adaptive)\.akamaized\.net.*/(.+?.mp4)\?.*range=(.*?)(?:&|$)
+    tests:
+      - raw_url: www.youtube-nocookie.com/embed/foo
+        fuzzified_url: youtube.fuzzy.replayweb.page/embed/foo
+      - raw_url: www.youtube-nocookie.com/embed/bar
+        fuzzified_url: youtube.fuzzy.replayweb.page/embed/bar
+      - raw_url: www.youtube-nocookie.com/embed/foo/bar
+        fuzzified_url: youtube.fuzzy.replayweb.page/embed/foo/bar
+      - raw_url: www.youtube.com/embed/foo
+        fuzzified_url: youtube.fuzzy.replayweb.page/embed/foo
+      - raw_url: youtube.com/embed/foo
+        fuzzified_url: youtube.fuzzy.replayweb.page/embed/foo
+      - raw_url: youtube-nocookie.com/embed/foo
+        fuzzified_url: youtube.fuzzy.replayweb.page/embed/foo
+      - raw_url: youtube.com/embed/foo?bar=alice
+        fuzzified_url: youtube.fuzzy.replayweb.page/embed/foo
+
+  - name: vimeo_cdn_fix # custom warc2zim rule intended to fix Vimeo support
+    pattern: .*(?:gcs-vimeo|vod|vod-progressive|vod-adaptive)\.akamaized\.net.*/(.+?.mp4)\?.*range=(.*?)(?:&|$)
     replace : vimeo-cdn.fuzzy.replayweb.page/\1?range=\2
-  - pattern: .*(?:gcs-vimeo|vod|vod-progressive)\.akamaized\.net.*?/([\d/]+.mp4)$
+    tests:
+      - raw_url: gcs-vimeo.akamaized.net/123.mp4?range=123-456
+        fuzzified_url: vimeo-cdn.fuzzy.replayweb.page/123.mp4?range=123-456
+      - raw_url: vod.akamaized.net/123.mp4?range=123-456
+        fuzzified_url: vimeo-cdn.fuzzy.replayweb.page/123.mp4?range=123-456
+      - raw_url: vod-progressive.akamaized.net/123.mp4?range=123-456
+        fuzzified_url: vimeo-cdn.fuzzy.replayweb.page/123.mp4?range=123-456
+      - raw_url: vod-adaptive.akamaized.net/123.mp4?range=123-456
+        fuzzified_url: vimeo-cdn.fuzzy.replayweb.page/123.mp4?range=123-456
+      - raw_url: vod.akamaized.net/123.mp4?foo=bar&range=123-456
+        fuzzified_url: vimeo-cdn.fuzzy.replayweb.page/123.mp4?range=123-456
+      - raw_url: vod.akamaized.net/123.mp4?foo=bar&range=123-456&bar=foo
+        fuzzified_url: vimeo-cdn.fuzzy.replayweb.page/123.mp4?range=123-456
+      - raw_url: vod.akamaized.net/123.mp4?range=123-456&bar=foo
+        fuzzified_url: vimeo-cdn.fuzzy.replayweb.page/123.mp4?range=123-456
+      - raw_url: foovod.akamaized.net/123.mp4?range=123-456
+        fuzzified_url: vimeo-cdn.fuzzy.replayweb.page/123.mp4?range=123-456
+      - raw_url: vod.akamaized.net/1/23.mp4?range=123-456
+        fuzzified_url: vimeo-cdn.fuzzy.replayweb.page/23.mp4?range=123-456
+      - raw_url: vod.akamaized.net/a/23.mp4?range=123-456
+        fuzzified_url: vimeo-cdn.fuzzy.replayweb.page/23.mp4?range=123-456
+      - raw_url: vod.akamaized.net/foo/bar/23.mp4?range=123-456
+        fuzzified_url: vimeo-cdn.fuzzy.replayweb.page/23.mp4?range=123-456
+      - raw_url: foo.akamaized.net/123.mp4?range=123-456
+        unchanged: true
+  - name: vimeo_cdn
+    pattern: .*(?:gcs-vimeo|vod|vod-progressive)\.akamaized\.net.*?/([\d/]+.mp4)$
     replace : vimeo-cdn.fuzzy.replayweb.page/\1
-  - pattern: .*player.vimeo.com/(video/[\d]+)\?.*
+    tests:
+      - raw_url: vod.akamaized.net/23.mp4
+        fuzzified_url: vimeo-cdn.fuzzy.replayweb.page/23.mp4
+      - raw_url: vod.akamaized.net/23/12332.mp4
+        fuzzified_url: vimeo-cdn.fuzzy.replayweb.page/23/12332.mp4
+      - raw_url: https://vod-progressive.akamaized.net/exp=1635528595~acl=%2Fvimeo-prod-skyfire-std-us%2F01%2F4423%2F13%2F347119375%2F1398505169.mp4~hmac=27c31f1990aab5e5429f7f7db5b2dcbcf8d2f5c92184d53102da36920d33d53e/vimeo-prod-skyfire-std-us/01/4423/13/347119375/1398505169.mp4
+        fuzzified_url: vimeo-cdn.fuzzy.replayweb.page/01/4423/13/347119375/1398505169.mp4
+  - name: vimeo_player
+    pattern: .*player.vimeo.com/(video/[\d]+)\?.*
     replace : vimeo.fuzzy.replayweb.page/\1
-  - pattern: .*i\.vimeocdn\.com\/(.*)\?.*
+    tests:
+      - raw_url: player.vimeo.com/video/1234?foo=bar
+        fuzzified_url: vimeo.fuzzy.replayweb.page/video/1234
+      - raw_url: foo.player.vimeo.com/video/1234?foo=bar
+        fuzzified_url: vimeo.fuzzy.replayweb.page/video/1234
+      - raw_url: player.vimeo.com/video/1234?foo
+        fuzzified_url: vimeo.fuzzy.replayweb.page/video/1234
+      - raw_url: player.vimeo.com/video/1/23?foo=bar
+        unchanged: true
+      - raw_url: player.vimeo.com/video/123a?foo=bar
+        unchanged: true
+      - raw_url: player.vimeo.com/video/?foo=bar
+        unchanged: true
+  - name: i_vimeo_cdn
+    pattern: .*i\.vimeocdn\.com\/(.*)\?.*
     replace : i.vimeocdn.fuzzy.replayweb.page/\1
+    tests:
+      - raw_url: i.vimeocdn.com/image/1234?foo=bar
+        fuzzified_url: i.vimeocdn.fuzzy.replayweb.page/image/1234
+      - raw_url: i.vimeocdn.com/something/a456?foo
+        fuzzified_url: i.vimeocdn.fuzzy.replayweb.page/something/a456
