@@ -122,7 +122,7 @@ fuzzyRules:
         fuzzified_url: youtube.fuzzy.replayweb.page/embed/foo
 
   - name: vimeo_cdn_fix # custom warc2zim rule intended to fix Vimeo support
-    pattern: .*(?:gcs-vimeo|vod|vod-progressive|vod-adaptive)\.akamaized\.net.*/(.+?.mp4)\?.*range=(.*?)(?:&|$)
+    pattern: .*(?:gcs-vimeo|vod|vod-progressive|vod-adaptive)\.akamaized\.net.*\/(.+?.mp4)\?.*range=(.*?)(?:&.*|$)
     replace : vimeo-cdn.fuzzy.replayweb.page/\1?range=\2
     tests:
       - raw_url: gcs-vimeo.akamaized.net/123.mp4?range=123-456
@@ -150,7 +150,7 @@ fuzzyRules:
       - raw_url: foo.akamaized.net/123.mp4?range=123-456
         unchanged: true
   - name: vimeo_cdn
-    pattern: .*(?:gcs-vimeo|vod|vod-progressive)\.akamaized\.net.*?/([\d/]+.mp4)$
+    pattern: .*(?:gcs-vimeo|vod|vod-progressive)\.akamaized\.net.*?\/([\d/]+.mp4)$
     replace : vimeo-cdn.fuzzy.replayweb.page/\1
     tests:
       - raw_url: vod.akamaized.net/23.mp4
@@ -160,7 +160,7 @@ fuzzyRules:
       - raw_url: https://vod-progressive.akamaized.net/exp=1635528595~acl=%2Fvimeo-prod-skyfire-std-us%2F01%2F4423%2F13%2F347119375%2F1398505169.mp4~hmac=27c31f1990aab5e5429f7f7db5b2dcbcf8d2f5c92184d53102da36920d33d53e/vimeo-prod-skyfire-std-us/01/4423/13/347119375/1398505169.mp4
         fuzzified_url: vimeo-cdn.fuzzy.replayweb.page/01/4423/13/347119375/1398505169.mp4
   - name: vimeo_player
-    pattern: .*player.vimeo.com/(video/[\d]+)\?.*
+    pattern: .*player.vimeo.com\/(video\/[\d]+)\?.*
     replace : vimeo.fuzzy.replayweb.page/\1
     tests:
       - raw_url: player.vimeo.com/video/1234?foo=bar
