@@ -21,8 +21,9 @@ def no_js_notify():
 class SimpleUrlRewriter(ArticleUrlRewriter):
     """Basic URL rewriter mocking most calls"""
 
-    def __init__(self, article_url: HttpUrl):
+    def __init__(self, article_url: HttpUrl, suffix: str = ""):
         self.article_url = article_url
+        self.suffix = suffix
 
     def __call__(
         self,
@@ -31,7 +32,7 @@ class SimpleUrlRewriter(ArticleUrlRewriter):
         *,
         rewrite_all_url: bool = True,  # noqa: ARG002
     ) -> str:
-        return item_url
+        return item_url + self.suffix
 
     def get_item_path(
         self, item_url: str, base_href: str | None  # noqa: ARG002
@@ -48,8 +49,8 @@ class SimpleUrlRewriter(ArticleUrlRewriter):
 def simple_url_rewriter():
     """Fixture to create a basic url rewriter returning URLs as-is"""
 
-    def get_simple_url_rewriter(url: str):
-        return SimpleUrlRewriter(HttpUrl(url))
+    def get_simple_url_rewriter(url: str, suffix: str = ""):
+        return SimpleUrlRewriter(HttpUrl(url), suffix=suffix)
 
     yield get_simple_url_rewriter
 

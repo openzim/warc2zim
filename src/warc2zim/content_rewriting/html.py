@@ -1,4 +1,5 @@
 import io
+import re
 from collections import namedtuple
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -18,6 +19,10 @@ AttrNameAndValue = tuple[str, str | None]
 AttrsList = list[AttrNameAndValue]
 
 RewritenHtml = namedtuple("RewritenHmtl", ["title", "content"])
+
+HTTP_EQUIV_REDIRECT_RE = re.compile(
+    r"^\s*(?P<interval>.*?)\s*;\s*url\s*=\s*(?P<url>.*?)\s*$"
+)
 
 
 def get_attr_value_from(
@@ -625,4 +630,31 @@ def rewrite_js_data(
     return js_rewriter.rewrite(
         data,
         opts={"isModule": html_rewrite_context == "js-module"},
+    )
+
+
+@rules.rewrite_attribute()
+def rewrite_meta_http_equiv_redirect(
+    tag: str,
+    attr_name: str,
+    attr_value: str | None,
+    attrs: AttrsList,
+    url_rewriter: ArticleUrlRewriter,
+    base_href: str | None,
+) -> AttrNameAndValue | None:
+    """Rewrite redirect URL in meta http-equiv refresh"""
+    if tag != "meta":
+        return
+    if attr_name != "content":
+        return
+    if not attr_value:
+        return
+    http_equiv = get_attr_value_from(attrs, "http-equiv")
+    if http_equiv != "refresh":
+        return
+    if (match := HTTP_EQUIV_REDIRECT_RE.match(attr_value)) is None:
+        return
+    return (
+        attr_name,
+        f"{match['interval']};url={url_rewriter(match['url'], base_href=base_href)}",
     )
