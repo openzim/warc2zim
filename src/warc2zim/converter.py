@@ -41,7 +41,8 @@ from zimscraperlib.constants import (
     RECOMMENDED_MAX_TITLE_LENGTH,
 )
 from zimscraperlib.download import stream_file
-from zimscraperlib.image.convertion import convert_image
+from zimscraperlib.image.conversion import convert_image, convert_svg2png
+from zimscraperlib.image.probing import format_for
 from zimscraperlib.image.transformation import resize_image
 from zimscraperlib.types import FALLBACK_MIME
 from zimscraperlib.zim.creator import Creator
@@ -776,12 +777,15 @@ class Converter:
         src = io.BytesIO(self.illustration)
         dst = io.BytesIO()
         try:
-            convert_image(
-                src,  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
-                dst,  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
-                fmt="PNG",  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
-            )
-            resize_image(dst, width=48, height=48, method="cover")
+            if format_for(src, from_suffix=False) == "SVG":
+                convert_svg2png(src, dst, width=48, height=48)
+            else:
+                convert_image(
+                    src,  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
+                    dst,  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
+                    fmt="PNG",  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
+                )
+                resize_image(dst, width=48, height=48, method="cover")
         except Exception as exc:  # pragma: no cover
             logger.warning(f"Failed to convert or resize favicon: {exc}")
             self.illustration = DEFAULT_DEV_ZIM_METADATA["Illustration_48x48_at_1"]
