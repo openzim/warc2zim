@@ -54,6 +54,7 @@ from zimscraperlib.zim.metadata import (
 )
 
 from warc2zim.constants import logger
+from warc2zim.icon_finder import find_and_sort_icons
 from warc2zim.items import StaticArticle, StaticFile, WARCPayloadItem
 from warc2zim.language import parse_language
 from warc2zim.url_rewriting import HttpUrl, ZimPath, normalize
@@ -118,7 +119,7 @@ class Converter:
         self.name = args.name
         self.title = args.title
         self.favicon_url = args.favicon
-        self.favicon_path = None
+        self.favicon_paths: list[ZimPath] = []
         self.language = args.lang
         self.description = args.description
         self.long_description = args.long_description
@@ -492,7 +493,10 @@ class Converter:
 
             logger.debug(f"Title: {self.title}")
             logger.debug(f"Language: {self.language}")
-            logger.debug(f"Favicon: {self.favicon_url or self.favicon_path}")
+            logger.debug(
+                f"Expected favicons: "
+                f"{ ' or '.join(path.value for path in self.favicon_paths)}"
+            )
             main_page_found = True
 
         if len(self.expected_zim_items) == 0:
@@ -580,35 +584,26 @@ class Converter:
         )
 
     def find_icon_and_language(self, record, content):
-        soup = BeautifulSoup(content, "html.parser")
 
-        if not self.favicon_url:
-            # find icon
-            icon = soup.find("link", rel="shortcut icon")
-            if not icon:
-                icon = soup.find("link", rel="icon")
+        # add passed favicon path as prefered icon path
+        if self.favicon_url:
+            self.favicon_paths.append(normalize(HttpUrl(self.favicon_url)))
 
-            if (
-                icon
-                and icon.attrs.get(  # pyright: ignore[reportGeneralTypeIssues, reportAttributeAccessIssue]
-                    "href"
-                )
-            ):
-                icon_url = icon.attrs[  # pyright: ignore[reportGeneralTypeIssues ,reportAttributeAccessIssue]
-                    "href"
-                ]
-            else:
-                icon_url = "/favicon.ico"
+        # add icons found in document head, sorted by fit for warc2zim usage
+        record_url = get_record_url(record)
+        self.favicon_paths.extend(
+            normalize(HttpUrl(urljoin(record_url, icon_url)))
+            for icon_url in find_and_sort_icons(content)
+        )
 
-            # transform icon URL into WARC path
-            self.favicon_path = normalize(
-                HttpUrl(
-                    urljoin(
-                        get_record_url(record),
-                        icon_url,
-                    )
-                )
+        # fallback to favicon.ico if no icon is specified in document head
+        if len(self.favicon_paths) == 0:
+            self.favicon_paths.append(
+                normalize(HttpUrl(urljoin(record_url, "/favicon.ico")))
             )
+
+        # Find most probable language if not passed via CLI
+        soup = BeautifulSoup(content, "html.parser")
 
         if not self.language:
             # HTML5 Standard
@@ -648,14 +643,22 @@ class Converter:
 
         Uses fallback in case of errors/missing"""
 
-        if self.favicon_url or self.favicon_path:
-            # look into WARC records
+        # filter out paths which are not present in WARC files
+        self.favicon_paths = [
+            path for path in self.favicon_paths if path in self.expected_zim_items
+        ]
+        logger.debug(
+            "Favicons present in WARC files: "
+            f"{ ' or '.join(path.value for path in self.favicon_paths)}"
+        )
+        if self.favicon_paths:
+            # look into WARC records to search for prefered path as favicon
             for record in iter_warc_records(self.inputs):
                 if record.rec_type != "response":
                     continue
                 url = get_record_url(record)
                 path = normalize(HttpUrl(url))
-                if path == self.favicon_path or url == self.favicon_url:
+                if path == self.favicon_paths[0]:  # prefered path is first item in list
                     logger.debug("Found WARC record for favicon")
                     if (
                         record.http_headers
@@ -666,17 +669,17 @@ class Converter:
                     self.illustration = get_record_content(record)
                     break
 
-            # download favicon_url (might be custom URL, not present in WARC records)
-            if not self.illustration and self.favicon_url:
-                try:
-                    dst = io.BytesIO()
-                    if not stream_file(self.favicon_url, byte_stream=dst)[0]:
-                        raise OSError(
-                            "No bytes received downloading favicon"
-                        )  # pragma: no cover
-                    self.illustration = dst.getvalue()
-                except Exception as exc:
-                    logger.warning("Unable to download favicon", exc_info=exc)
+        # download favicon_url (might be custom URL, not present in WARC records)
+        if not self.illustration and self.favicon_url:
+            try:
+                dst = io.BytesIO()
+                if not stream_file(self.favicon_url, byte_stream=dst)[0]:
+                    raise OSError(
+                        "No bytes received downloading favicon"
+                    )  # pragma: no cover
+                self.illustration = dst.getvalue()
+            except Exception as exc:
+                logger.warning("Unable to download favicon", exc_info=exc)
 
         if not self.illustration:
             logger.warning("Illustration not found, using default")
@@ -684,7 +687,7 @@ class Converter:
 
         # Illustration is now set, no need to keep url/path anymore
         del self.favicon_url
-        del self.favicon_path
+        del self.favicon_paths
 
     def convert_illustration(self):
         """convert self.illustration into a 48x48px PNG with fallback"""
