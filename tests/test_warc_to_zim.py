@@ -545,11 +545,18 @@ class TestWarc2Zim:
         zim_favicon = self.get_metadata(zim_output, "Illustration_48x48@1")
         assert zim_favicon
 
+        # WARNING: this test might fails if kiwix.org favicon changes, since we fetch
+        # the favicon from online in the scraper since it is missing from the WARC
+        # Just update tests/data-special/kiwix_favicon.png with new resized icon with
+        # pathlib.Path("tests/data-special/kiwix_favicon.png").write_bytes(zim_favicon)
+        # and confirm this is the expected icon (goal is to check that we have a proper
+        # illustration and not the default scraperlib illustration)
+        # This test might also be flacky if kiwix.org becomes unavailable during the
+        # test
+        # It is still valuable to confirm that in general the favicon fetched is
+        # appropriate (and not a low res version)
         assert (
-            self.rebuild_favicon_bytes(
-                zim_output,
-                "kiwix.org/favicon.ico",
-            )
+            pathlib.Path("tests/data-special/kiwix_favicon.png").read_bytes()
             == zim_favicon
         )
 
