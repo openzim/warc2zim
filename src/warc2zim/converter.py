@@ -33,6 +33,7 @@ import requests
 # from zimscraperlib import getLogger
 from bs4 import BeautifulSoup
 from cdxj_indexer import buffering_record_iter, iter_file_or_dir
+from dateutil import parser
 from jinja2 import Environment, PackageLoader
 from warcio import ArchiveIterator
 from zimscraperlib.constants import (
@@ -224,6 +225,11 @@ class Converter:
 
         self.scraper_suffix = args.scraper_suffix
 
+        # metadata about WARC files
+        self.warc_software = ""
+        self.warc_start = None
+        self.warc_end = None
+
         self.continue_on_error = bool(args.continue_on_error)
         self.disable_metadata_checks = bool(args.disable_metadata_checks)
         self.ignore_content_header_charsets = bool(args.ignore_content_header_charsets)
@@ -334,8 +340,29 @@ class Converter:
             Illustration_48x48_at_1=self.illustration,
             Tags=self.tags,
             Source=self.source,
-            Scraper=f"warc2zim {get_version()}{self.scraper_suffix or ''}",
+            Scraper=",".join(
+                filter(
+                    lambda x: x,  # remove None values
+                    [
+                        f"warc2zim {get_version()}",
+                        self.warc_software,
+                        self.scraper_suffix,
+                    ],
+                )
+            ),
         ).start()
+
+        if self.warc_start and self.warc_end:
+            if self.warc_start == self.warc_end:
+                self.creator.add_metadata(
+                    "X-ContentDate", self.warc_start.strftime("%Y-%m-%d")
+                )
+            else:
+                self.creator.add_metadata(
+                    "X-ContentDate",
+                    f"{self.warc_start.strftime('%Y-%m-%d')},"
+                    f"{self.warc_end.strftime('%Y-%m-%d')}",
+                )
 
         for filename in importlib.resources.files("warc2zim.statics").iterdir():
             with importlib.resources.as_file(filename) as file:
@@ -398,14 +425,42 @@ class Converter:
 
         self.creator.finish()
 
+    def extract_warcinfo(self, record):
+        """Extract the software value from a warcinfo record"""
+        if self.warc_software:
+            logger.debug("warc_software already set, ignoring warcinfo record")
+            return
+        if get_record_mime_type(record) != "application/warc-fields":
+            logger.warning(
+                f"Unsupported warcinfo record found: {get_record_mime_type(record)}"
+            )
+            return
+        for warcfield in get_record_content(record).decode("UTF-8").splitlines():
+            name, value = warcfield.split(":", 1)
+            if name.strip().lower() != "software":
+                continue
+            self.warc_software = str(value).strip()
+            return
+
     def gather_information_from_warc(self):
         main_page_found = False
         for record in iter_warc_records(self.warc_files):
+
+            if record.rec_type == "warcinfo":
+                self.extract_warcinfo(record)
 
             # only response records can be considered as main_path and as existing ZIM
             # path
             if record.rec_type not in ("response", "revisit"):
                 continue
+
+            # update warc_start/warc_end based on WARC-Date header
+            if record.rec_headers["WARC-Date"]:
+                record_date = parser.isoparse(record.rec_headers["WARC-Date"]).date()
+                if self.warc_start is None or self.warc_start > record_date:
+                    self.warc_start = record_date
+                if self.warc_end is None or self.warc_end < record_date:
+                    self.warc_end = record_date
 
             url = get_record_url(record)
 

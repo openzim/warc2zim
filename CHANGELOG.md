@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Generate fuzzy rules tests in Python and Javascript (#284)
 - Refactor HTML rewriter class to make it more open to change and expressive (#305)
 - Detect charset in document header only for HTML documents (#331)
+- Use `software` property from `warcinfo` record to set ZIM `Scraper` metadata (#357)
+- Store `ContentDate` as metadata, based on `WARC-Date` (#358)
 
 ### Fixed
 
