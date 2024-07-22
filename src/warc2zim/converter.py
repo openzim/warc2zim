@@ -847,5 +847,5 @@ def iter_warc_records(warc_files):
     for filename in warc_files:
         with open(filename, "rb") as fh:
             for record in buffering_record_iter(ArchiveIterator(fh), post_append=True):
-                if record and record.rec_type in ("resource", "response", "revisit"):
+                if record:
                     yield record
