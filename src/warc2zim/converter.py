@@ -412,15 +412,27 @@ class Converter:
                 # check for duplicates, might happen due to fuzzy rules
                 if zim_path not in self.redirections:
                     if redirect_location := record.http_headers.get("Location"):
-                        redirection_zim_path = normalize(
-                            HttpUrl(urljoin(url, redirect_location))
-                        )
-                        # Redirection to same ZIM path have to be ignored (occurs for
-                        # instance when redirecting from http to https)
-                        if zim_path != redirection_zim_path:
-                            self.redirections[zim_path] = redirection_zim_path
+                        try:
+                            redirection_zim_path = normalize(
+                                HttpUrl(urljoin(url, redirect_location))
+                            )
+                            # Redirection to same ZIM path have to be ignored (occurs
+                            # for instance when redirecting from http to https)
+                            if zim_path != redirection_zim_path:
+                                self.redirections[zim_path] = redirection_zim_path
+                        except Exception as exc:
+                            # Ignore exceptions in redirection handling, this is too
+                            # common to have bad redirections target just like we have
+                            # many bad URLs in HTML code
+                            logger.debug(
+                                f"Failed to process redirection of "
+                                f"{zim_path.value} to {redirect_location} : {exc} ; "
+                                "no ZIM item will be created"
+                            )
                     else:
-                        logger.warning(f"Redirection target is empty for {zim_path}")
+                        logger.warning(
+                            f"Redirection target is empty for {zim_path.value}"
+                        )
             else:
                 self.expected_zim_items.add(zim_path)
 
