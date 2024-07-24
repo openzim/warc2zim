@@ -59,6 +59,12 @@ export function hasAlreadyBeenRewritten(
   return false;
 }
 
+function removeSubsequentSlashes(value) {
+  // Remove all successive occurrences of a slash `/` in a given string
+  // E.g `val//ue` or `val///ue` or `val////ue` (and so on) are transformed into `value`
+  return value.replace(/\/\/+/g, '/');
+}
+
 export function urlRewriteFunction(
   current_url, // The current (real) url we are on, e.g. http://library.kiwix.org/content/myzim_yyyy-mm/www.example.com/index.html
   orig_host, // The host of the original url, e.g. www.example.com
@@ -176,7 +182,8 @@ export function urlRewriteFunction(
       : '?' + decodeURIComponent(absolute_url_parts.query).replaceAll('+', ' ');
 
   // combine all decoded parts to get the ZIM path
-  const zimPath = decoded_host + decoded_path + decoded_query;
+  const zimPath =
+    decoded_host + removeSubsequentSlashes(decoded_path + decoded_query);
 
   // apply the fuzzy rules to the ZIM path
   const fuzzifiedPath = applyFuzzyRules(zimPath);

@@ -1127,3 +1127,54 @@ test('relNotReallyAnotherHostAlreadyRewrittenNotUpEnough', (t) => {
     'http://library.kiwix.org/content/myzim_yyyy-mm/www.example.com/anotherhost.com/javascript/content.txt',
   );
 });
+
+test('doubleSlash1', (t) => {
+  t.is(
+    urlRewriteFunction(
+      t.context.currentUrl,
+      t.context.originalHost,
+      t.context.originalScheme,
+      t.context.originalUrl,
+      t.context.prefix,
+      'http://example.com/some/path/http://example.com//some/path',
+      undefined,
+      undefined,
+      undefined,
+    ),
+    'http://library.kiwix.org/content/myzim_yyyy-mm/example.com/some/path/http%3A/example.com/some/path',
+  );
+});
+
+test('doubleSlash2', (t) => {
+  t.is(
+    urlRewriteFunction(
+      t.context.currentUrl,
+      t.context.originalHost,
+      t.context.originalScheme,
+      t.context.originalUrl,
+      t.context.prefix,
+      'http://example.com/some/pa?th/http://example.com//some/path',
+      undefined,
+      undefined,
+      undefined,
+    ),
+    'http://library.kiwix.org/content/myzim_yyyy-mm/example.com/some/pa%3Fth/http%3A/example.com/some/path',
+  );
+});
+
+test('doubleSlash3', (t) => {
+  t.is(
+    urlRewriteFunction(
+      t.context.currentUrl,
+      t.context.originalHost,
+      t.context.originalScheme,
+      t.context.originalUrl,
+      t.context.prefix,
+      'http://example.com/so?me/pa?th/http://example.com//some/path',
+      undefined,
+      undefined,
+      undefined,
+    ),
+    'http://library.kiwix.org/content/myzim_yyyy-mm/example.com/so%3Fme/pa%3Fth/http%3A/example.com/some/path',
+  );
+});
