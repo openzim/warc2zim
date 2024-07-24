@@ -188,6 +188,15 @@ class Converter:
         self.failed_content_path.mkdir(parents=True, exist_ok=True)
 
         self.inputs = args.inputs
+
+        # sort by filename (not full path) alphabetically to process WARC by crawl time
+        # in general (at least when browsertrix crawler is used with zimit, not sure for
+        # **pure** warc2zim scenarii)
+        self.warc_files = sorted(
+            iter_file_or_dir(self.inputs), key=lambda filename: Path(filename).name
+        )
+        logger.debug(f"{len(self.warc_files)} WARC files found")
+
         self.include_domains = args.include_domains
 
         self.custom_css = args.custom_css
@@ -336,7 +345,7 @@ class Converter:
         if self.custom_css:
             self.add_custom_css_item()
 
-        for record in iter_warc_records(self.inputs):
+        for record in iter_warc_records(self.warc_files):
             try:
                 self.add_items_for_warc_record(record)
             except Exception as exc:
@@ -390,7 +399,7 @@ class Converter:
 
     def gather_information_from_warc(self):
         main_page_found = False
-        for record in iter_warc_records(self.inputs):
+        for record in iter_warc_records(self.warc_files):
 
             # only response records can be considered as main_path and as existing ZIM
             # path
@@ -662,7 +671,7 @@ class Converter:
 
         if self.favicon_url or self.favicon_path:
             # look into WARC records
-            for record in iter_warc_records(self.inputs):
+            for record in iter_warc_records(self.warc_files):
                 if record.rec_type != "response":
                     continue
                 url = get_record_url(record)
@@ -817,9 +826,9 @@ class Converter:
             )
 
 
-def iter_warc_records(inputs):
+def iter_warc_records(warc_files):
     """iter warc records, including appending request data to matching response"""
-    for filename in iter_file_or_dir(inputs):
+    for filename in warc_files:
         with open(filename, "rb") as fh:
             for record in buffering_record_iter(ArchiveIterator(fh), post_append=True):
                 if record and record.rec_type in ("resource", "response", "revisit"):

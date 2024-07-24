@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Handle case where the redirect target is bad / unsupported (#332 and #356)
+- Fixed WARC files handling order to follow creation order (#366)
 
 ## [2.0.3] - 2024-07-24
 
