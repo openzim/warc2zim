@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Generate fuzzy rules tests in Python and Javascript (#284)
+- Refactor HTML rewriter class to make it more open to change and expressive (#305)
 
 ### Fixed
 
