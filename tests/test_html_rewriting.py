@@ -1,8 +1,17 @@
+from collections.abc import Callable
 from textwrap import dedent
 
 import pytest
 
-from warc2zim.content_rewriting.html import HtmlRewriter, extract_base_href
+from warc2zim.content_rewriting.html import (
+    AttrNameAndValue,
+    AttrsList,
+    HtmlRewriter,
+    HTMLRewritingRules,
+    extract_base_href,
+    format_attr,
+    get_attr_value_from,
+)
 from warc2zim.url_rewriting import ArticleUrlRewriter, HttpUrl, ZimPath
 
 from .utils import ContentForTests
@@ -892,3 +901,457 @@ def test_rewrite_meta_charset(rewrite_meta_charset_content, no_js_notify):
         .content
         == rewrite_meta_charset_content.expected_str
     )
+
+
+rules = HTMLRewritingRules()
+
+
+@rules.drop_attribute()
+def drop_all_named_attribute(attr_name: str):
+    return attr_name == "all_named"
+
+
+@rules.drop_attribute()
+def drop_all_tag_name_attribute(tag: str):
+    return tag == "all_tag"
+
+
+@rules.drop_attribute()
+def drop_tag_name_attribute(tag: str, attr_name: str):
+    return tag == "drop_tag" and attr_name == "drop_name"
+
+
+@rules.drop_attribute()
+def drop_attr_name_and_value_attribute(attr_name: str, attr_value: str | None):
+    return (
+        attr_name == "drop_value"
+        and attr_value is not None
+        and attr_value.startswith("drop")
+    )
+
+
+@rules.drop_attribute()
+def drop_if_other_attribute(attr_name: str, attrs: AttrsList):
+    return attr_name == "drop_if_other" and any(
+        other_name == "other" for other_name, _ in attrs
+    )
+
+
+@pytest.mark.parametrize(
+    "tag, attr_name, attr_value, attrs, should_drop",
+    [
+        pytest.param("all_tag", "foo", "bar", [], True, id="drop_by_tag_name"),
+        pytest.param("other_tag", "foo", "bar", [], False, id="dont_drop_by_tag_name"),
+        pytest.param("foo", "all_named", "bar", [], True, id="drop_by_attr_name"),
+        pytest.param(
+            "foo", "other_name", "bar", [], False, id="dont_drop_by_attr_name"
+        ),
+        pytest.param(
+            "drop_tag", "drop_name", "bar", [], True, id="drop_by_tag_and_attr_name"
+        ),
+        pytest.param(
+            "drop_tag", "foo", "bar", [], False, id="dont_drop_by_tag_and_attr_name"
+        ),
+        pytest.param("foo", "drop_value", "drop_me", [], True, id="drop_by_attr_value"),
+        pytest.param(
+            "foo", "drop_value", "dont_drop", [], False, id="dont_drop_by_attr_value"
+        ),
+        pytest.param(
+            "foo", "drop_value", "dont_drop", [], False, id="dont_drop_by_attr_value"
+        ),
+        pytest.param(
+            "foo",
+            "drop_if_other",
+            "bar",
+            [("foo", None), ("other", "foo"), ("bar", "foo")],
+            True,
+            id="drop_if_other",
+        ),
+        pytest.param(
+            "foo",
+            "drop_if_other",
+            "bar",
+            [("foo", None), ("bar", "foo")],
+            False,
+            id="dont_drop_if_not_other",
+        ),
+    ],
+)
+def test_html_drop_rules(
+    tag: str,
+    attr_name: str,
+    attr_value: str | None,
+    attrs: AttrsList,
+    *,
+    should_drop: bool,
+):
+    assert (
+        rules._do_drop_attribute(
+            tag=tag, attr_name=attr_name, attr_value=attr_value, attrs=attrs
+        )
+        is should_drop
+    )
+
+
+def test_bad_html_drop_rules_argument_name():
+    bad_rules = HTMLRewritingRules()
+
+    with pytest.raises(TypeError, match="Parameter .* is unsupported in function"):
+
+        @bad_rules.drop_attribute()
+        def bad_signature(foo: str) -> bool:
+            return foo == "bar"
+
+
+def test_bad_html_drop_rules_argument_type():
+    bad_rules = HTMLRewritingRules()
+
+    with pytest.raises(TypeError, match="Parameter .* in function .* must be of type"):
+
+        @bad_rules.drop_attribute()
+        def bad_signature(attr_name: int) -> bool:
+            return attr_name == "bar"
+
+
+@rules.rewrite_attribute()
+def rewrite_tag_value(attr_name: str) -> AttrNameAndValue | None:
+    if attr_name != "aname":
+        return
+    return (attr_name, "foo")
+
+
+@rules.rewrite_attribute()
+def rewrite_tag_name(attr_name: str, attr_value: str | None) -> AttrNameAndValue | None:
+    if attr_name != "bad_name":
+        return
+    return ("good_name", attr_value)
+
+
+@rules.rewrite_attribute()
+def rewrite_call_notify(
+    attr_name: str,
+    notify_js_module: Callable[[ZimPath], None],
+) -> AttrNameAndValue | None:
+    if attr_name != "call_notify":
+        return
+    notify_js_module(ZimPath("foo"))
+    return
+
+
+@rules.rewrite_attribute()
+def rewrite_value_with_base_href(
+    attr_name: str,
+    base_href: str | None,
+) -> AttrNameAndValue | None:
+    if attr_name != "get_base_href":
+        return
+    return (attr_name, base_href)
+
+
+@rules.rewrite_attribute()
+def rewrite_attr2_value_with_attr1_value(
+    attr_name: str,
+    attrs: AttrsList,
+) -> AttrNameAndValue | None:
+    if attr_name != "attr2":
+        return
+    return (attr_name, get_attr_value_from(attrs, "attr1"))
+
+
+@pytest.mark.parametrize(
+    "tag, attr_name, attr_value, attrs, base_href, expected_result, should_notify",
+    [
+        pytest.param(
+            "foo",
+            "aname",
+            "bar",
+            [],
+            "",
+            ("aname", "foo"),
+            False,
+            id="rewrite_tag_value",
+        ),
+        pytest.param(
+            "foo",
+            "bad_name",
+            "bar",
+            [],
+            "",
+            ("good_name", "bar"),
+            False,
+            id="rewrite_tag_name",
+        ),
+        pytest.param(
+            "foo",
+            "call_notify",
+            "bar",
+            [],
+            "",
+            ("call_notify", "bar"),
+            True,
+            id="call_notify",
+        ),
+        pytest.param(
+            "foo",
+            "get_base_href",
+            "bar",
+            [],
+            "base_href_value",
+            ("get_base_href", "base_href_value"),
+            False,
+            id="rewrite_value_with_base_href",
+        ),
+        pytest.param(
+            "foo",
+            "attr2",
+            "bar",
+            [("attr1", "value1")],
+            "base_href_value",
+            ("attr2", "value1"),
+            False,
+            id="rewrite_attr2_value_with_attr1_value",
+        ),
+    ],
+)
+def test_html_attribute_rewrite_rules(
+    tag: str,
+    attr_name: str,
+    attr_value: str | None,
+    attrs: AttrsList,
+    base_href: str,
+    expected_result: AttrNameAndValue,
+    *,
+    should_notify: bool,
+    simple_url_rewriter,
+    js_rewriter,
+    css_rewriter,
+):
+    notified_paths = []
+
+    def notify(path: ZimPath):
+        notified_paths.append(path)
+
+    url_rewriter = simple_url_rewriter("http://www.example.com")
+    js_rewriter = js_rewriter(
+        url_rewriter=url_rewriter, base_href=base_href, notify_js_module=notify
+    )
+    css_rewriter = css_rewriter(url_rewriter=url_rewriter, base_href=base_href)
+
+    assert (
+        rules._do_attribute_rewrite(
+            tag=tag,
+            attr_name=attr_name,
+            attr_value=attr_value,
+            attrs=attrs,
+            js_rewriter=js_rewriter,
+            css_rewriter=css_rewriter,
+            url_rewriter=url_rewriter,
+            base_href=base_href,
+            notify_js_module=notify,
+        )
+        == expected_result
+    )
+    assert (len(notified_paths) > 0) == should_notify
+
+
+def test_bad_html_attribute_rewrite_rules_argument_name():
+    bad_rules = HTMLRewritingRules()
+
+    with pytest.raises(TypeError, match="Parameter .* is unsupported in function"):
+
+        @bad_rules.rewrite_attribute()
+        def bad_signature(foo: str) -> AttrNameAndValue | None:
+            return (foo, "bar")
+
+
+def test_bad_html_attribute_rewrite_rules_argument_type():
+    bad_rules = HTMLRewritingRules()
+
+    with pytest.raises(TypeError, match="Parameter .* in function .* must be of type"):
+
+        @bad_rules.rewrite_attribute()
+        def bad_signature(attr_name: int) -> AttrNameAndValue | None:
+            return (f"{attr_name}", "bar")
+
+
+@rules.rewrite_tag()
+def rewrite1_tag(
+    tag: str,
+) -> str | None:
+    if tag != "rewrite1":
+        return
+    return "<rewriten attr1=value1 />"
+
+
+@rules.rewrite_tag()
+def rewrite2_tag(
+    tag: str,
+    attrs: AttrsList,
+    *,
+    auto_close: bool,
+) -> str | None:
+    if tag != "rewrite2":
+        return
+
+    return (
+        f"<rewriten {' '.join(format_attr(*attr) for attr in attrs)}"
+        f"{'/>' if auto_close else '>'}"
+    )
+
+
+@pytest.mark.parametrize(
+    "tag, attrs, auto_close, expected_result",
+    [
+        pytest.param(
+            "foo",
+            [],
+            False,
+            None,
+            id="do_not_rewrite_foo_tag",
+        ),
+        pytest.param(
+            "rewrite1",
+            [("attr2", "value2")],
+            False,
+            "<rewriten attr1=value1 />",
+            id="rewrite1_tag",
+        ),
+        pytest.param(
+            "rewrite2",
+            [("attr2", "value2")],
+            False,
+            '<rewriten attr2="value2">',
+            id="rewrite2_tag_no_close",
+        ),
+        pytest.param(
+            "rewrite2",
+            [("attr2", "value2")],
+            True,
+            '<rewriten attr2="value2"/>',
+            id="rewrite2_tag_auto_close",
+        ),
+    ],
+)
+def test_html_tag_rewrite_rules(
+    tag: str,
+    attrs: AttrsList,
+    *,
+    auto_close: bool,
+    expected_result: str | None,
+):
+    assert (
+        rules._do_tag_rewrite(
+            tag=tag,
+            attrs=attrs,
+            auto_close=auto_close,
+        )
+        == expected_result
+    )
+
+
+def test_bad_html_tag_rewrite_rules_argument_name():
+    bad_rules = HTMLRewritingRules()
+
+    with pytest.raises(TypeError, match="Parameter .* is unsupported in function"):
+
+        @bad_rules.rewrite_tag()
+        def bad_signature(foo: str) -> str:
+            return foo
+
+
+def test_bad_html_tag_rewrite_rules_argument_type():
+    bad_rules = HTMLRewritingRules()
+
+    with pytest.raises(TypeError, match="Parameter .* in function .* must be of type"):
+
+        @bad_rules.rewrite_tag()
+        def bad_signature(attrs: int) -> str:
+            return f"{attrs}"
+
+
+@rules.rewrite_data()
+def rewrite_data_html_rewrite_context(
+    html_rewrite_context: str | None,
+) -> str | None:
+    if html_rewrite_context != "rewrite":
+        return
+    return "rewritten data"
+
+
+@pytest.mark.parametrize(
+    "html_rewrite_context, base_href, data, expected_result",
+    [
+        pytest.param(
+            "foo",
+            "bar",
+            "something",
+            None,
+            id="do_not_rewrite_foo_context",
+        ),
+        pytest.param(
+            None,
+            "bar",
+            "something",
+            None,
+            id="do_not_rewrite_none_context",
+        ),
+        pytest.param(
+            "rewrite",
+            "bar",
+            "something",
+            "rewritten data",
+            id="rewrite_data_html_rewrite_context",
+        ),
+    ],
+)
+def test_html_data_rewrite_rules(
+    html_rewrite_context: str | None,
+    base_href: str,
+    data: str,
+    *,
+    expected_result: str | None,
+    simple_url_rewriter,
+    js_rewriter,
+    css_rewriter,
+):
+    notified_paths = []
+
+    def notify(path: ZimPath):
+        notified_paths.append(path)
+
+    url_rewriter = simple_url_rewriter("http://www.example.com")
+    js_rewriter = js_rewriter(
+        url_rewriter=url_rewriter, base_href=base_href, notify_js_module=notify
+    )
+    css_rewriter = css_rewriter(url_rewriter=url_rewriter, base_href=base_href)
+
+    assert (
+        rules._do_data_rewrite(
+            html_rewrite_context=html_rewrite_context,
+            data=data,
+            css_rewriter=css_rewriter,
+            js_rewriter=js_rewriter,
+            url_rewriter=url_rewriter,
+        )
+        == expected_result
+    )
+
+
+def test_bad_html_data_rewrite_rules_argument_name():
+    bad_rules = HTMLRewritingRules()
+
+    with pytest.raises(TypeError, match="Parameter .* is unsupported in function"):
+
+        @bad_rules.rewrite_data()
+        def bad_signature(foo: str) -> str | None:
+            return foo
+
+
+def test_bad_html_data_rewrite_rules_argument_type():
+    bad_rules = HTMLRewritingRules()
+
+    with pytest.raises(TypeError, match="Parameter .* in function .* must be of type"):
+
+        @bad_rules.rewrite_data()
+        def bad_signature(data: int) -> str | None:
+            return f"{data}"
