@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Handle case where the redirect target is bad / unsupported (#332 and #356)
+
 ## [2.0.3] - 2024-07-24
 
 ### Changed

@@ -75,6 +75,8 @@
     redir /bad-redir-loop-B /bad-redir-loop-C 307
     redir /bad-redir-loop-C /bad-redir-loop-D 307
     redir /bad-redir-loop-D /bad-redir-loop-B 307
+    redir /bad-redir-target-A https://I%20mNotAhostname 307
+    redir /bad-redir-target-B intent://example.com/path#Intent;scheme=http;package=com.example.myapp;component=com.example.myapp/.MainActivity;end 307
 
     header /content-types/script1.js Content-Type application/javascript
     header /content-types/script2.js Content-Type text/javascript

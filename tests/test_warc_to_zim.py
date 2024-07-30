@@ -788,24 +788,24 @@ class TestWarc2Zim:
                 zim_output, f"website.test.openzim.org/{ignored_website_items}"
             )
 
-    def test_redirection_loops(self, tmp_path):
-        zim_output = "test-redir-loops.zim"
+    def test_bad_redirections(self, tmp_path):
+        zim_output = "test-bad-redirections.zim"
 
         main(
             [
-                os.path.join(TEST_DATA_DIR, "redir-loops.warc.gz"),
+                os.path.join(TEST_DATA_DIR, "bad-redirections.warc.gz"),
                 "--output",
                 str(tmp_path),
                 "--zim-file",
                 zim_output,
                 "--name",
-                "test-redir-loops",
+                "test-bad-redirections",
             ]
         )
         zim_output = tmp_path / zim_output
 
         for exising_website_items in [
-            "redirection-loops.html",
+            "bad-redirections.html",
         ]:
             self.assert_item_exist(
                 zim_output, f"website.test.openzim.org/{exising_website_items}"
@@ -816,6 +816,8 @@ class TestWarc2Zim:
             "/bad-redir-loop-B",
             "/bad-redir-loop-C",
             "/bad-redir-loop-D",
+            "/bad-redir-target-A",
+            "/bad-redir-target-B",
         ]:
             self.assert_item_does_not_exist(
                 zim_output, f"website.test.openzim.org/{ignored_website_items}"
