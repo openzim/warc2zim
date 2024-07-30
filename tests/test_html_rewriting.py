@@ -11,6 +11,7 @@ from warc2zim.content_rewriting.html import (
     extract_base_href,
     format_attr,
     get_attr_value_from,
+    rewrite_meta_http_equiv_redirect,
 )
 from warc2zim.url_rewriting import ArticleUrlRewriter, HttpUrl, ZimPath
 
@@ -903,6 +904,43 @@ def test_rewrite_meta_charset(rewrite_meta_charset_content, no_js_notify):
     )
 
 
+@pytest.fixture(
+    params=[
+        ContentForTests(
+            '<html><head><meta http-equiv="refresh" '
+            'content="3;url=https://kiwix.org/somepage" />'
+            "</head><body>whatever</body></html>",
+            '<html><head><meta http-equiv="refresh" '
+            'content="3;url=somepage" />'
+            "</head><body>whatever</body></html>",
+        ),
+    ]
+)
+def rewrite_meta_http_equiv_redirect_full_content(request):
+    yield request.param
+
+
+def test_rewrite_meta_http_equiv_redirect_full(
+    rewrite_meta_http_equiv_redirect_full_content, no_js_notify
+):
+    assert (
+        HtmlRewriter(
+            ArticleUrlRewriter(
+                HttpUrl(
+                    f"http://{rewrite_meta_http_equiv_redirect_full_content.article_url}"
+                ),
+                {ZimPath("kiwix.org/somepage")},
+            ),
+            "",
+            "",
+            no_js_notify,
+        )
+        .rewrite(rewrite_meta_http_equiv_redirect_full_content.input_str)
+        .content
+        == rewrite_meta_http_equiv_redirect_full_content.expected_str
+    )
+
+
 rules = HTMLRewritingRules()
 
 
@@ -1355,3 +1393,111 @@ def test_bad_html_data_rewrite_rules_argument_type():
         @bad_rules.rewrite_data()
         def bad_signature(data: int) -> str | None:
             return f"{data}"
+
+
+@pytest.mark.parametrize(
+    "tag, attr_name, attr_value, attrs, expected_result",
+    [
+        pytest.param(
+            "meta",
+            "content",
+            "1;url=http://www.example.com/somewhere",
+            [("http-equiv", "refresh")],
+            ("content", "1;url=http://www.example.com/somewhererewritten"),
+            id="nomimal_case",
+        ),
+        pytest.param(
+            "meta",
+            "content",
+            "   1  ;  url =  http://www.example.com/somewhere   ",
+            [("http-equiv", "refresh")],
+            ("content", "1;url=http://www.example.com/somewhererewritten"),
+            id="nomimal_case_with_spaces",
+        ),
+        pytest.param(
+            "foo",
+            "content",
+            "1;url=http://www.example.com/somewhere",
+            [("http-equiv", "refresh")],
+            None,
+            id="do_not_rewrite_foo_tag",
+        ),
+        pytest.param(
+            "meta",
+            "foo",
+            "1;url=http://www.example.com/somewhere",
+            [("http-equiv", "refresh")],
+            None,
+            id="do_not_rewrite_foo_attribute",
+        ),
+        pytest.param(
+            "meta",
+            "content",
+            "1;url=http://www.example.com/somewhere",
+            [("http-equiv", "foo")],
+            None,
+            id="do_not_rewrite_http_equiv_not_refresh",
+        ),
+        pytest.param(
+            "meta",
+            "content",
+            "1;url=http://www.example.com/somewhere",
+            [],
+            None,
+            id="do_not_rewrite_no_http_equiv",
+        ),
+        pytest.param(
+            "meta",
+            "content",
+            None,
+            [("http-equiv", "refresh")],
+            None,
+            id="do_not_rewrite_missing_attribute",
+        ),
+        pytest.param(
+            "meta",
+            "content",
+            "",
+            [("http-equiv", "refresh")],
+            None,
+            id="do_not_rewrite_empty_attribute",
+        ),
+        pytest.param(
+            "meta",
+            "content",
+            "1",
+            [("http-equiv", "refresh")],
+            None,
+            id="do_not_rewrite_attribute_without_url",
+        ),
+        pytest.param(
+            "meta",
+            "content",
+            "1;foo=http://www.example.com/somewhere",
+            [("http-equiv", "refresh")],
+            None,
+            id="do_not_rewrite_bad_attribute",
+        ),
+    ],
+)
+def test_rewrite_meta_http_equiv_redirect_rule(
+    tag: str,
+    attr_name: str,
+    attr_value: str | None,
+    attrs: AttrsList,
+    expected_result: AttrNameAndValue | None,
+    simple_url_rewriter,
+):
+    url_rewriter = simple_url_rewriter("http://www.example.com", suffix="rewritten")
+
+    assert (
+        rewrite_meta_http_equiv_redirect(
+            tag=tag,
+            attr_name=attr_name,
+            attr_value=attr_value,
+            attrs=attrs,
+            url_rewriter=url_rewriter,
+            base_href=None,
+        )
+        == expected_result
+    )

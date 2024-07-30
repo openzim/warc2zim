@@ -7,9 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- New fuzzy-rule for cheatography.com (#342), der-postillon.com (#330)
+- Properly rewrite redirect target url when present in <meta> HTML tag (#237)
+
 ### Changed
 
 - Generate fuzzy rules tests in Python and Javascript (#284)
+- Refactor HTML rewriter class to make it more open to change and expressive (#305)
 
 ### Fixed
 
@@ -30,7 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Exit with cleaner message when no entries are expected in the ZIM (#336) and when main entry is not processable (#337)
 - Add debug log for items whose content is empty (#344)
-- New fuzzy-rule for cheatography.com (#342), der-postillon.com (#330)
 
 ### Fixed
 
