@@ -8,7 +8,7 @@ from warc2zim.converter import Converter
 from warc2zim.utils import get_version
 
 
-def main(raw_args=None):
+def _create_arguments_parser() -> ArgumentParser:
     parser = ArgumentParser(description="Create ZIM files from WARC files")
 
     parser.add_argument("-V", "--version", action="version", version=get_version())
@@ -141,6 +141,11 @@ def main(raw_args=None):
         default=False,
     )
 
+    return parser
+
+
+def main(raw_args=None):
+    parser = _create_arguments_parser()
     args = parser.parse_args(args=raw_args)
     converter = Converter(args)
     return converter.run()
