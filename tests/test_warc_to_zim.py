@@ -270,15 +270,15 @@ class TestWarc2Zim:
             ("http://example.com/#anchor1", "example.com/"),
             (
                 "http://example.com/some/path/http://example.com//some/path",
-                "example.com/some/path/http://example.com//some/path",
+                "example.com/some/path/http:/example.com/some/path",
             ),
             (
                 "http://example.com/some/pa?th/http://example.com//some/path",
-                "example.com/some/pa?th/http://example.com//some/path",
+                "example.com/some/pa?th/http:/example.com/some/path",
             ),
             (
                 "http://example.com/so?me/pa?th/http://example.com//some/path",
-                "example.com/so?me/pa?th/http://example.com//some/path",
+                "example.com/so?me/pa?th/http:/example.com/some/path",
             ),
             ("http://example.com/resource?", "example.com/resource"),
             ("http://example.com/resource#", "example.com/resource"),
@@ -325,7 +325,7 @@ class TestWarc2Zim:
         ],
     )
     def test_normalize(self, url, zim_path):
-        assert normalize(HttpUrl(url)) == ZimPath(zim_path)
+        assert normalize(HttpUrl(url)).value == ZimPath(zim_path).value
 
     def test_warc_to_zim_specify_params_and_metadata(self, tmp_path):
         zim_output = "zim-out-filename.zim"

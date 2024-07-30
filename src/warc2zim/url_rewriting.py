@@ -45,13 +45,7 @@ from __future__ import annotations
 
 import re
 from pathlib import PurePosixPath
-from urllib.parse import (
-    quote,
-    unquote,
-    urljoin,
-    urlsplit,
-    urlunsplit,
-)
+from urllib.parse import quote, unquote, urljoin, urlsplit, urlunsplit
 
 import idna
 
@@ -228,9 +222,19 @@ def normalize(url: HttpUrl) -> ZimPath:
     else:
         query = ""
 
-    fuzzified_url = apply_fuzzy_rules(f"{hostname}{path}{query}")
+    fuzzified_url = apply_fuzzy_rules(
+        f"{hostname}{_remove_subsequent_slashes(path)}{_remove_subsequent_slashes(query)}"
+    )
 
     return ZimPath(fuzzified_url)
+
+
+def _remove_subsequent_slashes(value: str) -> str:
+    """Remove all successive occurence of a slash `/` in a given string
+
+    E.g `val//ue` or `val///ue` or `val////ue` (and so on) are transformed into `value`
+    """
+    return re.sub(r"//+", "/", value)
 
 
 def get_without_fragment(url: str) -> str:
