@@ -407,6 +407,11 @@ class Converter:
                 continue
 
             url = get_record_url(record)
+
+            # ignore non HTTP(S) URLs (intent:// for instance, see #332)
+            if not (url.startswith("http://") or url.startswith("https://")):
+                continue
+
             zim_path = normalize(HttpUrl(url))
 
             status_code = get_status_code(record)
@@ -675,6 +680,9 @@ class Converter:
                 if record.rec_type != "response":
                     continue
                 url = get_record_url(record)
+                # ignore non HTTP(S) URLs (intent:// for instance, see #332)
+                if not (url.startswith("http://") or url.startswith("https://")):
+                    continue
                 path = normalize(HttpUrl(url))
                 if path == self.favicon_path or url == self.favicon_url:
                     logger.debug("Found WARC record for favicon")
@@ -746,6 +754,13 @@ class Converter:
         url = get_record_url(record)
         if not url:
             logger.debug(f"Skipping record with empty WARC-Target-URI {record}")
+            return
+
+        url = str(url)
+
+        # ignore non HTTP(S) URLs (intent:// for instance, see #332)
+        if not (url.startswith("http://") or url.startswith("https://")):
+            logger.debug(f"Skipping record with non HTTP(S) WARC-Target-URI {url}")
             return
 
         item_zim_path = normalize(HttpUrl(url))
