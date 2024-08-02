@@ -18,7 +18,6 @@ import io
 import json
 import logging
 import mimetypes
-import os
 import pathlib
 import re
 import sys
@@ -147,7 +146,7 @@ class Converter:
         self.full_filename = self.output / self.zim_file
 
         # ensure output file exists
-        if not os.path.isdir(self.output):
+        if not self.output.is_dir():
             logger.error(
                 f"Output directory {self.output} does not exist. Exiting with error "
                 "code 1"
