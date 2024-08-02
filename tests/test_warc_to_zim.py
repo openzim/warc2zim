@@ -24,13 +24,12 @@ TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
 # `test_all_warcs_root_dir` test
 TEST_DATA_SPECIAL_DIR = pathlib.Path(__file__).parent / "data-special"
 
-SCRAPER_SUFFIX = " + zimit x.y.z-devw"
+SCRAPER_SUFFIX = "zimit x.y.z-devw"
 
 # ============================================================================
 CMDLINES = [
     ["example-response.warc"],
     ["example-response.warc", "--progress-file", "progress.json"],
-    ["example-response.warc", "--scraper-suffix", SCRAPER_SUFFIX],
     ["example-revisit.warc.gz"],
     [
         "example-revisit.warc.gz",
@@ -121,7 +120,7 @@ class TestWarc2Zim:
             payload = None
         assert payload is None
 
-    def verify_warc_and_zim(self, warcfile, zimfile, verify_scraper_suffix):
+    def verify_warc_and_zim(self, warcfile, zimfile):
         assert pathlib.Path(warcfile).is_file()
         assert pathlib.Path(zimfile).is_file()
 
@@ -133,13 +132,8 @@ class TestWarc2Zim:
 
         zim_fh = Archive(zimfile)
 
-        if verify_scraper_suffix:
-            assert (
-                f"warc2zim {__version__}{SCRAPER_SUFFIX}"
-                == zim_fh.get_text_metadata("Scraper")
-            )
-        else:
-            assert f"warc2zim {__version__}" == zim_fh.get_text_metadata("Scraper")
+        assert zim_fh.get_text_metadata("Scraper").startswith(f"warc2zim {__version__}")
+        assert zim_fh.get_text_metadata("X-ContentDate")
 
         for record in iter_warc_records([warcfile]):
             url = get_record_url(record)
@@ -347,6 +341,8 @@ class TestWarc2Zim:
                 "test zim",
                 "--title",
                 "Some Title",
+                "--scraper-suffix",
+                SCRAPER_SUFFIX,
             ]
         )
 
@@ -380,6 +376,7 @@ class TestWarc2Zim:
             "Scraper",
             "Tags",
             "Title",
+            "X-ContentDate",
         ]
 
         assert zim_fh.has_fulltext_index
@@ -399,6 +396,12 @@ class TestWarc2Zim:
             "_foo_,_bar_",
         }
         assert self.get_metadata(zim_output, "Title") == b"Some Title"
+
+        assert (
+            zim_fh.get_text_metadata("Scraper") == f"warc2zim {__version__},"
+            "webrecorder.io 2.0 (warcprox 1.4-20151022181819-1a48f12),zimit x.y.z-devw"
+        )
+        assert zim_fh.get_text_metadata("X-ContentDate") == "2016-02-25"
 
     def test_warc_to_zim_main(self, cmdline, tmp_path):
         # intput filename
@@ -423,9 +426,7 @@ class TestWarc2Zim:
                     and progress["written"] <= progress["total"]
                 )
 
-        self.verify_warc_and_zim(
-            warcfile, tmp_path / zimfile, "--scraper-suffix" in cmdline
-        )
+        self.verify_warc_and_zim(warcfile, tmp_path / zimfile)
 
     def test_same_domain_only(self, tmp_path):
         zim_output = "same-domain.zim"
