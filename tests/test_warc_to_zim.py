@@ -3,7 +3,6 @@
 
 import io
 import json
-import os
 import pathlib
 import re
 import time
@@ -20,7 +19,10 @@ from warc2zim.main import main
 from warc2zim.url_rewriting import HttpUrl, ZimPath, normalize
 from warc2zim.utils import get_record_url
 
-TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
+TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
+# special data dir for WARC files which are not supposed to be ran in the
+# `test_all_warcs_root_dir` test
+TEST_DATA_SPECIAL_DIR = pathlib.Path(__file__).parent / "data-special"
 
 SCRAPER_SUFFIX = " + zimit x.y.z-devw"
 
@@ -120,8 +122,8 @@ class TestWarc2Zim:
         assert payload is None
 
     def verify_warc_and_zim(self, warcfile, zimfile, verify_scraper_suffix):
-        assert os.path.isfile(warcfile)
-        assert os.path.isfile(zimfile)
+        assert pathlib.Path(warcfile).is_file()
+        assert pathlib.Path(zimfile).is_file()
 
         # [TOFIX]
         head_insert = b""
@@ -332,7 +334,7 @@ class TestWarc2Zim:
         main(
             [
                 "-v",
-                os.path.join(TEST_DATA_DIR, "example-response.warc"),
+                str(TEST_DATA_DIR / "example-response.warc"),
                 "--name",
                 "example-response",
                 "--output",
@@ -350,7 +352,7 @@ class TestWarc2Zim:
 
         zim_output = tmp_path / zim_output
 
-        assert os.path.isfile(zim_output)
+        assert pathlib.Path(zim_output).is_file()
 
         all_articles = {
             article.path: article.title for article in self.list_articles(zim_output)
@@ -403,8 +405,8 @@ class TestWarc2Zim:
         filename = cmdline[0]
 
         # set intput filename (first arg) to absolute path from test dir
-        warcfile = os.path.join(TEST_DATA_DIR, filename)
-        cmdline[0] = warcfile
+        warcfile = TEST_DATA_DIR / filename
+        cmdline[0] = str(warcfile)
 
         cmdline.extend(["--output", str(tmp_path), "--name", filename])
 
@@ -429,7 +431,7 @@ class TestWarc2Zim:
         zim_output = "same-domain.zim"
         main(
             [
-                os.path.join(TEST_DATA_DIR, "example-revisit.warc.gz"),
+                str(TEST_DATA_DIR / "example-revisit.warc.gz"),
                 "--favicon",
                 "http://example.com/favicon.ico",
                 "--include-domains",
@@ -457,7 +459,7 @@ class TestWarc2Zim:
         zim_output = "self-redir.zim"
         main(
             [
-                os.path.join(TEST_DATA_DIR, "self-redirect.warc"),
+                str(TEST_DATA_DIR / "self-redirect.warc"),
                 "--output",
                 str(tmp_path),
                 "--zim-file",
@@ -473,7 +475,7 @@ class TestWarc2Zim:
         zim_output = "spt.zim"
         main(
             [
-                os.path.join(TEST_DATA_DIR, "single-page-test.warc"),
+                str(TEST_DATA_DIR / "single-page-test.warc"),
                 "-i",
                 "reseau-canope.fr",
                 "--output",
@@ -521,7 +523,7 @@ class TestWarc2Zim:
         zim_output = "kiwix.zim"
         main(
             [
-                os.path.join(TEST_DATA_DIR, "kiwix-with-redirects.warc.gz"),
+                str(TEST_DATA_DIR / "kiwix-with-redirects.warc.gz"),
                 "-u",
                 "http://www.kiwix.org",
                 "--output",
@@ -557,7 +559,7 @@ class TestWarc2Zim:
         zim_output = "test-all.zim"
         main(
             [
-                os.path.join(TEST_DATA_DIR),
+                str(TEST_DATA_DIR),
                 "--output",
                 str(tmp_path),
                 "--zim-file",
@@ -590,7 +592,7 @@ class TestWarc2Zim:
         zim_output = fuzzycheck["filename"] + ".zim"
         main(
             [
-                os.path.join(TEST_DATA_DIR, fuzzycheck["filename"]),
+                str(TEST_DATA_DIR / fuzzycheck["filename"]),
                 "--output",
                 str(tmp_path),
                 "--zim-file",
@@ -612,7 +614,7 @@ class TestWarc2Zim:
             main(
                 [
                     "-v",
-                    os.path.join(TEST_DATA_DIR, "example-response.warc"),
+                    str(TEST_DATA_DIR / "example-response.warc"),
                     "-u",
                     "https://no-such-url.example.com",
                     "--output",
@@ -632,7 +634,7 @@ class TestWarc2Zim:
             main(
                 [
                     "-v",
-                    os.path.join(TEST_DATA_DIR, "main-entry-403.warc.gz"),
+                    str(TEST_DATA_DIR / "main-entry-403.warc.gz"),
                     "-u",
                     "https://wikizilla.org/wiki/Doug",
                     "--output",
@@ -676,7 +678,7 @@ class TestWarc2Zim:
 
         main(
             [
-                os.path.join(TEST_DATA_DIR, "example-response.warc"),
+                str(TEST_DATA_DIR / "example-response.warc"),
                 "--output",
                 str(tmp_path),
                 "--zim-file",
@@ -704,7 +706,7 @@ class TestWarc2Zim:
 
         main(
             [
-                os.path.join(TEST_DATA_DIR, "example-response.warc"),
+                str(TEST_DATA_DIR / "example-response.warc"),
                 "--output",
                 str(tmp_path),
                 "--zim-file",
@@ -729,7 +731,7 @@ class TestWarc2Zim:
 
         main(
             [
-                os.path.join(TEST_DATA_DIR, "http-return-codes.warc.gz"),
+                str(TEST_DATA_DIR / "http-return-codes.warc.gz"),
                 "--output",
                 str(tmp_path),
                 "--zim-file",
@@ -793,7 +795,7 @@ class TestWarc2Zim:
 
         main(
             [
-                os.path.join(TEST_DATA_DIR, "bad-redirections.warc.gz"),
+                str(TEST_DATA_DIR / "bad-redirections.warc.gz"),
                 "--output",
                 str(tmp_path),
                 "--zim-file",
@@ -828,7 +830,7 @@ class TestWarc2Zim:
 
         main(
             [
-                os.path.join(TEST_DATA_DIR, "content-resource-types.warc.gz"),
+                str(TEST_DATA_DIR / "content-resource-types.warc.gz"),
                 "--output",
                 str(tmp_path),
                 "--zim-file",
@@ -850,3 +852,26 @@ class TestWarc2Zim:
         ]:
             res = self.get_article(zim_output, js_file)
             assert b"wombat" in res  # simple check that rewriting has been done
+
+    def test_content_encoding_aliases(self, tmp_path):
+        zim_output = "tests_en_qsl.net-encoding-alias.zim"
+
+        main(
+            [
+                # cannot be processed like other TEST_DATA_DIR warcs since it needs
+                # special encoding aliases to be used in --encoding-aliases
+                str(TEST_DATA_SPECIAL_DIR / "qsl.net-encoding-alias.warc.gz"),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--encoding-aliases",
+                "foo=bar,iso-8559-1=iso-8859-1,fii=bor",
+                "--name",
+                "tests_en_qsl.net-encoding-alias",
+            ]
+        )
+        zim_output = tmp_path / zim_output
+
+        res = self.get_article(zim_output, "www.qsl.net/vk2jem/swlogs.htm")
+        assert b"<!-- WB Insert -->" in res  # simple check that rewriting has been done

@@ -16,6 +16,14 @@ ENCODING_RE = re.compile(
     re.ASCII,
 )
 
+ENCODING_ALIASES = {}
+
+
+def set_encoding_aliases(aliases: dict[str, str]):
+    """Set the encoding aliases to use to decode"""
+    ENCODING_ALIASES.clear()
+    ENCODING_ALIASES.update(aliases)
+
 
 def get_version():
     return __version__
@@ -172,16 +180,20 @@ def to_string(
             )
             if m := ENCODING_RE.search(content_start):
                 head_encoding = m.group("encoding")
-                return input_.decode(head_encoding, errors="replace")
+                return input_.decode(
+                    ENCODING_ALIASES.get(head_encoding, head_encoding), errors="replace"
+                )
 
     # Search for encofing in HTTP `Content-Type` header
     if not ignore_http_header_charsets and http_encoding:
-        return input_.decode(http_encoding, errors="replace")
+        return input_.decode(
+            ENCODING_ALIASES.get(http_encoding, http_encoding), errors="replace"
+        )
 
     # Try all charsets_to_try passed
     for charset_to_try in charsets_to_try:
         try:
-            return input_.decode(charset_to_try)
+            return input_.decode(ENCODING_ALIASES.get(charset_to_try, charset_to_try))
         except (ValueError, LookupError):
             pass
 

@@ -18,7 +18,6 @@ import io
 import json
 import logging
 import mimetypes
-import os
 import pathlib
 import re
 import sys
@@ -65,6 +64,7 @@ from warc2zim.utils import (
     get_status_code,
     get_version,
     parse_title,
+    set_encoding_aliases,
     status_code_is_processable_redirect,
 )
 
@@ -136,6 +136,7 @@ class Converter:
 
         self.output = Path(args.output)
         self.zim_file = args.zim_file
+        set_encoding_aliases(args.encoding_aliases)
 
         if not self.zim_file:
             self.zim_file = "{name}_{period}.zim".format(
@@ -145,7 +146,7 @@ class Converter:
         self.full_filename = self.output / self.zim_file
 
         # ensure output file exists
-        if not os.path.isdir(self.output):
+        if not self.output.is_dir():
             logger.error(
                 f"Output directory {self.output} does not exist. Exiting with error "
                 "code 1"
