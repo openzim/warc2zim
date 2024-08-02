@@ -154,6 +154,7 @@ def main(raw_args=None):
                 encoding.split("=") for encoding in argument_value.split(",")
             )
         },
+        default={},
     )
 
     args = parser.parse_args(args=raw_args)

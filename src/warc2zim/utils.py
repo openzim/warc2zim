@@ -21,10 +21,8 @@ ENCODING_ALIASES = {}
 
 def set_encoding_aliases(aliases: dict[str, str]):
     """Set the encoding aliases to use to decode"""
-    if not aliases:
-        return
-    global ENCODING_ALIASES  # noqa: PLW0603
-    ENCODING_ALIASES = aliases
+    ENCODING_ALIASES.clear()
+    ENCODING_ALIASES.update(aliases)
 
 
 def get_version():
