@@ -5,7 +5,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from html import escape
 from html.parser import HTMLParser
-from inspect import signature
+from inspect import Signature, signature
+from typing import Generic, TypeVar
 
 from bs4 import BeautifulSoup
 
@@ -228,33 +229,33 @@ RewriteAttributeCallable = Callable[..., AttrNameAndValue | None]
 RewriteTagCallable = Callable[..., str | None]
 RewriteDataCallable = Callable[..., str | None]
 
+T = TypeVar("T", bound=Callable)
+
 
 @dataclass(frozen=True)
-class DropAttributeRule:
+class Rule(Generic[T]):
+    signature: Signature
+    func: T
+
+    @classmethod
+    def make(cls, func: T):
+        return cls(func=func, signature=signature(func))
+
+
+class DropAttributeRule(Rule[DropAttributeCallable]):
     """A rule specifying when an HTML attribute should be dropped"""
 
-    func: DropAttributeCallable
 
-
-@dataclass(frozen=True)
-class RewriteAttributeRule:
+class RewriteAttributeRule(Rule[RewriteAttributeCallable]):
     """A rule specifying how a given HTML attribute should be rewritten"""
 
-    func: RewriteAttributeCallable
 
-
-@dataclass(frozen=True)
-class RewriteTagRule:
+class RewriteTagRule(Rule[RewriteTagCallable]):
     """A rule specifying how a given HTML tag should be rewritten"""
 
-    func: RewriteTagCallable
 
-
-@dataclass(frozen=True)
-class RewriteDataRule:
+class RewriteDataRule(Rule[RewriteDataCallable]):
     """A rule specifying how a given HTML data should be rewritten"""
-
-    func: RewriteDataCallable
 
 
 def _check_decorated_func_signature(expected_func: Callable, decorated_func: Callable):
@@ -294,7 +295,7 @@ class HTMLRewritingRules:
 
         def decorator(func: DropAttributeCallable) -> DropAttributeCallable:
             _check_decorated_func_signature(self._do_drop_attribute, func)
-            self.drop_attribute_rules.add(DropAttributeRule(func=func))
+            self.drop_attribute_rules.add(DropAttributeRule.make(func=func))
             return func
 
         return decorator
@@ -306,7 +307,7 @@ class HTMLRewritingRules:
 
         def decorator(func: RewriteAttributeCallable) -> RewriteAttributeCallable:
             _check_decorated_func_signature(self._do_attribute_rewrite, func)
-            self.rewrite_attribute_rules.add(RewriteAttributeRule(func=func))
+            self.rewrite_attribute_rules.add(RewriteAttributeRule.make(func=func))
             return func
 
         return decorator
@@ -322,7 +323,7 @@ class HTMLRewritingRules:
 
         def decorator(func: RewriteTagCallable) -> RewriteTagCallable:
             _check_decorated_func_signature(self._do_tag_rewrite, func)
-            self.rewrite_tag_rules.add(RewriteTagRule(func=func))
+            self.rewrite_tag_rules.add(RewriteTagRule.make(func=func))
             return func
 
         return decorator
@@ -337,7 +338,7 @@ class HTMLRewritingRules:
 
         def decorator(func: RewriteDataCallable) -> RewriteDataCallable:
             _check_decorated_func_signature(self._do_data_rewrite, func)
-            self.rewrite_data_rules.add(RewriteDataRule(func=func))
+            self.rewrite_data_rules.add(RewriteDataRule.make(func=func))
             return func
 
         return decorator
@@ -359,7 +360,7 @@ class HTMLRewritingRules:
                         "attr_value": attr_value,
                         "attrs": attrs,
                     }.items()
-                    if arg_name in signature(rule.func).parameters
+                    if arg_name in rule.signature.parameters
                 }
             )
             is True
@@ -402,7 +403,7 @@ class HTMLRewritingRules:
                             "base_href": base_href,
                             "notify_js_module": notify_js_module,
                         }.items()
-                        if arg_name in signature(rule.func).parameters
+                        if arg_name in rule.signature.parameters
                     }
                 )
             ) is not None:
@@ -432,7 +433,7 @@ class HTMLRewritingRules:
                             "attrs": attrs,
                             "auto_close": auto_close,
                         }.items()
-                        if arg_name in signature(rule.func).parameters
+                        if arg_name in rule.signature.parameters
                     }
                 )
             ) is not None:
@@ -463,7 +464,7 @@ class HTMLRewritingRules:
                             "js_rewriter": js_rewriter,
                             "url_rewriter": url_rewriter,
                         }.items()
-                        if arg_name in signature(rule.func).parameters
+                        if arg_name in rule.signature.parameters
                     }
                 )
             ) is not None:
