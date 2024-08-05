@@ -3,7 +3,7 @@ LABEL org.opencontainers.image.source https://github.com/openzim/warc2zim
 
 RUN apt-get update -y \
  && apt-get install -y --no-install-recommends \
-    locales-all libmagic1 \
+    locales-all libmagic1 libcairo2 \
  && rm -rf /var/lib/apt/lists/* \
  && python -m pip install --no-cache-dir -U \
       pip \

@@ -12,9 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New fuzzy-rule for cheatography.com (#342), der-postillon.com (#330)
 - Properly rewrite redirect target url when present in <meta> HTML tag (#237)
 - New `--encoding-aliases` argument to pass encoding/charset aliases (#331)
+- Add support for SVG favicon (#148)
+- Automatically index PDF content and use PDF title (#289 and #290)
 
 ### Changed
 
+- Upgrade to python-scraperlib 4.0.0
 - Generate fuzzy rules tests in Python and Javascript (#284)
 - Refactor HTML rewriter class to make it more open to change and expressive (#305)
 - Detect charset in document header only for HTML documents (#331)
