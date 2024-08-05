@@ -18,9 +18,9 @@ def parse_language(input_lang: str) -> str:
     for lang in [lang.strip() for lang in input_lang.split(",")]:
         try:
             lang_data = get_language_details(lang)
-            parsed_lang = lang_data["iso-639-3"]
-            if parsed_lang not in langs:
-                langs.append(parsed_lang)
+            if parsed_lang := (lang_data.iso_639_3 if lang_data else None):
+                if parsed_lang not in langs:
+                    langs.append(parsed_lang)
         except Exception:
             logger.warning(f"Skipping invalid language setting `{lang}`.")
             continue  # skip unrecognized

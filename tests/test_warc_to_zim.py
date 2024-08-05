@@ -10,7 +10,7 @@ from urllib.parse import unquote
 
 import pytest
 import requests
-from zimscraperlib.image.convertion import convert_image, resize_image
+from zimscraperlib.image.conversion import convert_image, resize_image
 from zimscraperlib.zim import Archive
 
 from warc2zim.__about__ import __version__
@@ -218,13 +218,7 @@ class TestWarc2Zim:
         )
         assert favicon_bytes
         dst = io.BytesIO()
-        convert_image(
-            io.BytesIO(
-                favicon_bytes
-            ),  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
-            dst,  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
-            fmt="PNG",  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
-        )
+        convert_image(io.BytesIO(favicon_bytes), dst, fmt="PNG")
         resize_image(dst, width=48, height=48, method="cover")
         return dst.getvalue()
 

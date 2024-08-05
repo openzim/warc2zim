@@ -67,7 +67,7 @@ class StaticArticle(StaticItem):
     """
 
     def __init__(self, filename: Path, main_path: str, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(auto_index=False, **kwargs)
         self.filename = filename
         self.main_path = main_path
 
@@ -90,6 +90,7 @@ class StaticFile(StaticItem):
     """A file to store in _zim_static folder, based on known content and mimetype"""
 
     def __init__(self, content: str | bytes, filename: str, mimetype: str):
+        super().__init__(auto_index=False)
         self.filename = filename
         self.mime = mimetype
         self.content = content

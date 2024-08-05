@@ -780,11 +780,7 @@ class Converter:
             if format_for(src, from_suffix=False) == "SVG":
                 convert_svg2png(src, dst, width=48, height=48)
             else:
-                convert_image(
-                    src,  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
-                    dst,  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
-                    fmt="PNG",  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
-                )
+                convert_image(src, dst, fmt="PNG")
                 resize_image(dst, width=48, height=48, method="cover")
         except Exception as exc:  # pragma: no cover
             logger.warning(f"Failed to convert or resize favicon: {exc}")
