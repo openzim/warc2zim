@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Properly rewrite redirect target url when present in <meta> HTML tag (#237)
 - New `--encoding-aliases` argument to pass encoding/charset aliases (#331)
 - Add support for SVG favicon (#148)
+- Automatically index PDF content and use PDF title (#289 and #290)
 
 ### Changed
 

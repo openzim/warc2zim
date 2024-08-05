@@ -56,7 +56,9 @@ class WARCPayloadItem(StaticItem):
         ).rewrite(pre_head_template, post_head_template)
 
     def get_hints(self):
-        is_front = self.mimetype.startswith("text/html")
+        is_front = self.mimetype.startswith("text/html") or self.mimetype.startswith(
+            "application/pdf"
+        )
         return {Hint.FRONT_ARTICLE: is_front}
 
 
