@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use `software` property from `warcinfo` record to set ZIM `Scraper` metadata (#357)
 - Store `ContentDate` as metadata, based on `WARC-Date` (#358)
 - Remove domain specific rules (#328)
+- Revisit retrieve_illustration logic to prefer best favicons (#352 and #369)
 
 ### Fixed
 

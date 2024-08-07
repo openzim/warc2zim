@@ -10,7 +10,8 @@ from urllib.parse import unquote
 
 import pytest
 import requests
-from zimscraperlib.image.conversion import convert_image, resize_image
+from zimscraperlib.image.conversion import convert_image, convert_svg2png, resize_image
+from zimscraperlib.image.probing import format_for
 from zimscraperlib.zim import Archive
 
 from warc2zim.__about__ import __version__
@@ -18,6 +19,8 @@ from warc2zim.converter import iter_warc_records
 from warc2zim.main import main
 from warc2zim.url_rewriting import HttpUrl, ZimPath, normalize
 from warc2zim.utils import get_record_url
+
+ZIM_ILLUSTRATION_SIZE = 48
 
 TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
 # special data dir for WARC files which are not supposed to be ran in the
@@ -218,8 +221,21 @@ class TestWarc2Zim:
         )
         assert favicon_bytes
         dst = io.BytesIO()
-        convert_image(io.BytesIO(favicon_bytes), dst, fmt="PNG")
-        resize_image(dst, width=48, height=48, method="cover")
+        if format_for(io.BytesIO(favicon_bytes), from_suffix=False) == "SVG":
+            convert_svg2png(
+                io.BytesIO(favicon_bytes),
+                dst,
+                ZIM_ILLUSTRATION_SIZE,
+                ZIM_ILLUSTRATION_SIZE,
+            )
+        else:
+            convert_image(io.BytesIO(favicon_bytes), dst, fmt="PNG")
+            resize_image(
+                dst,
+                width=ZIM_ILLUSTRATION_SIZE,
+                height=ZIM_ILLUSTRATION_SIZE,
+                method="cover",
+            )
         return dst.getvalue()
 
     @pytest.mark.parametrize(
@@ -870,3 +886,39 @@ class TestWarc2Zim:
 
         res = self.get_article(zim_output, "www.qsl.net/vk2jem/swlogs.htm")
         assert b"<!-- WB Insert -->" in res  # simple check that rewriting has been done
+
+    def test_solidaritenum(self, tmp_path):
+        zim_output = "solidaritenum.zim"
+        main(
+            [
+                str(TEST_DATA_DIR / "solidaritenum.warc.gz"),
+                "--url",
+                "https://www.solidarite-numerique.fr/tutoriels/comprendre-les-cookies/"
+                "?thematique=internet",
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "spt",
+            ]
+        )
+
+        zim_output = tmp_path / zim_output
+
+        # test detected language
+        assert self.get_metadata(zim_output, "Language") == b"fra"
+
+        # test detected favicon
+        zim_favicon = self.get_metadata(zim_output, "Illustration_48x48@1")
+        assert zim_favicon
+
+        # test favicon is the correct one
+        assert (
+            self.rebuild_favicon_bytes(
+                zim_output,
+                "www.solidarite-numerique.fr/wp-content/themes/snum-v2/images/ico/"
+                "favicon.svg",
+            )
+            == zim_favicon
+        )

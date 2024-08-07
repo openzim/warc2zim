@@ -200,7 +200,7 @@ def to_string(
     raise ValueError(f"No suitable charset found to decode content {input_[:200]}")
 
 
-def get_record_content(record: ArcWarcRecord):
+def get_record_content(record: ArcWarcRecord) -> bytes:
     if hasattr(record, "buffered_stream"):
         stream = (
             record.buffered_stream  # pyright: ignore [reportGeneralTypeIssues, reportAttributeAccessIssue]
