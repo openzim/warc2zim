@@ -3,9 +3,10 @@ import re
 from collections import namedtuple
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import cache
 from html import escape
 from html.parser import HTMLParser
-from inspect import signature
+from inspect import Signature, signature
 
 from bs4 import BeautifulSoup
 
@@ -83,6 +84,15 @@ def extract_base_href(content: str) -> str | None:
         if base.has_attr("href"):
             return base["href"]
     return None
+
+
+@cache
+def _cached_signature(func: Callable) -> Signature:
+    """Returns the signature of a given callable
+
+    Result is cached to save performance when reused multiple times
+    """
+    return signature(func)
 
 
 class HtmlRewriter(HTMLParser):
@@ -259,8 +269,8 @@ def _check_decorated_func_signature(expected_func: Callable, decorated_func: Cal
 
     It checks that decorated function parameters have known names and proper types
     """
-    expected_params = signature(expected_func).parameters
-    func_params = signature(decorated_func).parameters
+    expected_params = _cached_signature(expected_func).parameters
+    func_params = _cached_signature(decorated_func).parameters
     for name, param in func_params.items():
         if name not in expected_params:
             raise TypeError(
@@ -356,7 +366,7 @@ class HTMLRewritingRules:
                         "attr_value": attr_value,
                         "attrs": attrs,
                     }.items()
-                    if arg_name in signature(rule.func).parameters
+                    if arg_name in _cached_signature(rule.func).parameters
                 }
             )
             is True
@@ -399,7 +409,7 @@ class HTMLRewritingRules:
                             "base_href": base_href,
                             "notify_js_module": notify_js_module,
                         }.items()
-                        if arg_name in signature(rule.func).parameters
+                        if arg_name in _cached_signature(rule.func).parameters
                     }
                 )
             ) is not None:
@@ -429,7 +439,7 @@ class HTMLRewritingRules:
                             "attrs": attrs,
                             "auto_close": auto_close,
                         }.items()
-                        if arg_name in signature(rule.func).parameters
+                        if arg_name in _cached_signature(rule.func).parameters
                     }
                 )
             ) is not None:
@@ -460,7 +470,7 @@ class HTMLRewritingRules:
                             "js_rewriter": js_rewriter,
                             "url_rewriter": url_rewriter,
                         }.items()
-                        if arg_name in signature(rule.func).parameters
+                        if arg_name in _cached_signature(rule.func).parameters
                     }
                 )
             ) is not None:
