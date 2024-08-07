@@ -8,10 +8,8 @@ from warcio.recordloader import ArcWarcRecord
 
 from warc2zim.constants import logger
 from warc2zim.content_rewriting.css import CssRewriter
-from warc2zim.content_rewriting.ds import get_ds_rules
 from warc2zim.content_rewriting.html import HtmlRewriter
 from warc2zim.content_rewriting.js import JsRewriter
-from warc2zim.content_rewriting.rx_replacer import RxRewriter
 from warc2zim.url_rewriting import ArticleUrlRewriter, HttpUrl, ZimPath
 from warc2zim.utils import (
     get_record_content,
@@ -254,10 +252,8 @@ class Rewriter:
 
     @no_title
     def rewrite_js(self, opts: dict[str, Any]) -> str | bytes:
-        ds_rules = get_ds_rules(self.orig_url_str)
         rewriter = JsRewriter(
             url_rewriter=self.url_rewriter,
-            extra_rules=ds_rules,
             notify_js_module=self.js_module_found,
             base_href=None,
         )
@@ -279,10 +275,4 @@ class Rewriter:
 
     @no_title
     def rewrite_json(self) -> str | bytes:
-        content = self.rewrite_jsonp()[1]
-        ds_rules = get_ds_rules(self.orig_url_str)
-        if not ds_rules:
-            return content
-
-        rewriter = RxRewriter(ds_rules)
-        return rewriter.rewrite(content, {})
+        return self.rewrite_jsonp()[1]

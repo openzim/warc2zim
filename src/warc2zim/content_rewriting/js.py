@@ -190,10 +190,8 @@ class JsRewriter(RxRewriter):
         url_rewriter: ArticleUrlRewriter,
         base_href: str | None,
         notify_js_module: Callable[[ZimPath], None],
-        extra_rules: Iterable[TransformationRule] | None = None,
     ):
         super().__init__(None)
-        self.extra_rules = extra_rules or []
         self.first_buff = self._init_local_declaration(GLOBAL_OVERRIDES)
         self.last_buff = "\n}"
         self.url_rewriter = url_rewriter
@@ -245,8 +243,6 @@ class JsRewriter(RxRewriter):
 
         if is_module:
             rules.append(self._get_esm_import_rule())
-
-        rules += self.extra_rules
 
         self._compile_rules(rules)
 

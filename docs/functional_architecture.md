@@ -73,26 +73,12 @@ The same fuzzy rules that have been used to compute the ZIM path from a resource
 
 While this is expected to serve mostly for the dynamic case, we still applies them on both side (staticaly and dynamicaly) for coherency.
 
-## Content rewriting
+## Documents rewriten statically
 
-### DS rules
+For now warc2zim rewrites HTML, CSS and JS documents. For CSS and JS, this mainly consists in replacing URLs. For HTML, we also have more specific rewritting necessary (e.g. to handle base href or redirects with meta).
 
-DS (Domain Specific) rules patch javascript code with regular expressions matching. These rules are not related to url or path.
+Since 2.1, no domain specific (DS) rules are applied like it is done in wabac.JS because these rules are already applied in Browsertrix Crawler. For the same reason, JSON is not rewritten anymore (URL do not need to be rewritten in JSON because these URLs will be used by JS, intercepted by wombat and dynamically rewritten).
 
-They are here to patch javascript for specific site (domain) to make it works in our context.
+JSONP callbacks are supposed to be rewritten but this has not been heavily tested.
 
-What they are doing (and how they have been created) is still unclear (they have been transferred as-is from wabac codebase) and undocumentted.
-
-For instance, an identified use case is removing some test on video resolution in youtube player.
-
-Something like transforming `Oq&&(a.Uo=SC(a.Uo,Oq))}"0"==b.dash&&(a.FB=!0);var sm=b.dashmpd;` to `Oq&&(a.Uo=SC(a.Uo,Oq))}1&&(a.FB=!0);var sm=b.dashmpd;` (in middle of a full minified js code).
-
-These DS rules are applied to JS and JSON files. They are not supposed to manipulate any URL.
-
-### JSONP
-
-JSONP callback is rewriten, as is done in wabac. Not fully tested for now.
-
-## Documents rewriten
-
-For now warc2zim rewrites HTML, CSS, JSON, JSONP and JS documents. Other types of documents are supposed to be either not feasible / not worth it (e.g. URLs inside PDF documents), meaningless (e.g. images, fonts) or planned for later due to limited usage in the wild (e.g. XML).
+Other types of documents are supposed to be either not feasible / not worth it (e.g. URLs inside PDF documents), meaningless (e.g. images, fonts) or planned for later due to limited usage in the wild (e.g. XML).

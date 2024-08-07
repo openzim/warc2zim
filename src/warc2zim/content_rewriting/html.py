@@ -10,9 +10,7 @@ from inspect import signature
 from bs4 import BeautifulSoup
 
 from warc2zim.content_rewriting.css import CssRewriter
-from warc2zim.content_rewriting.ds import get_ds_rules
 from warc2zim.content_rewriting.js import JsRewriter
-from warc2zim.content_rewriting.rx_replacer import RxRewriter
 from warc2zim.url_rewriting import ArticleUrlRewriter, ZimPath
 
 AttrNameAndValue = tuple[str, str | None]
@@ -116,7 +114,6 @@ class HtmlRewriter(HTMLParser):
         self.js_rewriter = JsRewriter(
             url_rewriter=self.url_rewriter,
             base_href=self.base_href,
-            extra_rules=get_ds_rules(self.url_rewriter.article_url.value),
             notify_js_module=self.notify_js_module,
         )
 
@@ -607,15 +604,13 @@ def rewrite_css_data(
 @rules.rewrite_data()
 def rewrite_json_data(
     html_rewrite_context: str | None,
-    data: str,
-    url_rewriter: ArticleUrlRewriter,
 ) -> str | None:
     """Rewrite inline JSON"""
     if html_rewrite_context != "json":
         return
-    rules = get_ds_rules(url_rewriter.article_url.value)
-    if rules:
-        data = RxRewriter(rules).rewrite(data, {})
+    # we do not have any JSON rewriting left ATM since all these rules are applied in
+    # Browsertrix crawler before storing the WARC record for now
+    return
 
 
 @rules.rewrite_data()
