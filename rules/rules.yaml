@@ -203,3 +203,11 @@ fuzzyRules:
         fuzzified_url: blogger.googleusercontent.com.fuzzy.replayweb.page/img/b/R29vZ2xl/AVvXsEjlN4LY6kFVwL8-rinDWp3kJp1TowOVD8vq8TP8nl3Lf1sI-hx0DE1GQA1jw7DT7XvK3FjghzJ17_1pvyXyDBAV0vtigJRnFCNfMxnndBnN3NYoXUvKQQsQ7JTGXOSajdo0mNQIv8wss_AxPBMrR4-Dd_EEacV7ZMS3m_IL2dz0WsbbKn7FD7ntsfOe0JUq/s600-rw/tickerzugtier2.jpg.resized
       - raw_url: blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjlN4LY6kFVwL8-rinDWp3kJp1TowOVD8vq8TP8nl3Lf1sI-hx0DE1GQA1jw7DT7XvK3FjghzJ17_1pvyXyDBAV0vtigJRnFCNfMxnndBnN3NYoXUvKQQsQ7JTGXOSajdo0mNQIv8wss_AxPBMrR4-Dd_EEacV7ZMS3m_IL2dz0WsbbKn7FD7ntsfOe0JUq/w72-h72-p-k-no-nu/tickerzugtier2.jpg
         unchanged: true
+  - name: iranwire_com
+    pattern: (iranwire\.com\/questions\/detail\/.*)\?.*
+    replace: \1
+    tests:
+      - raw_url: iranwire.com/questions/detail/1723?&_=1721804954220
+        fuzzified_url: iranwire.com/questions/detail/1723
+      - raw_url: iranwire.com/questions/detail/1725?foo=bar&_=1721804454220
+        fuzzified_url: iranwire.com/questions/detail/1725
