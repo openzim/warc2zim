@@ -1,10 +1,9 @@
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 
 import pytest
 
 from warc2zim.content_rewriting.css import CssRewriter
 from warc2zim.content_rewriting.js import JsRewriter
-from warc2zim.content_rewriting.rx_replacer import TransformationRule
 from warc2zim.url_rewriting import ArticleUrlRewriter, HttpUrl, ZimPath
 
 
@@ -63,13 +62,11 @@ def js_rewriter():
         url_rewriter: ArticleUrlRewriter,
         base_href: str | None,
         notify_js_module: Callable[[ZimPath], None],
-        extra_rules: Iterable[TransformationRule] | None = None,
     ):
         return JsRewriter(
             url_rewriter=url_rewriter,
             base_href=base_href,
             notify_js_module=notify_js_module,
-            extra_rules=extra_rules,
         )
 
     yield get_js_rewriter
