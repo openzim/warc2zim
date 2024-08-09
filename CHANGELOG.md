@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove subsequent slashes in URLs, both in Python and JS (#365)
 - Ignore non HTTP(S) WARC records (#351)
 - Fix `vimeo_cdn_fix` fuzzy rule for proper operation in Javascript (#348)
+- Performance issue linked to new "extensible" HTML rewriting rules (#370)
 
 ## [2.0.3] - 2024-07-24
 
