@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Store `ContentDate` as metadata, based on `WARC-Date` (#358)
 - Remove domain specific rules (#328)
 - Revisit retrieve_illustration logic to prefer best favicons (#352 and #369)
+- Upgrade dependencies (zimscraperlib 4.0.0, wombat.js 3.7.12 and others) (#376)
 
 ### Fixed
 

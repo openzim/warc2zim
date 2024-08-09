@@ -1,7 +1,7 @@
 [build-system]
 # jinja2 is required to generate JS and Python rules at build time
 # PyYAML is used to parse fuzzy rules and generate Python/JS code
-requires = ["hatchling", "hatch-openzim==0.2.1", "jinja2==3.1.4", "PyYAML==6.0.1"]
+requires = ["hatchling", "hatch-openzim==0.2.1", "jinja2==3.1.4", "PyYAML==6.0.2"]
 build-backend = "hatchling.build"
 
 [project]
@@ -37,22 +37,22 @@ email="info@webrecorder.net"
 [project.optional-dependencies]
 scripts = [
   "invoke==2.2.0",
-  "PyYAML==6.0.1", # used to parse fuzzy rules and generate Python/JS code ; also update version in build-system above and in build_js.sh
+  "PyYAML==6.0.2", # used to parse fuzzy rules and generate Python/JS code ; also update version in build-system above and in build_js.sh
 ]
 lint = [
-  "black==24.4.2",
-  "ruff==0.4.9",
+  "black==24.8.0",
+  "ruff==0.5.7",
 ]
 check = [
-  "pyright==1.1.367",
+  "pyright==1.1.375",
 ]
 test = [
-  "pytest==8.2.2",
-  "coverage==7.5.3",
+  "pytest==8.3.2",
+  "coverage==7.6.1",
 ]
 dev = [
-  "pre-commit==3.7.1",
-  "debugpy==1.8.1",
+  "pre-commit==3.8.0",
+  "debugpy==1.8.5",
   "warc2zim[scripts]",
   "warc2zim[lint]",
   "warc2zim[test]",
