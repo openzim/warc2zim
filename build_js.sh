@@ -15,7 +15,7 @@ python3 -m venv /local
 /local/bin/python -m pip install --no-cache-dir -U \
     pip \
     jinja2==3.1.4 \
-    PyYAML==6.0.1
+    PyYAML==6.0.2
 
 /local/bin/python /src/rules/generate_rules.py
 
