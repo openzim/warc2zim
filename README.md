@@ -34,6 +34,7 @@ Scenario which are known to work well:
 ## Known limitations
 
 - Any web site expecting a server to store live data and wanting to modifying those data (form, read/write api, ...) is not supported
+- Except Youtube embedded video player which is well supported, most video players (Vimeo, DailyMotion, ...) are either not working or needing advanced tuning
 - Website using dynamic resources (dynamic URLs) fetch based on user-agent configuration (e.g. viewport), timestamp, unique ID
   - E.g. if the viewport size is sent in every requests to fetch website images, this will not work since the URL built during the scrape will most likely be different than the URL built when the end-user read the ZIM content, and the ZIM reader won't find associated resource
   - Scraper tries to do its best on few popular websites (e.g. Youtube embedded player) by getting rid of dynamic parts in URL during URL rewriting (with what is called fuzzy rules), but support is fairly very limited
