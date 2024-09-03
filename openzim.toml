@@ -6,7 +6,7 @@ execute_after=[
 
 [files.assets.actions."wombat.js"]
 action="get_file"
-source="https://cdn.jsdelivr.net/npm/@webrecorder/wombat@3.7.12/dist/wombat.js"
+source="https://cdn.jsdelivr.net/npm/@webrecorder/wombat@3.8.0/dist/wombat.js"
 target_file="wombat.js"
 
 [files.assets.actions."wombatSetup.js"] # fallback if this script has not been properly build (should happen only in dev)
