@@ -142,7 +142,11 @@ class HtmlRewriter(HTMLParser):
 
         if (
             rewritten := rules._do_tag_rewrite(
-                tag=tag, attrs=attrs, auto_close=auto_close
+                tag=tag,
+                attrs=attrs,
+                url_rewriter=self.url_rewriter,
+                base_href=self.base_href,
+                auto_close=auto_close,
             )
         ) is not None:
             self.send(rewritten)
@@ -421,6 +425,8 @@ class HTMLRewritingRules:
         self,
         tag: str,
         attrs: AttrsList,
+        url_rewriter: ArticleUrlRewriter,
+        base_href: str | None,
         *,
         auto_close: bool,
     ) -> str | None:
@@ -437,6 +443,8 @@ class HTMLRewritingRules:
                         for arg_name, arg_value in {
                             "tag": tag,
                             "attrs": attrs,
+                            "url_rewriter": url_rewriter,
+                            "base_href": base_href,
                             "auto_close": auto_close,
                         }.items()
                         if arg_name in _cached_signature(rule.func).parameters
@@ -557,24 +565,58 @@ def rewrite_href_src_attributes(
     )
 
 
-@rules.rewrite_attribute()
-def rewrite_srcset_attribute(
-    attr_name: str,
-    attr_value: str | None,
+@rules.rewrite_tag()
+def rewrite_image_tag(
+    tag: str,
+    attrs: AttrsList,
     url_rewriter: ArticleUrlRewriter,
     base_href: str | None,
-):
-    """Rewrite srcset attributes"""
-    if attr_name != "srcset" or not attr_value:
+    *,
+    auto_close: bool,
+) -> str | None:
+    """Rewrite image tag to fix src/srcset attributes when possible"""
+    if tag != "img":
         return
-    value_list = attr_value.split(",")
-    new_value_list = []
-    for value in value_list:
-        url, *other = value.strip().split(" ", maxsplit=1)
-        new_url = url_rewriter(url, base_href=base_href)
-        new_value = " ".join([new_url, *other])
-        new_value_list.append(new_value)
-    return (attr_name, ", ".join(new_value_list))
+
+    img_src = get_attr_value_from(attrs, "src")
+    img_src = url_rewriter(img_src, base_href=base_href) if img_src else None
+
+    img_src_set = get_attr_value_from(attrs, "srcset")
+    new_image_src_sets = []
+    if img_src_set:
+        img_src_sets = img_src_set.split(",")
+        for src_set_value in img_src_sets:
+            url, *others = src_set_value.strip().split(" ")
+            new_url = url_rewriter(url, base_href=base_href)
+            # check if image is listed in existing zim paths
+            if (
+                url_rewriter.get_item_path(new_url, base_href=base_href)
+                in url_rewriter.existing_zim_paths
+            ):
+                new_value = " ".join([new_url, *others])
+                new_image_src_sets.append(new_value)
+                # check if image from src is either missing or not in existing zim path
+                if (
+                    not img_src
+                    or url_rewriter.get_item_path(img_src, base_href=base_href)
+                    not in url_rewriter.existing_zim_paths
+                ):
+                    img_src = new_url
+
+    result = f'<img src="{img_src}"'
+    if new_image_src_sets:
+        result += f' srcset="{', '.join(new_image_src_sets)}"'
+
+    for attr_name, attr_value in attrs:
+        if attr_name in ("src", "srcset"):
+            continue
+        result += f' {attr_name}="{attr_value}"'
+    if auto_close:
+        result += "/>"
+    else:
+        result += ">"
+
+    return result
 
 
 @rules.rewrite_tag()

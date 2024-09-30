@@ -351,7 +351,14 @@ def test_extract_title(no_js_notify):
 
 def test_rewrite_attributes(no_js_notify):
     rewriter = HtmlRewriter(
-        ArticleUrlRewriter(HttpUrl("http://kiwix.org/"), {ZimPath("kiwix.org/foo")}),
+        ArticleUrlRewriter(
+            HttpUrl("http://kiwix.org/"),
+            {
+                ZimPath("kiwix.org/foo"),
+                ZimPath("kiwix.org/img-480w.jpg"),
+                ZimPath("kiwix.org/img-800w.jpg"),
+            },
+        ),
         "",
         "",
         no_js_notify,
@@ -363,16 +370,74 @@ def test_rewrite_attributes(no_js_notify):
     )
 
     assert (
-        rewriter.rewrite("<img src='https://kiwix.org/foo'></img>").content
-        == '<img src="foo"></img>'
+        rewriter.rewrite(
+            "<img src='https://kiwix.org/img-480w.jpg' alt='Foo'></img>"
+        ).content
+        == '<img src="img-480w.jpg" alt="Foo"></img>'
     )
 
+    # we always rewrite img src to avoid fetching online resources, even if
+    # corresponding image is not in the ZIM (i.e. we do not keep original URL, and we
+    # do not simply drop the attribute)
+    assert (
+        rewriter.rewrite(
+            "<img src='https://kiwix.org/img-not-exist.jpg'></img>"
+        ).content
+        == '<img src="img-not-exist.jpg"></img>'
+    )
+
+    # we update src and srcset
+    assert (
+        rewriter.rewrite(
+            "<img src='https://kiwix.org/img-ot-exist.jpg'"
+            "srcset='https://kiwix.org/img-480w.jpg 480w, "
+            "https://kiwix.org/img-not-exist.jpg 800w'></img>"
+        ).content
+        == '<img src="img-480w.jpg" srcset="img-480w.jpg 480w"></img>'
+    )
+
+    # we keep srcset because all images are present in the ZIM and add a src
     assert (
         rewriter.rewrite(
             "<img srcset='https://kiwix.org/img-480w.jpg 480w, "
             "https://kiwix.org/img-800w.jpg 800w'></img>"
         ).content
-        == '<img srcset="img-480w.jpg 480w, img-800w.jpg 800w"></img>'
+        == '<img src="img-480w.jpg" srcset="img-480w.jpg 480w, '
+        'img-800w.jpg 800w"></img>'
+    )
+
+    # we keep src and srcset because all images are present in the ZIM
+    assert (
+        rewriter.rewrite(
+            "<img src='https://kiwix.org/img-480w.jpg' "
+            "srcset='https://kiwix.org/img-480w.jpg 480w, "
+            "https://kiwix.org/img-800w.jpg 800w'></img>"
+        ).content
+        == '<img src="img-480w.jpg" srcset="img-480w.jpg 480w, '
+        'img-800w.jpg 800w"></img>'
+    )
+
+    # we replace src because image is missing from the ZIM and keep srcset because all
+    # images are present in the ZIM
+    assert (
+        rewriter.rewrite(
+            "<img src='https://kiwix.org/img-not-exist.jpg' "
+            "srcset='https://kiwix.org/img-480w.jpg 480w, "
+            "https://kiwix.org/img-800w.jpg 800w'></img>"
+        ).content
+        == '<img src="img-480w.jpg" srcset="img-480w.jpg 480w, '
+        'img-800w.jpg 800w"></img>'
+    )
+
+    # we keep src because image is in the ZIM and alter srcset to remove images which
+    # are not in the ZIM
+    assert (
+        rewriter.rewrite(
+            "<img src='https://kiwix.org/img-480w.jpg' "
+            "srcset='https://kiwix.org/img-not-exist.jpg 480w, "
+            "https://kiwix.org/img-800w.jpg 800w'></img>"
+        ).content
+        == '<img src="img-480w.jpg" srcset="img-800w.jpg 800w"></img>'
     )
 
 
@@ -1276,12 +1341,15 @@ def test_html_tag_rewrite_rules(
     *,
     auto_close: bool,
     expected_result: str | None,
+    simple_url_rewriter,
 ):
     assert (
         rules._do_tag_rewrite(
             tag=tag,
             attrs=attrs,
             auto_close=auto_close,
+            base_href=None,
+            url_rewriter=simple_url_rewriter,
         )
         == expected_result
     )
