@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Test website</title>
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="./icons/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="./icons/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="./icons/favicon-16x16.png"
+    />
+    <link rel="manifest" href="./icons/site.webmanifest" />
+    <link rel="shortcut icon" href="./icons/favicon.ico" />
+  </head>
+
+  <body>
+    <p>
+      This page contains tests around varying images based on screen / device.
+    </p>
+
+    <h2>Image srcset</h2>
+
+    <p>
+      An image should be displayed below at all screen sizes and pixel ratios.
+    </p>
+
+    <img
+      srcset="
+        ./images/image1.png,
+        ./images/image1-1x.png   1x,
+        ./images/image1-2x.png   2x
+      "
+      src="./images/image1.png"
+      alt="an image"
+    />
+
+    <p>
+      Another image should be displayed below at all screen sizes and pixel
+      ratios.
+    </p>
+
+    <img
+      srcset="./images/image4-1.5x.png 1.5x"
+      src="./images/image4.png"
+      alt="an image"
+    />
+
+    <h2>Picture sources - with srcset pixel ratio</h2>
+
+    <p>
+      An image should be displayed below at all screen sizes and pixel ratios.
+    </p>
+
+    <picture>
+      <source
+        srcset="
+          ./images/image2.png,
+          ./images/image2-1x.png   1x,
+          ./images/image2-2x.png   2x
+        "
+        type="image/png"
+      />
+      <img src="./images/image2.png" alt="an image" />
+    </picture>
+
+    <h2>Picture sources - with media queries</h2>
+
+    <p>
+      An image should be displayed below at all screen sizes and pixel ratios.
+    </p>
+
+    <picture>
+      <source
+        srcset="./images/image3-high.png"
+        media="all and (min-width: 1280px)"
+        type="image/png"
+      />
+      <source
+        srcset="./images/image3-medium.png"
+        media="all and (min-width: 600px)"
+        type="image/png"
+      />
+      <source
+        srcset="./images/image3-small.png"
+        media="all and (min-width: 0px)"
+        type="image/png"
+      />
+      <img src="./images/image3.png" alt="an image" />
+    </picture>
+  </body>
+</html>
