@@ -1,7 +1,7 @@
 {
   "name": "@openzim/wombat-setup",
   "type": "module",
-  "version": "2.1.2-dev0",
+  "version": "2.1.2",
   "license": "GPL-3.0-or-later",
   "author": "openZIM",
   "devDependencies": {
