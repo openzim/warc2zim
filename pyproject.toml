@@ -40,19 +40,19 @@ scripts = [
   "PyYAML==6.0.2", # used to parse fuzzy rules and generate Python/JS code ; also update version in build-system above and in build_js.sh
 ]
 lint = [
-  "black==24.8.0",
-  "ruff==0.6.3",
+  "black==24.10.0",
+  "ruff==0.6.9",
 ]
 check = [
-  "pyright==1.1.379",
+  "pyright==1.1.383",
 ]
 test = [
-  "pytest==8.3.2",
+  "pytest==8.3.3",
   "coverage==7.6.1",
 ]
 dev = [
-  "pre-commit==3.8.0",
-  "debugpy==1.8.5",
+  "pre-commit==4.0.0",
+  "debugpy==1.8.6",
   "warc2zim[scripts]",
   "warc2zim[lint]",
   "warc2zim[test]",
