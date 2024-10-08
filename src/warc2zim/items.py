@@ -9,7 +9,7 @@ This module contains the differents Item we may want to add to a Zim archive.
 from pathlib import Path
 
 from jinja2.environment import Template
-from libzim.writer import Hint  # pyright: ignore[reportMissingImports]
+from libzim.writer import Hint  # pyright: ignore[reportMissingModuleSource]
 from warcio.recordloader import ArcWarcRecord
 from zimscraperlib.types import get_mime_for_name
 from zimscraperlib.zim.items import StaticItem

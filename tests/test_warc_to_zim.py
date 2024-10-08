@@ -202,11 +202,15 @@ class TestWarc2Zim:
             elif record.rec_type == "response":
                 # We must have a payload
                 assert payload
-                payload_content = payload.content.tobytes()
+                payload_content = (
+                    payload.content.tobytes()  # pyright:ignore[reportAttributeAccessIssue]
+                )
 
                 # if HTML, still need to account for the head insert, otherwise should
                 # have exact match
-                if payload.mimetype.startswith("text/html"):
+                if payload.mimetype.startswith(  # pyright:ignore[reportAttributeAccessIssue]
+                    "text/html"
+                ):
                     assert head_insert in payload_content
             elif record.rec_type == "resource":
                 # we do not want to embed resources "as-is"

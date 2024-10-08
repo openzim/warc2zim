@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Enrich test website with img srcset situations (in preparation for #403)
+
+### Fixed
+
+- HTML document can be retrieved as `fetch` resource type (#405)
+
 ## [2.1.1] - 2024-09-05
 
 ### Changed
