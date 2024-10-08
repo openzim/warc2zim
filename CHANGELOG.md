@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Enrich test website with img srcset situations (in preparation for #403)
 
+### Changed
+
+- Upgrade dependencies, including wombat 3.8.2 (#407)
+
 ### Fixed
 
 - HTML document can be retrieved as `fetch` resource type (#405)
