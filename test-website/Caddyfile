@@ -17,6 +17,26 @@
         }
     }
 
+    handle /dynform-rewrite {
+        @hasIdParam query "id=*"
+        handle @hasIdParam {
+            rewrite * /form-get-{http.request.uri.query.id}.html
+        }
+        handle {
+            respond 500 "Bad Request"
+        }
+    }
+
+    handle /dynform-redirect {
+        @hasIdParam query "id=*"
+        handle @hasIdParam {
+            redir * /form-get-{http.request.uri.query.id}.html 302
+        }
+        handle {
+            respond 500 "Bad Request"
+        }
+    }
+
     respond /200-response "Never mind" 200
 
     respond /201-response "Never mind" 201

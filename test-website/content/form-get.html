@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Test website</title>
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="./icons/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="./icons/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="./icons/favicon-16x16.png"
+    />
+    <link rel="manifest" href="./icons/site.webmanifest" />
+    <link rel="shortcut icon" href="./icons/favicon.ico" />
+  </head>
+
+  <body>
+    <h2>Form GET</h2>
+
+    <p>This page showcase a situation where someone used a form with a combobox to enable navigation on the website.</p>
+
+    <p>Nota: this has been seen in the wild on https://chopin.lib.uchicago.edu/ (open any title scores and the combobox will appear in top right corner) and on https://medecine-integree.com/ (for which we - Kiwix - do not have any rights to copy but have been approached by a user).</p>
+
+    <h3>Rewrite</h3>
+    <p>Server configuration will intercept the queryparameter and rewrite internal to proper HTML file, invisible to the end user.</p>
+    <form action="/dynform-rewrite" method="get">
+      <label class="screen-reader-text" for="id"
+        >Select a subpage to open :</label
+      >
+      <select name="id" id="id">
+        <option value="-1">Select a subpage</option>
+        <option value="1">Sub page 1</option>
+        <option value="2">Sub page 2</option>
+      </select>
+      <input type="submit" name="submit" value="Submit" />
+    </form>
+
+    <h3>Redirect</h3>
+    <p>Server configuration will intercept the queryparameter and redirect with a 302 to proper URL, hence visible to the end user.</p>
+    <form action="/dynform-redirect" method="get">
+      <label class="screen-reader-text" for="id"
+        >Select a subpage to open :</label
+      >
+      <select name="id" id="id">
+        <option value="-1">Select a subpage</option>
+        <option value="3">Sub page 3</option>
+        <option value="4">Sub page 4</option>
+      </select>
+      <input type="submit" name="submit" value="Submit" />
+    </form>
+
+  </body>
+</html>
