@@ -5,12 +5,12 @@ from urllib.parse import quote, urlsplit
 
 from jinja2.environment import Template
 from warcio.recordloader import ArcWarcRecord
+from zimscraperlib.rewriting.css import CssRewriter
+from zimscraperlib.rewriting.html import HtmlRewriter
+from zimscraperlib.rewriting.js import JsRewriter
+from zimscraperlib.rewriting.url_rewriting import ArticleUrlRewriter, HttpUrl, ZimPath
 
 from warc2zim.constants import logger
-from warc2zim.content_rewriting.css import CssRewriter
-from warc2zim.content_rewriting.html import HtmlRewriter
-from warc2zim.content_rewriting.js import JsRewriter
-from warc2zim.url_rewriting import ArticleUrlRewriter, HttpUrl, ZimPath
 from warc2zim.utils import (
     get_record_content,
     get_record_encoding,
@@ -76,7 +76,9 @@ class Rewriter:
         self.path = path
         self.orig_url_str = get_record_url(record)
         self.url_rewriter = ArticleUrlRewriter(
-            HttpUrl(self.orig_url_str), existing_zim_paths, missing_zim_paths
+            article_url=HttpUrl(self.orig_url_str),
+            existing_zim_paths=existing_zim_paths,
+            missing_zim_paths=missing_zim_paths,
         )
 
         self.rewrite_mode = self.get_rewrite_mode(record, mimetype)

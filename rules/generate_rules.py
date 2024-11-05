@@ -129,7 +129,7 @@ py_test_template = """# THIS IS AN AUTOMATICALLY GENERATED FILE, DO NOT MODIFY D
 
 import pytest
 
-from warc2zim.url_rewriting import apply_fuzzy_rules
+from zimscraperlib.rewriting.url_rewriting import ArticleUrlRewriter
 
 from .utils import ContentForTests
 
@@ -156,7 +156,7 @@ def {{ rule['name'] }}_case(request):
 
 def test_fuzzyrules_{{ rule['name'] }}({{ rule['name'] }}_case):
     assert (
-        apply_fuzzy_rules({{ rule['name'] }}_case.input_str)
+        ArticleUrlRewriter.apply_additional_rules({{ rule['name'] }}_case.input_str)
         == {{ rule['name'] }}_case.expected_str
     )
 {% endfor %}

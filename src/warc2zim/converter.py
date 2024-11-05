@@ -47,6 +47,7 @@ from zimscraperlib.download import stream_file
 from zimscraperlib.image.conversion import convert_image, convert_svg2png
 from zimscraperlib.image.probing import format_for
 from zimscraperlib.image.transformation import resize_image
+from zimscraperlib.rewriting.url_rewriting import ArticleUrlRewriter, HttpUrl, ZimPath
 from zimscraperlib.types import FALLBACK_MIME
 from zimscraperlib.zim.creator import Creator
 from zimscraperlib.zim.metadata import (
@@ -61,7 +62,6 @@ from warc2zim.constants import logger
 from warc2zim.icon_finder import Icon, get_sorted_icons, icons_in_html
 from warc2zim.items import StaticArticle, StaticFile, WARCPayloadItem
 from warc2zim.language import parse_language
-from warc2zim.url_rewriting import HttpUrl, ZimPath, normalize
 from warc2zim.utils import (
     can_process_status_code,
     get_record_content,
@@ -140,7 +140,9 @@ class Converter:
         }
         self.source: str | None = str(args.source) if args.source else None or main_url
         self.scraper = "warc2zim " + get_version()
-        self.main_path = normalize(HttpUrl(main_url)) if main_url else None
+        self.main_path = (
+            ArticleUrlRewriter.normalize(HttpUrl(main_url)) if main_url else None
+        )
 
         self.output = Path(args.output)
         self.zim_file = args.zim_file
@@ -474,7 +476,7 @@ class Converter:
             if not (url.startswith("http://") or url.startswith("https://")):
                 continue
 
-            zim_path = normalize(HttpUrl(url))
+            zim_path = ArticleUrlRewriter.normalize(HttpUrl(url))
 
             status_code = get_status_code(record)
             if not can_process_status_code(status_code):
@@ -489,7 +491,7 @@ class Converter:
                 if zim_path not in self.redirections:
                     if redirect_location := record.http_headers.get("Location"):
                         try:
-                            redirection_zim_path = normalize(
+                            redirection_zim_path = ArticleUrlRewriter.normalize(
                                 HttpUrl(urljoin(url, redirect_location))
                             )
                             # Redirection to same ZIM path have to be ignored (occurs
@@ -559,7 +561,7 @@ class Converter:
                     HTTPStatus.FOUND,
                 ]:
                     original_path = self.main_path
-                    self.main_path = normalize(
+                    self.main_path = ArticleUrlRewriter.normalize(
                         HttpUrl(
                             urljoin(
                                 get_record_url(record),
@@ -704,7 +706,8 @@ class Converter:
         # compute paths of favicons so that we can process them on-the-fly while
         # iterating the records
         self.favicon_paths = {
-            normalize(icon_url): icon_url for icon_url in self.favicon_urls
+            ArticleUrlRewriter.normalize(icon_url): icon_url
+            for icon_url in self.favicon_urls
         }
         self.favicon_contents: dict[HttpUrl, bytes | None] = {
             icon_url: None for icon_url in self.favicon_urls
@@ -885,7 +888,9 @@ class Converter:
 
         location = record.http_headers.get("Location", "")
         location = urljoin(url, location)
-        return normalize(HttpUrl(url)) == normalize(HttpUrl(location))
+        return ArticleUrlRewriter.normalize(
+            HttpUrl(url)
+        ) == ArticleUrlRewriter.normalize(HttpUrl(location))
 
     def add_items_for_warc_record(self, record):
 
@@ -904,7 +909,7 @@ class Converter:
             logger.debug(f"Skipping record with non HTTP(S) WARC-Target-URI {url}")
             return
 
-        item_zim_path = normalize(HttpUrl(url))
+        item_zim_path = ArticleUrlRewriter.normalize(HttpUrl(url))
 
         # if include_domains is set, only include urls from those domains
         if self.include_domains:
@@ -977,7 +982,7 @@ class Converter:
             and record.rec_headers["WARC-Refers-To-Target-URI"] != url
             and item_zim_path not in self.revisits
         ):  # pragma: no branch
-            self.revisits[item_zim_path] = normalize(
+            self.revisits[item_zim_path] = ArticleUrlRewriter.normalize(
                 HttpUrl(record.rec_headers["WARC-Refers-To-Target-URI"])
             )
 
