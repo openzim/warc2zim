@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Upgrade to wombat 3.8.4 (#334)
+- Fix wombat setup settings (especially `isSW`) (#293)
+
 ## [2.1.3] - 2024-11-01
 
 ### Changed
