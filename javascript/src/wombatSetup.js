@@ -189,8 +189,9 @@ export function urlRewriteFunction(
   const fuzzifiedPath = applyFuzzyRules(zimPath);
 
   // Reencode everything but '/' (we decode it afterwards for simplicity)
-  const finalUrl =
-    prefix + encodeURIComponent(fuzzifiedPath).replaceAll('%2F', '/');
+  const finalUrl = fuzzifiedPath.includes('live.mdnplay.dev')
+    ? prefix + fuzzifiedPath
+    : prefix + encodeURIComponent(fuzzifiedPath).replaceAll('%2F', '/');
 
   console.debug(
     'urlRewriten:\n\t- current_url: ' +

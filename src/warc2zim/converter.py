@@ -906,6 +906,9 @@ class Converter:
 
         item_zim_path = normalize(HttpUrl(url))
 
+        if "live.mdnplay.dev" in item_zim_path.value:
+            item_zim_path = normalize(HttpUrl(url.split("?")[0]))
+
         # if include_domains is set, only include urls from those domains
         if self.include_domains:
             parts = urlsplit(url)
