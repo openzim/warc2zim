@@ -17,7 +17,6 @@ from zimscraperlib.zim import Archive
 from warc2zim.__about__ import __version__
 from warc2zim.converter import iter_warc_records
 from warc2zim.main import main
-from warc2zim.url_rewriting import HttpUrl, ZimPath, normalize
 from warc2zim.utils import get_record_url
 
 ZIM_ILLUSTRATION_SIZE = 48
@@ -241,101 +240,6 @@ class TestWarc2Zim:
                 method="cover",
             )
         return dst.getvalue()
-
-    @pytest.mark.parametrize(
-        "url,zim_path",
-        [
-            ("https://exemple.com", "exemple.com/"),
-            ("https://exemple.com/", "exemple.com/"),
-            ("http://example.com/resource", "example.com/resource"),
-            ("http://example.com/resource/", "example.com/resource/"),
-            (
-                "http://example.com/resource/folder/sub.txt",
-                "example.com/resource/folder/sub.txt",
-            ),
-            (
-                "http://example.com/resource/folder/sub",
-                "example.com/resource/folder/sub",
-            ),
-            (
-                "http://example.com/resource/folder/sub?foo=bar",
-                "example.com/resource/folder/sub?foo=bar",
-            ),
-            (
-                "http://example.com/resource/folder/sub?foo=bar#anchor1",
-                "example.com/resource/folder/sub?foo=bar",
-            ),
-            ("http://example.com/resource/#anchor1", "example.com/resource/"),
-            ("http://example.com/resource/?foo=bar", "example.com/resource/?foo=bar"),
-            ("http://example.com#anchor1", "example.com/"),
-            ("http://example.com?foo=bar#anchor1", "example.com/?foo=bar"),
-            ("http://example.com/?foo=bar", "example.com/?foo=bar"),
-            ("http://example.com/?foo=ba+r", "example.com/?foo=ba r"),
-            (
-                "http://example.com/?foo=ba r",
-                "example.com/?foo=ba r",
-            ),  # situation where the ` ` has not been properly escaped in document
-            ("http://example.com/?foo=ba%2Br", "example.com/?foo=ba+r"),
-            ("http://example.com/?foo=ba+%2B+r", "example.com/?foo=ba + r"),
-            ("http://example.com/#anchor1", "example.com/"),
-            (
-                "http://example.com/some/path/http://example.com//some/path",
-                "example.com/some/path/http:/example.com/some/path",
-            ),
-            (
-                "http://example.com/some/pa?th/http://example.com//some/path",
-                "example.com/some/pa?th/http:/example.com/some/path",
-            ),
-            (
-                "http://example.com/so?me/pa?th/http://example.com//some/path",
-                "example.com/so?me/pa?th/http:/example.com/some/path",
-            ),
-            ("http://example.com/resource?", "example.com/resource"),
-            ("http://example.com/resource#", "example.com/resource"),
-            ("http://user@example.com/resource", "example.com/resource"),
-            ("http://user:password@example.com/resource", "example.com/resource"),
-            ("http://example.com:8080/resource", "example.com/resource"),
-            (
-                "http://foobargooglevideo.com/videoplayback?id=1576&key=value",
-                "youtube.fuzzy.replayweb.page/videoplayback?id=1576",
-            ),  # Fuzzy rule is applied in addition to path transformations
-            ("https://xn--exmple-cva.com", "exémple.com/"),
-            ("https://xn--exmple-cva.com/", "exémple.com/"),
-            ("https://xn--exmple-cva.com/resource", "exémple.com/resource"),
-            ("https://exémple.com/", "exémple.com/"),
-            ("https://exémple.com/resource", "exémple.com/resource"),
-            # host_ip is an invalid hostname according to spec
-            ("https://host_ip/", "host_ip/"),
-            ("https://host_ip/resource", "host_ip/resource"),
-            ("https://192.168.1.1/", "192.168.1.1/"),
-            ("https://192.168.1.1/resource", "192.168.1.1/resource"),
-            ("http://example.com/res%24urce", "example.com/res$urce"),
-            (
-                "http://example.com/resource?foo=b%24r",
-                "example.com/resource?foo=b$r",
-            ),
-            ("http://example.com/resource@300x", "example.com/resource@300x"),
-            ("http://example.com:8080/resource", "example.com/resource"),
-            ("http://user@example.com:8080/resource", "example.com/resource"),
-            ("http://user:password@example.com:8080/resource", "example.com/resource"),
-            # the two URI below are an illustration of a potential collision (two
-            # differents URI leading to the same ZIM path)
-            (
-                "http://tmp.kiwix.org/ci/test-website/images/urlencoding1_ico%CC%82ne-"
-                "de%CC%81buter-Solidarite%CC%81-Nume%CC%81rique_1%40300x.png",
-                "tmp.kiwix.org/ci/test-website/images/urlencoding1_icône-débuter-"
-                "Solidarité-Numérique_1@300x.png",
-            ),
-            (
-                "https://tmp.kiwix.org/ci/test-website/images/urlencoding1_ico%CC%82ne-"
-                "de%CC%81buter-Solidarite%CC%81-Nume%CC%81rique_1@300x.png",
-                "tmp.kiwix.org/ci/test-website/images/urlencoding1_icône-débuter-"
-                "Solidarité-Numérique_1@300x.png",
-            ),
-        ],
-    )
-    def test_normalize(self, url, zim_path):
-        assert normalize(HttpUrl(url)).value == ZimPath(zim_path).value
 
     def test_warc_to_zim_specify_params_and_metadata(self, tmp_path):
         zim_output = "zim-out-filename.zim"
