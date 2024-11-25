@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Upgrade to wombat 3.8.6 (#334)
 - Fix wombat setup settings (especially `isSW`) (#293)
 
+### Fixed
+
+- Stop checking main entry processability when it is already found (#424)
+
 ## [2.1.3] - 2024-11-01
 
 ### Changed
