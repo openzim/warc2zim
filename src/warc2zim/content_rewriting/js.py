@@ -174,6 +174,13 @@ def create_js_rules() -> list[TransformationRule]:
             re.compile(r"[^$.]\bimport\s*\("),
             replace_import("import", "____wb_rewrite_import__"),
         ),
+        (
+            re.compile(r"var excludedRelativePaths=\['\/index.php','#'\];"),
+            replace(
+                "/index.php",
+                "index.php",
+            ),
+        ),
     ]
 
 

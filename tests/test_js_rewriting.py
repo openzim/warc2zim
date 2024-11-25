@@ -40,6 +40,13 @@ def test_this_js_rewrite(simple_js_rewriter: JsRewriter, rewrite_this_js_content
     )
 
 
+def test_js_rewrite_foo(simple_js_rewriter: JsRewriter):
+    assert (
+        simple_js_rewriter.rewrite("var excludedRelativePaths=['/index.php','#'];")
+        == "var excludedRelativePaths=['index.php','#'];"
+    )
+
+
 class WrappedTestContent(ContentForTests):
     @staticmethod
     def wrap_script(text: str) -> str:
