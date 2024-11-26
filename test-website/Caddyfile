@@ -73,6 +73,14 @@
 
     respond /502-response 502
 
+    respond // "Hello you" 400
+
+    respond /double-slash/test1 "Hello you" 200
+    respond /double-slash//test1 400
+
+    respond /double-slash/test2 "Hello you v1" 200
+    respond /double-slash//test2 "Hello you v2" 200
+
     redir /301-internal-redirect-ok /internal_redirect_target.html 301
     redir /301-external-redirect-ok https://www.example.com 301
     redir /302-internal-redirect-ok /internal_redirect_target.html 302
