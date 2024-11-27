@@ -478,7 +478,11 @@ class Converter:
 
             status_code = get_status_code(record)
             if not can_process_status_code(status_code):
-                if record.rec_type == "response" and self.main_path == zim_path:
+                if (
+                    not main_page_found
+                    and record.rec_type == "response"
+                    and self.main_path == zim_path
+                ):
                     raise UnprocessableWarcError(
                         f"Main URL returned an unprocessable HTTP code: {status_code}"
                     )
