@@ -11,11 +11,11 @@ from pathlib import Path
 from jinja2.environment import Template
 from libzim.writer import Hint  # pyright: ignore[reportMissingModuleSource]
 from warcio.recordloader import ArcWarcRecord
+from zimscraperlib.rewriting.url_rewriting import ZimPath
 from zimscraperlib.types import get_mime_for_name
 from zimscraperlib.zim.items import StaticItem
 
-from warc2zim.content_rewriting.generic import Rewriter
-from warc2zim.url_rewriting import ZimPath
+from warc2zim.rewriting import Rewriter
 from warc2zim.utils import get_record_mime_type
 
 

@@ -15,7 +15,7 @@ def test_title_validation(title, is_valid):
     if is_valid:
         assert main(args) == 100
     else:
-        with pytest.raises(ValueError, match="Title is too long"):
+        with pytest.raises(ValueError, match="Title value is too long"):
             main(args)
 
 
@@ -35,7 +35,7 @@ def test_description_validation(description, is_valid):
     if is_valid:
         assert main(args) == 100
     else:
-        with pytest.raises(ValueError, match="Description is too long"):
+        with pytest.raises(ValueError, match="Description value is too long"):
             main(args)
 
 
@@ -62,7 +62,7 @@ def test_long_description_validation(long_description, is_valid):
     if is_valid:
         assert main(args) == 100
     else:
-        with pytest.raises(ValueError, match="Description is too long"):
+        with pytest.raises(ValueError, match="LongDescription value is too long"):
             main(args)
 
 

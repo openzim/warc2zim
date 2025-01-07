@@ -1,4 +1,4 @@
-from zimscraperlib.i18n import get_language_details
+from zimscraperlib.i18n import get_language_or_none
 
 from warc2zim.constants import logger
 
@@ -13,17 +13,19 @@ def parse_language(input_lang: str) -> str:
     Preserve language ordering (since it conveys meaning in ZIM metadata).
     """
 
-    langs = []  # use a list to preserve order
+    # transform input language into Language object (or None if not found)
+    langs = [get_language_or_none(lang.strip()) for lang in input_lang.split(",")]
 
-    for lang in [lang.strip() for lang in input_lang.split(",")]:
-        try:
-            lang_data = get_language_details(lang)
-            if parsed_lang := (lang_data.iso_639_3 if lang_data else None):
-                if parsed_lang not in langs:
-                    langs.append(parsed_lang)
-        except Exception:
-            logger.warning(f"Skipping invalid language setting `{lang}`.")
-            continue  # skip unrecognized
+    # get unique iso_639_3 codes, removing duplicates and None values, preserving order
+    langs = list(
+        dict.fromkeys(
+            [
+                lang.iso_639_3
+                for lang in langs
+                if lang is not None and lang.iso_639_3 is not None
+            ]
+        )
+    )
 
     if len(langs) == 0:
         logger.warning(
