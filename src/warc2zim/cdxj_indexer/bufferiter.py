@@ -2,15 +2,14 @@ import hashlib
 import shutil
 import tempfile
 
-from cdxj_indexer.postquery import append_method_query_from_req_resp
-
+from warc2zim.cdxj_indexer.postquery import append_method_query_from_req_resp
 
 BUFF_SIZE = 1024 * 64
 
 
 # ============================================================================
 def buffering_record_iter(
-    record_iter, post_append=False, digest_reader=None, url_key_func=None
+    record_iter, digest_reader=None, url_key_func=None, *, post_append=False
 ):
     prev_record = None
 
@@ -30,10 +29,8 @@ def buffering_record_iter(
 
             if digest_length != record.file_length:
                 raise Exception(
-                    "Digest block mismatch, expected {0}, got {1}".format(
-                        record.file_length,
-                        digest_length,
-                    )
+                    f"Digest block mismatch, expected {record.file_length}, "
+                    f"got {digest_length}"
                 )
 
             record.record_digest = record_digest
@@ -50,7 +47,8 @@ def buffering_record_iter(
         join_req_resp(req, resp, post_append, url_key_func)
 
         yield prev_record
-        prev_record.buffered_stream.close()
+        if prev_record:
+            prev_record.buffered_stream.close()
         yield record
         record.buffered_stream.close()
         prev_record = None
@@ -107,7 +105,7 @@ def join_req_resp(req, resp, post_append, url_key_func=None):
     method = req.http_headers.protocol
     if post_append and method.upper() in ("POST", "PUT"):
         url = req.rec_headers.get_header("WARC-Target-URI")
-        query, append_str = append_method_query_from_req_resp(req, resp)
+        query, append_str = append_method_query_from_req_resp(req)
         resp.method = method.upper()
         resp.requestBody = query
         resp.urlkey = url + append_str

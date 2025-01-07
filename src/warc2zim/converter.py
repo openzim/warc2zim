@@ -34,7 +34,6 @@ import requests
 
 # from zimscraperlib import getLogger
 from bs4 import BeautifulSoup
-from cdxj_indexer import buffering_record_iter, iter_file_or_dir
 from dateutil import parser
 from jinja2 import Environment, PackageLoader
 from warcio import ArchiveIterator
@@ -51,6 +50,7 @@ from zimscraperlib.types import FALLBACK_MIME
 from zimscraperlib.zim import metadata
 from zimscraperlib.zim.creator import Creator
 
+from warc2zim.cdxj_indexer import buffering_record_iter, iter_file_or_dir
 from warc2zim.constants import logger
 from warc2zim.icon_finder import Icon, get_sorted_icons, icons_in_html
 from warc2zim.items import StaticArticle, StaticFile, WARCPayloadItem

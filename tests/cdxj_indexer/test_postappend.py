@@ -1,10 +1,6 @@
 from io import BytesIO
 
-from pyamf import AMF3
-from pyamf.remoting import Request, Envelope, encode
-
-from cdxj_indexer.postquery import append_method_query
-from cdxj_indexer.amf import amf_parse
+from warc2zim.cdxj_indexer.postquery import append_method_query
 
 
 # ============================================================================
@@ -24,7 +20,7 @@ class MethodQueryCanonicalizer:
 
 
 # ============================================================================
-class TestPostQueryExtract(object):
+class TestPostQueryExtract:
     @classmethod
     def setup_class(cls):
         cls.post_data = b"foo=bar&dir=%2Fbaz"
@@ -205,16 +201,3 @@ class TestPostQueryExtract(object):
             mq.append_query("http://example.com/")
             == "http://example.com/?__wb_method=HEAD"
         )
-
-    def test_amf_parse(self):
-        mq = MethodQueryCanonicalizer("POST", "application/x-amf", 0, BytesIO())
-
-        req = Request(target="t", body="")
-        ev_1 = Envelope(AMF3)
-        ev_1["/0"] = req
-
-        req = Request(target="t", body="alt_content")
-        ev_2 = Envelope(AMF3)
-        ev_2["/0"] = req
-
-        assert amf_parse(encode(ev_1).getvalue()) != amf_parse(encode(ev_2).getvalue())

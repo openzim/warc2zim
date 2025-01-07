@@ -1,21 +1,16 @@
 import base64
 import json
 import sys
-
-from urllib.parse import unquote_plus, urlencode
 from io import BytesIO
+from urllib.parse import unquote_plus, urlencode
 
 from multipart import MultipartParser
-from warcio.utils import to_native_str
-
-from cdxj_indexer.amf import amf_parse
-
 
 MAX_QUERY_LENGTH = 4096
 
 
 # ============================================================================
-def append_method_query_from_req_resp(req, resp):
+def append_method_query_from_req_resp(req):
     len_ = req.http_headers.get_header("Content-Length")
     content_type = req.http_headers.get_header("Content-Type")
     stream = req.buffered_stream
@@ -31,8 +26,8 @@ def append_method_query(method, content_type, len_, stream, url):
     # if method == 'GET':
     #    return '', ''
 
-    if method == "POST" or method == "PUT":
-        query = query_extract(content_type, len_, stream, url)
+    if method in ("POST", "PUT"):
+        query = query_extract(content_type, len_, stream)
     else:
         query = ""
 
@@ -49,7 +44,7 @@ def append_method_query(method, content_type, len_, stream, url):
 
 
 # ============================================================================
-def query_extract(mime, length, stream, url):
+def query_extract(mime, length, stream):
     """
     Extract a url-encoded form POST/PUT from stream
     content length, return None
@@ -82,15 +77,11 @@ def query_extract(mime, length, stream, url):
     query = ""
 
     def handle_binary(query_data):
-        query = base64.b64encode(query_data)
-        query = to_native_str(query)
-        query = "__wb_post_data=" + query
-        return query
+        return f"__wb_post_data={ base64.b64encode(query_data).decode()}"
 
     if mime.startswith("application/x-www-form-urlencoded"):
         try:
-            query = to_native_str(query_data.decode("utf-8"))
-            query = unquote_plus(query)
+            query = unquote_plus(query_data.decode("utf-8"))
         except UnicodeDecodeError:
             query = handle_binary(query_data)
 
@@ -104,6 +95,8 @@ def query_extract(mime, length, stream, url):
         else:
             values = []
             for part in parser:
+                if part is None:
+                    continue
                 values.append((part.name, part.value))
 
             query = urlencode(values, True)
@@ -111,13 +104,13 @@ def query_extract(mime, length, stream, url):
     elif mime.startswith("application/json"):
         try:
             query = json_parse(query_data)
-        except Exception as e:
+        except Exception:
             if query_data:
                 try:
                     sys.stderr.write(
                         "Error parsing: " + query_data.decode("utf-8") + "\n"
                     )
-                except:
+                except Exception:  # noqa: S110 # nosec B110
                     pass
 
             query = ""
@@ -125,11 +118,14 @@ def query_extract(mime, length, stream, url):
     elif mime.startswith("text/plain"):
         try:
             query = json_parse(query_data)
-        except Exception as e:
+        except Exception:
             query = handle_binary(query_data)
 
-    elif mime.startswith("application/x-amf"):
-        query = amf_parse(query_data)
+    # Remove AMF parsing, we do not really need it in warc2zim and AMF library is not
+    # maintained at all
+    # elif mime.startswith("application/x-amf"):
+    #     query = amf_parse(query_data)
+
     else:
         query = handle_binary(query_data)
 
