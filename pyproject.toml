@@ -10,7 +10,7 @@ readme = "README.md"
 dependencies = [
   "warcio==1.7.5",
   "requests==2.32.3",
-  "zimscraperlib==5.0.0rc2",
+  "zimscraperlib==5.0.0rc3",
   "jinja2==3.1.4", # also update version in build-system above and in build_js.sh
   # to support possible brotli content in warcs, must be added separately
   "brotlipy==0.7.0",
