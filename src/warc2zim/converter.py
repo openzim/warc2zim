@@ -40,28 +40,21 @@ from jinja2 import Environment, PackageLoader
 from warcio import ArchiveIterator
 from warcio.recordloader import ArcWarcRecord
 from zimscraperlib.constants import (
-    DEFAULT_DEV_ZIM_METADATA,
     RECOMMENDED_MAX_TITLE_LENGTH,
 )
 from zimscraperlib.download import stream_file
 from zimscraperlib.image.conversion import convert_image, convert_svg2png
 from zimscraperlib.image.probing import format_for
 from zimscraperlib.image.transformation import resize_image
+from zimscraperlib.rewriting.url_rewriting import ArticleUrlRewriter, HttpUrl, ZimPath
 from zimscraperlib.types import FALLBACK_MIME
+from zimscraperlib.zim import metadata
 from zimscraperlib.zim.creator import Creator
-from zimscraperlib.zim.metadata import (
-    validate_description,
-    validate_language,
-    validate_longdescription,
-    validate_tags,
-    validate_title,
-)
 
 from warc2zim.constants import logger
 from warc2zim.icon_finder import Icon, get_sorted_icons, icons_in_html
 from warc2zim.items import StaticArticle, StaticFile, WARCPayloadItem
 from warc2zim.language import parse_language
-from warc2zim.url_rewriting import HttpUrl, ZimPath, normalize
 from warc2zim.utils import (
     can_process_status_code,
     get_record_content,
@@ -140,7 +133,9 @@ class Converter:
         }
         self.source: str | None = str(args.source) if args.source else None or main_url
         self.scraper = "warc2zim " + get_version()
-        self.main_path = normalize(HttpUrl(main_url)) if main_url else None
+        self.main_path = (
+            ArticleUrlRewriter.normalize(HttpUrl(main_url)) if main_url else None
+        )
 
         self.output = Path(args.output)
         self.zim_file = args.zim_file
@@ -271,16 +266,16 @@ class Converter:
         if not self.disable_metadata_checks:
             # Validate ZIM metadata early so that we do not waste time doing operations
             # for a scraper which will fail anyway in the end
-            validate_tags("Tags", self.tags)
+            metadata.TagsMetadata(self.tags)
             if self.title:
-                validate_title("Title", self.title)
+                metadata.TitleMetadata(self.title)
             if self.description:
-                validate_description("Description", self.description)
+                metadata.DescriptionMetadata(self.description)
             if self.long_description:
-                validate_longdescription("LongDescription", self.long_description)
+                metadata.LongDescriptionMetadata(self.long_description)
             if self.language:
                 self.language = parse_language(self.language)
-                validate_language("Language", self.language)
+                metadata.LanguageMetadata(self.language)
             # Nota: we do not validate illustration since logic in the scraper is made
             # to always provide a valid image, at least a fallback transparent PNG and
             # final illustration is most probably not yet known at this stage
@@ -303,7 +298,7 @@ class Converter:
 
             self.language = "eng"
         # validate language definitely, could have been retrieved from WARC or fallback
-        validate_language("Language", self.language)
+        metadata.LanguageMetadata(self.language)
         if not self.main_path:
             raise ValueError("Unable to find main path, aborting")
         self.title = self.title or "Untitled"
@@ -335,43 +330,64 @@ class Converter:
         )
 
         self.creator.config_metadata(
-            Name=self.name,
-            Language=self.language or "eng",
-            Title=self.title,
-            Description=self.description,
-            LongDescription=self.long_description,
-            Creator=self.creator_metadata,
-            Publisher=self.publisher,
-            Date=datetime.date.today(),  # noqa: DTZ011
-            Illustration_48x48_at_1=self.illustration,
-            Tags=self.tags,
-            Source=self.source,
-            Scraper=",".join(
-                filter(
-                    lambda x: x,  # remove None values
-                    [
-                        f"warc2zim {get_version()}",
-                        self.warc_software,
-                        self.scraper_suffix,
-                    ],
-                )
+            metadata.StandardMetadataList(
+                Name=metadata.NameMetadata(self.name),
+                Language=metadata.LanguageMetadata(self.language),
+                Title=metadata.TitleMetadata(self.title),
+                Description=metadata.DescriptionMetadata(self.description),
+                LongDescription=(
+                    metadata.LongDescriptionMetadata(self.long_description)
+                    if self.long_description
+                    else None
+                ),
+                Creator=metadata.CreatorMetadata(self.creator_metadata),
+                Publisher=metadata.PublisherMetadata(self.publisher),
+                Date=metadata.DateMetadata(
+                    datetime.datetime.now(tz=datetime.UTC).date()
+                ),
+                Illustration_48x48_at_1=metadata.DefaultIllustrationMetadata(
+                    self.illustration
+                ),
+                Tags=(metadata.TagsMetadata(self.tags) if self.tags else None),
+                Scraper=metadata.ScraperMetadata(
+                    ",".join(
+                        filter(
+                            lambda x: x,  # remove None values
+                            [
+                                f"warc2zim {get_version()}",
+                                self.warc_software,
+                                self.scraper_suffix,
+                            ],
+                        )
+                    )
+                ),
             ),
         ).start()
 
         if self.warc_start and self.warc_end:
             if self.warc_start == self.warc_end:
                 self.creator.add_metadata(
-                    "X-ContentDate", self.warc_start.strftime("%Y-%m-%d")
+                    metadata.XCustomTextMetadata(
+                        "X-ContentDate", self.warc_start.strftime("%Y-%m-%d")
+                    )
                 )
             else:
                 self.creator.add_metadata(
-                    "X-ContentDate",
-                    f"{self.warc_start.strftime('%Y-%m-%d')},"
-                    f"{self.warc_end.strftime('%Y-%m-%d')}",
+                    metadata.XCustomTextMetadata(
+                        "X-ContentDate",
+                        f"{self.warc_start.strftime('%Y-%m-%d')},"
+                        f"{self.warc_end.strftime('%Y-%m-%d')}",
+                    )
                 )
 
-        for filename in importlib.resources.files("warc2zim.statics").iterdir():
+        for filename in importlib.resources.files(
+            "zimscraperlib.rewriting.statics"
+        ).iterdir():
+            if not filename.is_file():
+                continue
             with importlib.resources.as_file(filename) as file:
+                if file.suffix != ".js":
+                    continue
                 self.creator.add_item(
                     StaticArticle(filename=file, main_path=self.main_path.value)
                 )
@@ -474,7 +490,7 @@ class Converter:
             if not (url.startswith("http://") or url.startswith("https://")):
                 continue
 
-            zim_path = normalize(HttpUrl(url))
+            zim_path = ArticleUrlRewriter.normalize(HttpUrl(url))
 
             status_code = get_status_code(record)
             if not can_process_status_code(status_code):
@@ -493,7 +509,7 @@ class Converter:
                 if zim_path not in self.redirections:
                     if redirect_location := record.http_headers.get("Location"):
                         try:
-                            redirection_zim_path = normalize(
+                            redirection_zim_path = ArticleUrlRewriter.normalize(
                                 HttpUrl(urljoin(url, redirect_location))
                             )
                             # Redirection to same ZIM path have to be ignored (occurs
@@ -563,7 +579,7 @@ class Converter:
                     HTTPStatus.FOUND,
                 ]:
                     original_path = self.main_path
-                    self.main_path = normalize(
+                    self.main_path = ArticleUrlRewriter.normalize(
                         HttpUrl(
                             urljoin(
                                 get_record_url(record),
@@ -708,7 +724,8 @@ class Converter:
         # compute paths of favicons so that we can process them on-the-fly while
         # iterating the records
         self.favicon_paths = {
-            normalize(icon_url): icon_url for icon_url in self.favicon_urls
+            ArticleUrlRewriter.normalize(icon_url): icon_url
+            for icon_url in self.favicon_urls
         }
         self.favicon_contents: dict[HttpUrl, bytes | None] = {
             icon_url: None for icon_url in self.favicon_urls
@@ -875,7 +892,9 @@ class Converter:
 
         # Or fallback to default ZIM illustration
         logger.warning("No suitable illustration found, using default")
-        self.illustration = DEFAULT_DEV_ZIM_METADATA["Illustration_48x48_at_1"]
+        self.illustration = (
+            metadata.DEFAULT_DEV_ZIM_METADATA.Illustration_48x48_at_1.value
+        )
 
     def is_self_redirect(self, record, url):
         if record.rec_type != "response":
@@ -889,7 +908,9 @@ class Converter:
 
         location = record.http_headers.get("Location", "")
         location = urljoin(url, location)
-        return normalize(HttpUrl(url)) == normalize(HttpUrl(location))
+        return ArticleUrlRewriter.normalize(
+            HttpUrl(url)
+        ) == ArticleUrlRewriter.normalize(HttpUrl(location))
 
     def add_items_for_warc_record(self, record):
 
@@ -908,7 +929,7 @@ class Converter:
             logger.debug(f"Skipping record with non HTTP(S) WARC-Target-URI {url}")
             return
 
-        item_zim_path = normalize(HttpUrl(url))
+        item_zim_path = ArticleUrlRewriter.normalize(HttpUrl(url))
 
         # if include_domains is set, only include urls from those domains
         if self.include_domains:
@@ -981,7 +1002,7 @@ class Converter:
             and record.rec_headers["WARC-Refers-To-Target-URI"] != url
             and item_zim_path not in self.revisits
         ):  # pragma: no branch
-            self.revisits[item_zim_path] = normalize(
+            self.revisits[item_zim_path] = ArticleUrlRewriter.normalize(
                 HttpUrl(record.rec_headers["WARC-Refers-To-Target-URI"])
             )
 

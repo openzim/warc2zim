@@ -4,9 +4,9 @@ import pytest
 from jinja2 import Template
 from warcio import StatusAndHeaders
 from warcio.recordloader import ArcWarcRecord
+from zimscraperlib.rewriting.url_rewriting import ZimPath
 
-from warc2zim.content_rewriting.generic import Rewriter
-from warc2zim.url_rewriting import ZimPath
+from warc2zim.rewriting import Rewriter
 
 
 @pytest.fixture(scope="module")

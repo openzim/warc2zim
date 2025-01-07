@@ -1,5 +1,5 @@
 FROM python:3.12-slim-bookworm
-LABEL org.opencontainers.image.source https://github.com/openzim/warc2zim
+LABEL org.opencontainers.image.source=https://github.com/openzim/warc2zim
 
 RUN apt-get update -y \
  && apt-get install -y --no-install-recommends \
@@ -12,15 +12,13 @@ RUN apt-get update -y \
 WORKDIR /output
 
 # Copy pyproject.toml and its dependencies
-COPY pyproject.toml openzim.toml README.md /src/
-COPY rules/generate_rules.py /src/rules/generate_rules.py
+COPY pyproject.toml README.md /src/
 COPY src/warc2zim/__about__.py /src/src/warc2zim/__about__.py
 
 # Install Python dependencies
 RUN pip install --no-cache-dir /src
 
 # Copy code + associated artifacts
-COPY rules /src/rules
 COPY src /src/src
 COPY *.md /src/
 

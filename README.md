@@ -168,26 +168,13 @@ Start a hatch shell: this will install software including dependencies in an iso
 hatch shell
 ```
 
-### Regenerate wombatSetup.js
+### Rewriting logic and rewriting rules
 
-wombatSetup.js is the JS code used to setup wombat when the ZIM is used.
+Mostly all rewriting logic and rewriting rules now comes from the [python-scraperlib](https://github.com/openzim/python-scraperlib/).
 
-It is normally retrieved by Python build process (see openzim.toml for details).
+Should you need to add more rules or modify rewriting logic, this is the place to go.
 
-Recommended solution to develop this JS code is to install Node.JS on your system, and then
-
-```bash
-cd javascript
-yarn build-dev # or yarn build-prod
-```
-
-Should you want to regenerate this code without install Node.JS, you might simply run following command.
-
-```bash
-docker run -v $PWD/src/warc2zim/statics:/output -v $PWD/rules:/src/rules -v $PWD/javascript:/src/javascript -v $PWD/build_js.sh:/src/build_js.sh -it --rm --entrypoint /src/build_js.sh node:20-bookworm
-```
-
-It will install Python3 on-top of Node.JS in a Docker container, generate JS fuzzy rules and bundle JS code straight to `/src/warc2zim/statics/wombatSetup.js` where the file is expected to be placed.
+All resulting code (Python and Javascript) as well as wombat.js and wombat-setup.js comes from the python-scraperlib.
 
 ## License
 

@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Upgrade to wombat 3.8.6 (#334)
+- Upgrade dependencies: zimscraperlib 5.0.0, warcio 1.7.5, cdxj_index 1.4.6 and others
+- Use all rewriting stuff from zimscraperlib
+- Remove most HTML / CSS / JS rewriting logic which is now part of zimscraperlib 5
 - Fix wombat setup settings (especially `isSW`) (#293)
 
 ### Fixed
