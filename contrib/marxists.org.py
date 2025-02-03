@@ -1,4 +1,4 @@
-""" MIA English exclude list
+"""MIA English exclude list
 
 This utility computes the list of all subpages/languages that must be ignored for the
 English ZIM of The Marxists Internet Archive (MIA) at www.marxists.org.
@@ -23,9 +23,9 @@ soup = BeautifulSoup(resp.text, "html.parser")
 subfolders = set()
 REGEX = re.compile(r"\.\.\/(?P<subfolder>.*?)\/")
 for anchor in soup.find_all("a"):
-    if not anchor.has_attr("href"):
+    if not anchor.has_attr("href"):  # pyright: ignore
         continue
-    if match := REGEX.match(anchor["href"]):
+    if match := REGEX.match(anchor["href"]):  # pyright: ignore
         subfolders.add(match.group("subfolder"))
 
 print("|".join(sorted(subfolders)))  # noqa: T201

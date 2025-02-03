@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # vim: ai ts=4 sts=4 et sw=4 nu
 
-""" warc2zim conversion utility
+"""warc2zim conversion utility
 
 This utility provides a conversion from WARC records to ZIM files.
 WARC record are directly stored in a zim file as:
@@ -739,7 +739,7 @@ class Converter:
             lang_elem = soup.find("html", attrs={"lang": True})
             if lang_elem:
                 self.language = parse_language(
-                    lang_elem.attrs[  # pyright: ignore[reportGeneralTypeIssues ,reportAttributeAccessIssue]
+                    lang_elem.attrs[  # pyright: ignore[reportArgumentType, reportAttributeAccessIssue]
                         "lang"
                     ]
                 )
@@ -751,7 +751,7 @@ class Converter:
             )
             if lang_elem:
                 self.language = parse_language(
-                    lang_elem.attrs[  # pyright: ignore[reportGeneralTypeIssues ,reportAttributeAccessIssue]
+                    lang_elem.attrs[  # pyright: ignore[reportArgumentType ,reportAttributeAccessIssue]
                         "content"
                     ]
                 )
@@ -761,7 +761,7 @@ class Converter:
             lang_elem = soup.find("meta", {"name": "language", "content": True})
             if lang_elem:
                 self.language = parse_language(
-                    lang_elem.attrs[  # pyright: ignore[reportGeneralTypeIssues ,reportAttributeAccessIssue]
+                    lang_elem.attrs[  # pyright: ignore[reportArgumentType ,reportAttributeAccessIssue]
                         "content"
                     ]
                 )

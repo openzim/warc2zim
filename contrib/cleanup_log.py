@@ -2,8 +2,9 @@ import re
 import sys
 from pathlib import Path
 
+from zimscraperlib.rewriting.url_rewriting import ZimPath
+
 from warc2zim.constants import logger
-from warc2zim.url_rewriting import ZimPath
 
 
 def notify(_: ZimPath):

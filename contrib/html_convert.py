@@ -1,4 +1,4 @@
-""" html rewrite test utility
+"""html rewrite test utility
 
 This utility takes a given HTML content as input, base64 encoded, its original URL, and
  rewrites its content.
@@ -17,9 +17,10 @@ import logging
 import sys
 from pathlib import Path
 
+from zimscraperlib.rewriting.html import HtmlRewriter
+from zimscraperlib.rewriting.url_rewriting import ArticleUrlRewriter, HttpUrl, ZimPath
+
 from warc2zim.constants import logger
-from warc2zim.content_rewriting.html import HtmlRewriter
-from warc2zim.url_rewriting import ArticleUrlRewriter, HttpUrl, ZimPath
 from warc2zim.utils import to_string
 
 
@@ -37,7 +38,9 @@ def main(path_to_content: str, article_url: str, encoding: str | None = None):
     content = Path(path_to_content)
 
     url_rewriter = ArticleUrlRewriter(
-        HttpUrl(article_url), existing_zim_paths=set(), missing_zim_paths=set()
+        article_url=HttpUrl(article_url),
+        existing_zim_paths=set(),
+        missing_zim_paths=set(),
     )
 
     html_rewriter = HtmlRewriter(url_rewriter, "", None, notify)
