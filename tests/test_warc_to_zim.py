@@ -10,8 +10,9 @@ from urllib.parse import unquote
 
 import pytest
 import requests
-from zimscraperlib.image.conversion import convert_image, convert_svg2png, resize_image
+from zimscraperlib.image.conversion import convert_image, convert_svg2png
 from zimscraperlib.image.probing import format_for
+from zimscraperlib.image.transformation import resize_image
 from zimscraperlib.zim import Archive
 
 from warc2zim.__about__ import __version__

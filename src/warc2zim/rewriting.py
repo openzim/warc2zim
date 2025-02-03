@@ -27,7 +27,7 @@ JSONP_CALLBACK_REGEX = re.compile(r"[?].*(?:callback|jsonp)=([^&]+)", re.I)
 
 
 def no_title(
-    function: Callable[..., str | bytes]
+    function: Callable[..., str | bytes],
 ) -> Callable[..., tuple[str, str | bytes]]:
     """Decorator for methods transforming content without extracting a title.
 

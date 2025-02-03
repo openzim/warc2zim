@@ -258,7 +258,7 @@ class CharsetsTestData:
     expected_strings: list[str]
 
 
-def get_testdata() -> Generator[CharsetsTestData, None, None]:
+def get_testdata() -> Generator[CharsetsTestData]:
     data = json.loads(
         (Path(__file__).parent / "encodings" / "definition.json").read_bytes()
     )

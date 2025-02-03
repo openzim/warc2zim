@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # vim: ai ts=4 sts=4 et sw=4 nu
 
-""" warc2zim's item classes
+"""warc2zim's item classes
 
 This module contains the differents Item we may want to add to a Zim archive.
 """
