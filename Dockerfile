@@ -1,4 +1,4 @@
-FROM python:3.12-slim-bookworm
+FROM python:3.13-slim-bookworm
 LABEL org.opencontainers.image.source=https://github.com/openzim/warc2zim
 
 RUN apt-get update -y \
