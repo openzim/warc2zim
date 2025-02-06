@@ -14,11 +14,11 @@ dependencies = [
   "jinja2==3.1.5",
   # to support possible brotli content in warcs, must be added separately
   "brotlipy==0.7.0",
-  "cdxj_indexer==1.4.6",
   "tinycss2==1.4.0",
   "beautifulsoup4==4.13.1", # used to parse base href
   "lxml==5.3.0", # used by beautifulsoup4 for parsing html
   "python-dateutil==2.9.0.post0",
+  "multipart==1.2.1",
 ]
 dynamic = ["authors", "classifiers", "keywords", "license", "version", "urls"]
 
