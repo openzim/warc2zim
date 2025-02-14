@@ -10,13 +10,13 @@ readme = "README.md"
 dependencies = [
   "warcio==1.7.5",
   "requests==2.32.3",
-  "zimscraperlib==5.1.0",
+  "zimscraperlib==5.1.1",
   "jinja2==3.1.5",
   # to support possible brotli content in warcs, must be added separately
   "brotlipy==0.7.0",
   "tinycss2==1.4.0",
-  "beautifulsoup4==4.13.1", # used to parse base href
-  "lxml==5.3.0", # used by beautifulsoup4 for parsing html
+  "beautifulsoup4==4.13.3", # used to parse base href
+  "lxml==5.3.1", # used by beautifulsoup4 for parsing html
   "python-dateutil==2.9.0.post0",
   "multipart==1.2.1",
 ]
@@ -36,14 +36,14 @@ scripts = [
 ]
 lint = [
   "black==25.1.0",
-  "ruff==0.9.4",
+  "ruff==0.9.6",
 ]
 check = [
-  "pyright==1.1.393",
+  "pyright==1.1.394",
 ]
 test = [
   "pytest==8.3.4",
-  "coverage==7.6.10",
+  "coverage==7.6.12",
 ]
 dev = [
   "pre-commit==4.1.0",
