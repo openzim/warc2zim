@@ -11,11 +11,11 @@ repos:
   hooks:
   -   id: black
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.9.4
+  rev: v0.9.6
   hooks:
   - id: ruff
 - repo: https://github.com/RobertCraigie/pyright-python
-  rev: v1.1.393
+  rev: v1.1.394
   hooks:
   - id: pyright
     name: pyright (system)
