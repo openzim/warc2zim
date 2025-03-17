@@ -363,6 +363,40 @@ def test_decode_charset_too_far_away_without_proper_alias():
         )
 
 
-def test_override_default_encoding_alias():
+@pytest.mark.parametrize(
+    "alias, expected",
+    [
+        ("ansi", "windows-1252"),
+        ("65001", "utf-8"),
+        ("iso-utf-8", "utf-8"),
+        ("u", "utf-8"),
+        ("unicode", "utf-8"),
+        ("utf-8", "utf-8"),
+        ("utf-08", "utf-8"),
+        ("utf-f", "utf-8"),
+        ("utp-8", "utf-8"),
+        ("windows-8859-1", "iso-8859-1"),
+        ("iso88591", "iso-8859-1"),
+        ("   uNiCoDe    ", "utf-8"),
+        ("   U    ", "utf-8"),
+        ("UNICODE", "utf-8"),
+    ],
+)
+def test_default_encoding_aliases(alias, expected):
+    assert get_encoding_by_alias(alias) == expected
+
+
+def test_get_unknown_encoding():
+    assert get_encoding_by_alias("unKnown") == "unknown"
+
+
+@pytest.mark.parametrize(
+    "alias, expected",
+    [
+        ("Unicode", "latin1"),
+        ("unicode", "latin1"),
+    ],
+)
+def test_override_default_encoding_alias(alias, expected):
     set_encoding_aliases({"unicode": "latin1"})
-    assert get_encoding_by_alias("unicode") == "latin1"
+    assert get_encoding_by_alias(alias) == expected

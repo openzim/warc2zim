@@ -39,9 +39,10 @@ def set_encoding_aliases(aliases: dict[str, str]):
     ENCODING_ALIASES.update({**DEFAULT_ENCODING_ALIASES, **aliases})
 
 
-def get_encoding_by_alias(alias: str, default: str = "") -> str:
+def get_encoding_by_alias(alias: str) -> str:
     """Get the encoding method for alias."""
-    return ENCODING_ALIASES.get(alias, default)
+    key = alias.lower().strip()
+    return ENCODING_ALIASES.get(key, key)
 
 
 def get_version():
@@ -200,20 +201,18 @@ def to_string(
             if m := ENCODING_RE.search(content_start):
                 head_encoding = m.group("encoding")
                 return input_.decode(
-                    get_encoding_by_alias(head_encoding, head_encoding),
+                    get_encoding_by_alias(head_encoding),
                     errors="replace",
                 )
 
     # Search for encofing in HTTP `Content-Type` header
     if not ignore_http_header_charsets and http_encoding:
-        return input_.decode(
-            get_encoding_by_alias(http_encoding, http_encoding), errors="replace"
-        )
+        return input_.decode(get_encoding_by_alias(http_encoding), errors="replace")
 
     # Try all charsets_to_try passed
     for charset_to_try in charsets_to_try:
         try:
-            return input_.decode(get_encoding_by_alias(charset_to_try, charset_to_try))
+            return input_.decode(get_encoding_by_alias(charset_to_try))
         except (ValueError, LookupError):
             pass
 
