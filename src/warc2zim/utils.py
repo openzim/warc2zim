@@ -16,13 +16,32 @@ ENCODING_RE = re.compile(
     re.ASCII,
 )
 
+DEFAULT_ENCODING_ALIASES = {
+    "ansi": "windows-1252",
+    "65001": "utf-8",
+    "iso-utf-8": "utf-8",
+    "u": "utf-8",
+    "unicode": "utf-8",
+    "utf-8": "utf-8",
+    "utf-08": "utf-8",
+    "utf-f": "utf-8",
+    "utp-8": "utf-8",
+    "windows-8859-1": "iso-8859-1",
+    "iso88591": "iso-8859-1",
+}
+
 ENCODING_ALIASES = {}
 
 
 def set_encoding_aliases(aliases: dict[str, str]):
     """Set the encoding aliases to use to decode"""
     ENCODING_ALIASES.clear()
-    ENCODING_ALIASES.update(aliases)
+    ENCODING_ALIASES.update({**DEFAULT_ENCODING_ALIASES, **aliases})
+
+
+def get_encoding_by_alias(alias: str, default: str = "") -> str:
+    """Get the encoding method for alias."""
+    return ENCODING_ALIASES.get(alias, default)
 
 
 def get_version():
@@ -181,19 +200,20 @@ def to_string(
             if m := ENCODING_RE.search(content_start):
                 head_encoding = m.group("encoding")
                 return input_.decode(
-                    ENCODING_ALIASES.get(head_encoding, head_encoding), errors="replace"
+                    get_encoding_by_alias(head_encoding, head_encoding),
+                    errors="replace",
                 )
 
     # Search for encofing in HTTP `Content-Type` header
     if not ignore_http_header_charsets and http_encoding:
         return input_.decode(
-            ENCODING_ALIASES.get(http_encoding, http_encoding), errors="replace"
+            get_encoding_by_alias(http_encoding, http_encoding), errors="replace"
         )
 
     # Try all charsets_to_try passed
     for charset_to_try in charsets_to_try:
         try:
-            return input_.decode(ENCODING_ALIASES.get(charset_to_try, charset_to_try))
+            return input_.decode(get_encoding_by_alias(charset_to_try, charset_to_try))
         except (ValueError, LookupError):
             pass
 

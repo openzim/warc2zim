@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from warc2zim.utils import set_encoding_aliases, to_string
+from warc2zim.utils import get_encoding_by_alias, set_encoding_aliases, to_string
 
 
 @dataclass
@@ -361,3 +361,8 @@ def test_decode_charset_too_far_away_without_proper_alias():
             ignore_http_header_charsets=False,
             ignore_content_header_charsets=False,
         )
+
+
+def test_override_default_encoding_alias():
+    set_encoding_aliases({"unicode": "latin1"})
+    assert get_encoding_by_alias("unicode") == "latin1"
