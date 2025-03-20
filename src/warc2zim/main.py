@@ -149,7 +149,7 @@ def _create_arguments_parser() -> ArgumentParser:
         " This parameter is single string, multiple values are separated by a comma, "
         " like in alias1=encoding1,alias2=encoding2.",
         type=lambda argument_value: {
-            alias_encoding.strip(): python_encoding.strip()
+            alias_encoding.lower().strip(): python_encoding.lower().strip()
             for alias_encoding, python_encoding in (
                 encoding.split("=") for encoding in argument_value.split(",")
             )

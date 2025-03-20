@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Provide default encoding aliases (#416)
+
+### Changed
+
+- Convert aliases given in `--encoding-aliases` to lower case (#412)
+
 ## [2.2.2] - 2024-02-17
 
 ### Changed
