@@ -148,6 +148,19 @@ class Converter:
         self.zim_file = self.zim_file.format(period=time.strftime("%Y-%m"))
         self.full_filename = self.output / self.zim_file
 
+        if self.full_filename.exists():
+            if not args.overwrite:
+                logger.error(
+                    f"ZIM file already exists: {self.full_filename}. "
+                    "Use --overwrite to replace it."
+                )
+                sys.exit(2)
+
+            logger.warning(
+                f"Overwrite enabled: existing file will be replaced: "
+                f"{self.full_filename}"
+            )
+
         # ensure output file exists
         if not self.output.is_dir():
             logger.error(

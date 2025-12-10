@@ -831,3 +831,52 @@ class TestWarc2Zim:
             )
             == zim_favicon
         )
+
+    def test_overwrite_existing_zim(self, tmp_path):
+        zim_output = "overwrite-test.zim"
+        output_path = tmp_path / zim_output
+
+        # First run: should create the file
+        main(
+            [
+                str(TEST_DATA_DIR / "example-response.warc"),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "overwrite-test",
+            ]
+        )
+        assert output_path.exists()
+
+        # Second run WITHOUT --overwrite → should raise SystemExit(2)
+        with pytest.raises(SystemExit) as e:
+            main(
+                [
+                    str(TEST_DATA_DIR / "example-response.warc"),
+                    "--output",
+                    str(tmp_path),
+                    "--zim-file",
+                    zim_output,
+                    "--name",
+                    "overwrite-test",
+                ]
+            )
+        assert e.value.code == 2
+
+        # Third run WITH --overwrite → should succeed and not raise
+        ret = main(
+            [
+                str(TEST_DATA_DIR / "example-response.warc"),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "overwrite-test",
+                "--overwrite",
+            ]
+        )
+        assert ret is None
+        assert output_path.exists()
