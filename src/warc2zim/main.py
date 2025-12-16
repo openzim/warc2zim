@@ -157,6 +157,13 @@ def _create_arguments_parser() -> ArgumentParser:
         default={},
     )
 
+    parser.add_argument(
+        "--overwrite",
+        help="Overwrite existing ZIM file if it exists",
+        action="store_true",
+        default=False,
+    )
+
     return parser
 
 

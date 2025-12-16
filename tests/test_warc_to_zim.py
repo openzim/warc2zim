@@ -831,3 +831,95 @@ class TestWarc2Zim:
             )
             == zim_favicon
         )
+
+    def test_overwrite_existing_zim_and_zimit_fail_early(self, tmp_path):
+
+        zim_output = "fail-early-test.zim"
+        output_path = tmp_path / zim_output
+        test_name = "fail-early-test"
+        test_url = "https://example.com/"
+
+        # --- SETUP: Create the target ZIM file first ---
+
+        setup_args = [
+            str(TEST_DATA_DIR / "example-response.warc"),
+            "--output",
+            str(tmp_path),
+            "--zim-file",
+            zim_output,
+            "--name",
+            test_name,
+            "--url",
+            test_url,
+        ]
+        main(setup_args)
+        assert output_path.exists()
+
+        # --- TEST 1: Simulate zimit's 'fail-early' argument check (NO WARC INPUT) ---
+
+        fail_early_args = [
+            "--output",
+            str(tmp_path),
+            "--zim-file",
+            zim_output,
+            "--name",
+            test_name,
+            "--url",
+            test_url,
+        ]
+
+        with pytest.raises(SystemExit) as e:
+            main(fail_early_args)
+
+        assert e.value.code == 2
+
+        # --- TEST 2: Validate the successful path (NO WARC INPUT, WITH OVERWRITE) ---
+        overwrite_no_input_args = [
+            "--output",
+            str(tmp_path),
+            "--zim-file",
+            zim_output,
+            "--name",
+            test_name,
+            "--url",
+            test_url,
+            "--overwrite",
+        ]
+
+        ret_no_input = main(overwrite_no_input_args)
+        assert ret_no_input == 100
+
+        # --- TEST 3: Test for successful overwrite (WITH WARC INPUT) ---
+        overwrite_full_run_args = [
+            str(TEST_DATA_DIR / "example-response.warc"),
+            "--output",
+            str(tmp_path),
+            "--zim-file",
+            zim_output,
+            "--name",
+            test_name,
+            "--url",
+            test_url,
+            "--overwrite",
+        ]
+
+        ret_full_run = main(overwrite_full_run_args)
+        assert ret_full_run in (None, 0)
+        assert output_path.exists()
+
+        # --- TEST 4: Validate that overwrite without --overwrite fails ---
+        no_overwrite_full_run_args = [
+            str(TEST_DATA_DIR / "example-response.warc"),
+            "--output",
+            str(tmp_path),
+            "--zim-file",
+            zim_output,
+            "--name",
+            test_name,
+            "--url",
+            test_url,
+        ]
+
+        with pytest.raises(SystemExit) as e:
+            main(no_overwrite_full_run_args)
+        assert e.value.code == 2

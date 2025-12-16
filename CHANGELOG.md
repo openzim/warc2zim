@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Provide `--overwrite` flag to overwrite existing zimfiles (#454)
 - Provide default encoding aliases (#416)
 
 ### Changed
