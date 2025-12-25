@@ -11,6 +11,7 @@ from urllib.parse import unquote
 import pytest
 import requests
 from zimscraperlib.image.conversion import convert_image, convert_svg2png
+from zimscraperlib.image.optimization import optimize_png
 from zimscraperlib.image.probing import format_for
 from zimscraperlib.image.transformation import resize_image
 from zimscraperlib.zim import Archive
@@ -240,7 +241,10 @@ class TestWarc2Zim:
                 height=ZIM_ILLUSTRATION_SIZE,
                 method="cover",
             )
-        return dst.getvalue()
+        dst.seek(0)
+        optimized = io.BytesIO()
+        optimize_png(dst, optimized)
+        return optimized.getvalue()
 
     def test_warc_to_zim_specify_params_and_metadata(self, tmp_path):
         zim_output = "zim-out-filename.zim"
@@ -833,7 +837,6 @@ class TestWarc2Zim:
         )
 
     def test_overwrite_existing_zim_and_zimit_fail_early(self, tmp_path):
-
         zim_output = "fail-early-test.zim"
         output_path = tmp_path / zim_output
         test_name = "fail-early-test"

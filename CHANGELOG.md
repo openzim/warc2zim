@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Provide `--overwrite` flag to overwrite existing zimfiles (#454)
 - Provide default encoding aliases (#416)
+- Always optimize favicon when possible (#448)
 
 ### Changed
 
@@ -107,7 +108,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved rules definition from JSON to YAML and documented update process (#216)
 - Upgrade to wombat.js 3.7.11
 
-### Added
+### Added
 
 - Exit with cleaner message when no entries are expected in the ZIM (#336) and when main entry is not processable (#337)
 - Add debug log for items whose content is empty (#344)
@@ -158,7 +159,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Replace **Service Worker** approach by **scraper-side rewriting** of static content (https://github.com/kiwix/overview/issues/95)
+- Replace **Service Worker** approach by **scraper-side rewriting** of static content (<https://github.com/kiwix/overview/issues/95>)
 - Adopted Python bootstrap conventions (#152)
 - Upgrade dependencies, especially move to **Python 3.12** (only) and zimscraperlib 3.3.2
 - Change wording in logs about the return code 100 (which is not an error code)
@@ -219,72 +220,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-* Using wabac.js 2.12.0
-* Prevent duplicate entries from failing (including illustrations)
-* Fixed crash on HTTP 300 records (#94)
+- Using wabac.js 2.12.0
+- Prevent duplicate entries from failing (including illustrations)
+- Fixed crash on HTTP 300 records (#94)
 
 ## [1.4.0] – 2022-06-14
 
 ### Added
 
-* Additional fuzzy matching rules for youtube and vimeo, and additional test cases
-* Support for youtube videos, which require POST request handling to work.
-* Support for canonicalizing POST request data into URL for fuzzy matching (using cdxj-indexer)
-* Support loading custom sw.js from a local file path
+- Additional fuzzy matching rules for youtube and vimeo, and additional test cases
+- Support for youtube videos, which require POST request handling to work.
+- Support for canonicalizing POST request data into URL for fuzzy matching (using cdxj-indexer)
+- Support loading custom sw.js from a local file path
 
 ### Changed
 
-* Updated zimscraperlib to 1.6 using libzim7.2
-* Updated warcio to 1.7.4
-* Added support for {period} replacement in --zim-file
-* Using fixed MarkupSafe version (Jinja2 dependency)
+- Updated zimscraperlib to 1.6 using libzim7.2
+- Updated warcio to 1.7.4
+- Added support for {period} replacement in --zim-file
+- Using fixed MarkupSafe version (Jinja2 dependency)
 
 # [1.3.6]
 
-* updated zimscraperlib (for libzim fix)
+- updated zimscraperlib (for libzim fix)
 
 # [1.3.5]
 
-* don't crash on records without WARC-Target-URI
-* fixed failure if url contains a fragment
-* updated wabac.js to 2.7.3
+- don't crash on records without WARC-Target-URI
+- fixed failure if url contains a fragment
+- updated wabac.js to 2.7.3
 
 # [1.3.4]
 
-* Added `--custom-css` option
+- Added `--custom-css` option
 
 # [1.3.3]
 
-* Added `--progress-file` option
+- Added `--progress-file` option
 
 # [1.3.2]
 
-* Update to wabac.js 2.1.6
+- Update to wabac.js 2.1.6
 
 # [1.3.1]
 
-* Favicon loading fixes: In topFrame.html, load favicon URL directly from ZIM A/ record, bypassing service worker H/ lookup.
+- Favicon loading fixes: In topFrame.html, load favicon URL directly from ZIM A/ record, bypassing service worker H/ lookup.
 
 # [1.3.0]
 
-* Supports 'fuzzy matching' with additional redirects add from normalized URL to exact URL
-* Add fuzzy matching rules for youtube and '?timestamp' URLs
-* Fix canonicaliziation where URLs that contain http/https were being incorrectly stripped (https://github.com/openzim/zimit/issues/37)
+- Supports 'fuzzy matching' with additional redirects add from normalized URL to exact URL
+- Add fuzzy matching rules for youtube and '?timestamp' URLs
+- Fix canonicaliziation where URLs that contain http/https were being incorrectly stripped (<https://github.com/openzim/zimit/issues/37>)
 
 # [1.2.0]
 
-* Accepts directory inputs as well as individual files. If directory given, which will process all .warc and .warc.gz files recursively in the directory.
-* If trailing slash is missing on main URL,  `--url https://example.com?test=value`, slash added and URL treated as `--url https://example.com/?test=value`
+- Accepts directory inputs as well as individual files. If directory given, which will process all .warc and .warc.gz files recursively in the directory.
+- If trailing slash is missing on main URL, `--url https://example.com?test=value`, slash added and URL treated as `--url https://example.com/?test=value`
 
 # [1.1.0]
 
-* Now defaults to including all URLs unless --include-domains is specifief (removed `-a`)
-* Arguments are now checked before starting. Also returns `100` on valid arguments but no WARC provided.
+- Now defaults to including all URLs unless --include-domains is specifief (removed `-a`)
+- Arguments are now checked before starting. Also returns `100` on valid arguments but no WARC provided.
 
 # [1.0.1]
 
-* Now skipping WARC records that redirect to self (http -> https mostly)
+- Now skipping WARC records that redirect to self (http -> https mostly)
 
 # [1.0.0]
 
-* Initial release
+- Initial release

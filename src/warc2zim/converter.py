@@ -43,6 +43,7 @@ from zimscraperlib.constants import (
 )
 from zimscraperlib.download import stream_file
 from zimscraperlib.image.conversion import convert_image, convert_svg2png
+from zimscraperlib.image.optimization import optimize_png
 from zimscraperlib.image.probing import format_for
 from zimscraperlib.image.transformation import resize_image
 from zimscraperlib.rewriting.url_rewriting import ArticleUrlRewriter, HttpUrl, ZimPath
@@ -275,7 +276,6 @@ class Converter:
         )
 
     def run(self):
-
         if not self.disable_metadata_checks:
             # Validate ZIM metadata early so that we do not waste time doing operations
             # for a scraper which will fail anyway in the end
@@ -480,7 +480,6 @@ class Converter:
     def gather_information_from_warc(self):
         main_page_found = False
         for record in iter_warc_records(self.warc_files):
-
             if record.rec_type == "warcinfo":
                 self.extract_warcinfo(record)
 
@@ -627,7 +626,7 @@ class Converter:
             logger.debug(f"Language: {self.language}")
             logger.debug(
                 f"Favicons to consider: "
-                f"{ ' or '.join(url.value for url in self.favicon_urls)}"
+                f"{' or '.join(url.value for url in self.favicon_urls)}"
             )
             main_page_found = True
 
@@ -648,7 +647,6 @@ class Converter:
 
         logger.debug(f"Preparing {len(self.redirections)} redirections")
         for redirect_source, redirect_target in self.redirections.items():
-
             # if the redirect source has already been detected as a thing to ignore,
             # simply continue
             if redirect_source in redirections_to_ignore:
@@ -716,7 +714,6 @@ class Converter:
         )
 
     def find_icon_and_language(self, record, content):
-
         if len(self.favicon_urls) == 0:
             # search for favicons in HTML only if user did provided one to use
 
@@ -897,7 +894,24 @@ class Converter:
                         height=ZIM_ILLUSTRATION_SIZE,
                         method="cover",
                     )
-                self.illustration = illustration.getvalue()
+                already_png = favicon.format == "PNG"
+                already_exact_size = (
+                    favicon.width == ZIM_ILLUSTRATION_SIZE
+                    and favicon.height == ZIM_ILLUSTRATION_SIZE
+                )
+
+                if not (already_png and already_exact_size):
+                    illustration.seek(0)
+                    size_before = illustration.getbuffer().nbytes
+                    optimized_buffer = io.BytesIO()
+                    optimize_png(illustration, optimized_buffer)
+                    size_after = optimized_buffer.getbuffer().nbytes
+                    logger.debug(
+                        f"Favicon optimized: {size_before} bytes -> {size_after} bytes "
+                    )
+                    self.illustration = optimized_buffer.getvalue()
+                else:
+                    self.illustration = illustration.getvalue()  # pragma: no cover
                 return
             except Exception as exc:  # pragma: no cover
                 logger.warning(f"Failed to convert/resize image at {favicon.url}")
@@ -926,7 +940,6 @@ class Converter:
         ) == ArticleUrlRewriter.normalize(HttpUrl(location))
 
     def add_items_for_warc_record(self, record):
-
         if record.rec_type not in ("response", "revisit"):
             return
 
