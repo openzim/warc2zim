@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Convert aliases given in `--encoding-aliases` to lower case (#412)
+- Upgrade dependencies especially zimscraperlib 5.3.0, Python 3.14, Debian Trixie (#456)
 
 ## [2.2.2] - 2024-02-17
 
