@@ -31,6 +31,8 @@ DEFAULT_ENCODING_ALIASES = {
 }
 
 ENCODING_ALIASES = {}
+UNKNOWN_ENCODINGS: set[str] = set()
+IGNORE_UNKNOWN_CHARSETS = False
 
 
 def set_encoding_aliases(aliases: dict[str, str]):
@@ -200,14 +202,27 @@ def to_string(
             )
             if m := ENCODING_RE.search(content_start):
                 head_encoding = m.group("encoding")
-                return input_.decode(
-                    get_encoding_by_alias(head_encoding),
-                    errors="replace",
-                )
+                head_encoding_aliased = get_encoding_by_alias(head_encoding)
+                try:
+                    return input_.decode(head_encoding_aliased, errors="replace")
+                except (ValueError, LookupError):
+                    if IGNORE_UNKNOWN_CHARSETS:
+                        UNKNOWN_ENCODINGS.add(head_encoding_aliased)
+                        pass
+                    else:
+                        raise
 
-    # Search for encofing in HTTP `Content-Type` header
+    # Search for encoding in HTTP `Content-Type` header
     if not ignore_http_header_charsets and http_encoding:
-        return input_.decode(get_encoding_by_alias(http_encoding), errors="replace")
+        http_encoding_aliased = get_encoding_by_alias(http_encoding)
+        try:
+            return input_.decode(http_encoding_aliased, errors="replace")
+        except (ValueError, LookupError):
+            if IGNORE_UNKNOWN_CHARSETS:
+                UNKNOWN_ENCODINGS.add(http_encoding_aliased)
+                pass
+            else:
+                raise
 
     # Try all charsets_to_try passed
     for charset_to_try in charsets_to_try:

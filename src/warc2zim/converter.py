@@ -51,12 +51,14 @@ from zimscraperlib.types import FALLBACK_MIME
 from zimscraperlib.zim import metadata
 from zimscraperlib.zim.creator import Creator
 
+import warc2zim.utils as warc2zim_utils
 from warc2zim.cdxj_indexer import buffering_record_iter, iter_file_or_dir
 from warc2zim.constants import logger
 from warc2zim.icon_finder import Icon, get_sorted_icons, icons_in_html
 from warc2zim.items import StaticArticle, StaticFile, WARCPayloadItem
 from warc2zim.language import parse_language
 from warc2zim.utils import (
+    UNKNOWN_ENCODINGS,
     can_process_status_code,
     get_record_content,
     get_record_mime_type,
@@ -250,6 +252,7 @@ class Converter:
         self.disable_metadata_checks = bool(args.disable_metadata_checks)
         self.ignore_content_header_charsets = bool(args.ignore_content_header_charsets)
         self.ignore_http_header_charsets = bool(args.ignore_http_header_charsets)
+        warc2zim_utils.IGNORE_UNKNOWN_CHARSETS = bool(args.ignore_unknown_charsets)
 
     def update_stats(self):
         """write progress as JSON to self.stats_filename if requested"""
@@ -457,6 +460,12 @@ class Converter:
                 self.added_zim_items.add(normalized_url)
 
         logger.debug(f"Found {self.total_records} records in WARCs")
+
+        if UNKNOWN_ENCODINGS:
+            logger.warning(
+                f"Unknown encodings have been encoutered:\n- "
+                f"{'\n- '.join(UNKNOWN_ENCODINGS)}"
+            )
 
         self.creator.finish()
 

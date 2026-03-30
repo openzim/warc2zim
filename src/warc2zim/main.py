@@ -142,6 +142,14 @@ def _create_arguments_parser() -> ArgumentParser:
     )
 
     parser.add_argument(
+        "--ignore-unknown-charsets",
+        help="When encountering an unknown charsets content or HTTP header, do not fail"
+        " but try --charsets-to-try for potential match",
+        action="store_true",
+        default=False,
+    )
+
+    parser.add_argument(
         "--encoding-aliases",
         help="List of encoding/charset aliases to decode WARC content. Aliases are used"
         " when the encoding specified in upstream server exists in Python under a"
