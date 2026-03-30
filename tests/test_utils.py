@@ -5,7 +5,15 @@ from pathlib import Path
 
 import pytest
 
+import warc2zim.utils as warc2zim_utils
 from warc2zim.utils import get_encoding_by_alias, set_encoding_aliases, to_string
+
+
+@pytest.fixture
+def ignore_unknown_encoding():
+    warc2zim_utils.IGNORE_UNKNOWN_CHARSETS = True
+    yield
+    warc2zim_utils.IGNORE_UNKNOWN_CHARSETS = False
 
 
 @dataclass
@@ -361,6 +369,40 @@ def test_decode_charset_too_far_away_without_proper_alias():
             ignore_http_header_charsets=False,
             ignore_content_header_charsets=False,
         )
+
+
+def test_decode_charset_with_ignore_unknown_encodings(
+    ignore_unknown_encoding,  # noqa: ARG001
+):
+    content = '<html><meta charset="foo"><body>content</body></html>'
+    set_encoding_aliases({"bar": "latin1"})
+    with pytest.raises(ValueError, match="No suitable charset found"):
+        to_string(
+            content.encode("latin1"),
+            None,
+            [],
+            1024,
+            ignore_http_header_charsets=False,
+            ignore_content_header_charsets=False,
+        )
+
+
+def test_decode_charset_with_ignore_unknown_encodings_charsets_to_try(
+    ignore_unknown_encoding,  # noqa: ARG001
+):
+    content = '<html><meta charset="foo"><body>content</body></html>'
+    set_encoding_aliases({"bar": "latin1"})
+    assert (
+        to_string(
+            content.encode("latin1"),
+            None,
+            ["utf-8"],
+            1024,
+            ignore_http_header_charsets=False,
+            ignore_content_header_charsets=False,
+        )
+        == content
+    )
 
 
 @pytest.mark.parametrize(
