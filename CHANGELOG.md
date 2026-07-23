@@ -9,7 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- New `--ignore-unknown-charsets` flag to try known charsets when bad encoding is specified in HTTP or HTML (#xxx)
+- New `--ignore-unknown-charsets` flag to try known charsets when bad encoding is specified in HTTP or HTML (#459)
+
+### Changed
+
+- Add WARC items with HTTP response code `206 Partial Content` to the ZIM (#463)
 
 ## [2.3.0] - 2026-01-21
 
