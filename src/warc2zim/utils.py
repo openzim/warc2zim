@@ -99,6 +99,7 @@ def can_process_status_code(status_code: HTTPStatus | int | None) -> bool:
                 HTTPStatus.CREATED,
                 HTTPStatus.ACCEPTED,
                 HTTPStatus.NON_AUTHORITATIVE_INFORMATION,
+                HTTPStatus.PARTIAL_CONTENT,
             ]
         )
         or (
