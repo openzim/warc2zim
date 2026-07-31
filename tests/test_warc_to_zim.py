@@ -806,8 +806,10 @@ class TestWarc2Zim:
             [
                 str(TEST_DATA_DIR / "solidaritenum.warc.gz"),
                 "--url",
-                "https://www.solidarite-numerique.fr/tutoriels/comprendre-les-cookies/"
-                "?thematique=internet",
+                (
+                    "https://www.solidarite-numerique.fr/tutoriels/comprendre-les-cookies/"
+                    "?thematique=internet"
+                ),
                 "--output",
                 str(tmp_path),
                 "--zim-file",

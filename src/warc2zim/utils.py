@@ -206,7 +206,7 @@ def to_string(
                 head_encoding_aliased = get_encoding_by_alias(head_encoding)
                 try:
                     return input_.decode(head_encoding_aliased, errors="replace")
-                except (ValueError, LookupError):
+                except ValueError, LookupError:
                     if IGNORE_UNKNOWN_CHARSETS:
                         UNKNOWN_ENCODINGS.add(head_encoding_aliased)
                         pass
@@ -218,7 +218,7 @@ def to_string(
         http_encoding_aliased = get_encoding_by_alias(http_encoding)
         try:
             return input_.decode(http_encoding_aliased, errors="replace")
-        except (ValueError, LookupError):
+        except ValueError, LookupError:
             if IGNORE_UNKNOWN_CHARSETS:
                 UNKNOWN_ENCODINGS.add(http_encoding_aliased)
                 pass
@@ -229,7 +229,7 @@ def to_string(
     for charset_to_try in charsets_to_try:
         try:
             return input_.decode(get_encoding_by_alias(charset_to_try))
-        except (ValueError, LookupError):
+        except ValueError, LookupError:
             pass
 
     raise ValueError(f"No suitable charset found to decode content {input_[:200]}")

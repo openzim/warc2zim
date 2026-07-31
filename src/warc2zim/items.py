@@ -24,7 +24,7 @@ class WARCPayloadItem(StaticItem):
     Usually stored under A namespace
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0917
         self,
         path: ZimPath,
         record: ArcWarcRecord,
@@ -43,7 +43,7 @@ class WARCPayloadItem(StaticItem):
 
         self.path = path.value
         self.mimetype = get_record_mime_type(record)
-        (self.title, self.content) = Rewriter(
+        self.title, self.content = Rewriter(
             path,
             record,
             existing_zim_paths,

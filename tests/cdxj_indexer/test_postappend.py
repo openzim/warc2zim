@@ -13,7 +13,7 @@ class MethodQueryCanonicalizer:
 
     def append_query(self, url):
         self.req_stream.seek(0)
-        query_only, full_string = append_method_query(
+        _, full_string = append_method_query(
             self.method, self.content_type, self.req_len, self.req_stream, url
         )
         return url + full_string

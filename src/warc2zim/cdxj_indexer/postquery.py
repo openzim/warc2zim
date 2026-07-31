@@ -55,7 +55,7 @@ def query_extract(mime, length, stream):
 
     try:
         length = int(length)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         if length is None:
             length = 8192
         else:
@@ -77,7 +77,7 @@ def query_extract(mime, length, stream):
     query = ""
 
     def handle_binary(query_data):
-        return f"__wb_post_data={ base64.b64encode(query_data).decode()}"
+        return f"__wb_post_data={base64.b64encode(query_data).decode()}"
 
     if mime.startswith("application/x-www-form-urlencoded"):
         try:
@@ -89,7 +89,7 @@ def query_extract(mime, length, stream):
         try:
             boundary = mime.split("boundary=")[1]
             parser = MultipartParser(BytesIO(query_data), boundary, charset="utf8")
-        except (ValueError, IndexError):
+        except ValueError, IndexError:
             # Content-Type multipart/form-data may lack "boundary" info
             query = handle_binary(query_data)
         else:
