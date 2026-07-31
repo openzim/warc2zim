@@ -746,9 +746,9 @@ class Converter:
             ArticleUrlRewriter.normalize(icon_url): icon_url
             for icon_url in self.favicon_urls
         }
-        self.favicon_contents: dict[HttpUrl, bytes | None] = {
-            icon_url: None for icon_url in self.favicon_urls
-        }  # None for now since we've not yet found the records
+        self.favicon_contents: dict[HttpUrl, bytes | None] = dict.fromkeys(
+            self.favicon_urls
+        )  # None for now since we've not yet found the records
 
         # Find most probable language if not passed via CLI
         soup = BeautifulSoup(content, "html.parser")

@@ -54,7 +54,7 @@ def extract_jsonp_callback(url: str):
 
 
 class Rewriter:
-    def __init__(
+    def __init__(  # noqa: PLR0917
         self,
         path: ZimPath,
         record: ArcWarcRecord,

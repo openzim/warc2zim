@@ -23,7 +23,7 @@ class Icon:
         return Icon._cmp_icons(self, other) > 0
 
     @classmethod
-    def _cmp_icons(cls, a: "Icon", b: "Icon") -> int:
+    def _cmp_icons(cls, a: Icon, b: Icon) -> int:
         # icons are supposed to be squared ; should they not be squared, we consider
         # only the smallest dimension for comparison
         a_min = min(a.width, a.height)

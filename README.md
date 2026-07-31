@@ -6,6 +6,9 @@
 [![PyPI - Package version](https://img.shields.io/pypi/v/warc2zim.svg)](https://pypi.org/project/warc2zim)
 [![PyPI - Supported Python versions](https://img.shields.io/pypi/pyversions/warc2zim.svg)](https://pypi.org/project/warc2zim)
 
+warc2zim adheres to openZIM's [Contribution Guidelines](https://github.com/openzim/overview/wiki/Contributing).
+
+warc2zim has implemented openZIM's [Python bootstrap, conventions and policies](https://github.com/openzim/_python-bootstrap/blob/main/docs/Policy.md) **v2.0.0**.
 
 warc2zim converts WARC files to ZIM file. The resulting ZIM contains all WARC records, with "programming" records (HTML/CSS/JS/...) rewriten for proper offline operation.
 
