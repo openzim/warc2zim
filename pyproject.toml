@@ -10,7 +10,7 @@ readme = "README.md"
 dependencies = [
   "warcio==1.8.1",
   "requests==2.34.2",
-  "zimscraperlib==5.4.1",
+  "zimscraperlib @ git+https://github.com/openzim/python-scraperlib@main",
   "jinja2==3.1.6",
   # to support possible brotli content in warcs, must be added separately
   "brotlipy==0.7.0",
