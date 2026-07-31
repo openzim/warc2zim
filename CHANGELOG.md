@@ -5,7 +5,7 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (as of version 1.4.0).
 
-## [Unreleased]
+## [2.3.1] - 2026-07-31
 
 ### Added
 
@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Add WARC items with HTTP response code `206 Partial Content` to the ZIM (#463)
+- Upgrade dependencies especially python-scraperlib 5.4.1 (#468)
 
 ## [2.3.0] - 2026-01-21
 
