@@ -1,12 +1,21 @@
+import io
 import json
 from collections.abc import Generator
 from dataclasses import dataclass
+from http import HTTPStatus
 from pathlib import Path
 
 import pytest
+from warcio import StatusAndHeaders
+from warcio.recordloader import ArcWarcRecord
 
 import warc2zim.utils as warc2zim_utils
-from warc2zim.utils import get_encoding_by_alias, set_encoding_aliases, to_string
+from warc2zim.utils import (
+    get_encoding_by_alias,
+    get_status_code,
+    set_encoding_aliases,
+    to_string,
+)
 
 
 @pytest.fixture
@@ -442,3 +451,46 @@ def test_get_unknown_encoding():
 def test_override_default_encoding_alias(alias, expected):
     set_encoding_aliases({"unicode": "latin1"})
     assert get_encoding_by_alias(alias) == expected
+
+
+def _make_response_record(status: str) -> ArcWarcRecord:
+    """Build a minimal 'response' ArcWarcRecord with the given HTTP status.
+
+    ``status`` is the status line without the protocol (the way warcio stores it
+    when parsing a WARC), e.g. "200 OK" or "tea I'm a teapot".
+    """
+    rec_headers = StatusAndHeaders(
+        "WARC/1.1",
+        headers=[("WARC-Target-URI", "http://www.example.com")],
+    )
+    http_headers = StatusAndHeaders(
+        status,
+        headers=[("Content-Type", "text/html")],
+        protocol="HTTP/1.1",
+    )
+    return ArcWarcRecord(
+        "warc",
+        "response",
+        rec_headers,
+        io.BytesIO(b"dummy"),
+        http_headers,
+        "application/http; msgtype=response",
+        len(b"dummy"),
+    )
+
+
+@pytest.mark.parametrize(
+    "status, expected",
+    [
+        ("200 OK", HTTPStatus.OK),
+        # numeric but not a known HTTPStatus member -> returned as-is (int)
+        ("306 Switch Proxy", 306),
+        # non-numeric / corrupt status token -> ignored gracefully, not a crash
+        ("tea I'm a teapot", None),
+        ("OK", None),
+    ],
+)
+def test_get_status_code_handles_non_numeric_status(status, expected):
+    # Regression: a non-numeric HTTP status token used to raise an uncaught
+    # ValueError from int(status_code), aborting the whole conversion.
+    assert get_status_code(_make_response_record(status)) == expected

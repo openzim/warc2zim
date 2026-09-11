@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Do not crash on a WARC response record with a non-numeric HTTP status token; `get_status_code` now ignores it like other invalid statuses instead of raising an uncaught `ValueError` that aborted the whole conversion
+
 ## [2.3.1] - 2026-07-31
 
 ### Added

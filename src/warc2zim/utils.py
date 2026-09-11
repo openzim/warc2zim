@@ -73,7 +73,12 @@ def get_status_code(record: ArcWarcRecord) -> HTTPStatus | int | None:
         # null / missing http status found, ignore it
         return None
 
-    status_code = int(status_code)
+    try:
+        status_code = int(status_code)
+    except ValueError:
+        # non-numeric http status found, ignore it (happens when a corrupt / non
+        # HTTP-compliant status line is captured, e.g. "HTTP/1.1 tea")
+        return None
 
     try:
         status_code = HTTPStatus(status_code)
