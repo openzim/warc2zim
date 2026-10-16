@@ -291,7 +291,7 @@ class Converter:
                 metadata.LongDescriptionMetadata(self.long_description)
             if self.language:
                 self.language = parse_language(self.language)
-                metadata.LanguageMetadata(self.language)
+                metadata.LanguageMetadata(self.language.split(","))
             # Nota: we do not validate illustration since logic in the scraper is made
             # to always provide a valid image, at least a fallback transparent PNG and
             # final illustration is most probably not yet known at this stage
@@ -314,7 +314,7 @@ class Converter:
 
             self.language = "eng"
         # validate language definitely, could have been retrieved from WARC or fallback
-        metadata.LanguageMetadata(self.language)
+        metadata.LanguageMetadata(self.language.split(","))
         if not self.main_path:
             raise ValueError("Unable to find main path, aborting")
         self.title = self.title or "Untitled"
@@ -348,7 +348,7 @@ class Converter:
         self.creator.config_metadata(
             metadata.StandardMetadataList(
                 Name=metadata.NameMetadata(self.name),
-                Language=metadata.LanguageMetadata(self.language),
+                Language=metadata.LanguageMetadata(self.language.split(",")),
                 Title=metadata.TitleMetadata(self.title),
                 Description=metadata.DescriptionMetadata(self.description),
                 LongDescription=(
