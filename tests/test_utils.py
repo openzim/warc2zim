@@ -6,7 +6,12 @@ from pathlib import Path
 import pytest
 
 import warc2zim.utils as warc2zim_utils
-from warc2zim.utils import get_encoding_by_alias, set_encoding_aliases, to_string
+from warc2zim.utils import (
+    get_encoding_by_alias,
+    remove_unicode_surrogates,
+    set_encoding_aliases,
+    to_string,
+)
 
 
 @pytest.fixture
@@ -442,3 +447,25 @@ def test_get_unknown_encoding():
 def test_override_default_encoding_alias(alias, expected):
     set_encoding_aliases({"unicode": "latin1"})
     assert get_encoding_by_alias(alias) == expected
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("Simple ascii content", "Simple ascii content"),
+        (
+            "A content with non ascii chars éœo€ð",
+            "A content with non ascii chars éœo€ð",
+        ),
+        ("lone high surrogate \udbff end", "lone high surrogate � end"),
+        ("lone low surrogate \udc00 end", "lone low surrogate � end"),
+        ("several \ud800 lone \udfff surrogates", "several � lone � surrogates"),
+        ("a valid astral char 𐀀 is kept", "a valid astral char 𐀀 is kept"),
+        ("", ""),
+    ],
+)
+def test_remove_unicode_surrogates(text, expected):
+    result = remove_unicode_surrogates(text)
+    assert result == expected
+    # the result must always be encodable as valid UTF-8
+    result.encode("UTF-8")
