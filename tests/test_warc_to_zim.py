@@ -832,7 +832,7 @@ class TestWarc2Zim:
         assert (
             self.rebuild_favicon_bytes(
                 zim_output,
-                "www.solidarite-numerique.fr/wp-content/themes/snum-v2/images/ico/"
+                "www.solidarite-numerique.fr/wp-content/themes/snum-v2/images//ico/"
                 "favicon.svg",
             )
             == zim_favicon
