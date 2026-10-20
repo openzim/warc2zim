@@ -77,3 +77,19 @@ def test_tags_validation(tags, is_valid):
     args = ["--name", "test", "--tags", ";".join(tags), "--output", "./"]
     if is_valid:
         assert main(args) == 100
+
+
+@pytest.mark.parametrize(
+    "lang, is_valid",
+    [
+        pytest.param("eng", True, id="single_lang"),
+        pytest.param("eng,fra,nld", True, id="multiple_langs_csv"),
+    ],
+)
+def test_language_validation(lang, is_valid):
+    args = ["--name", "test", "--lang", lang, "--output", "./"]
+    if is_valid:
+        assert main(args) == 100
+    else:
+        with pytest.raises(ValueError):
+            main(args)
