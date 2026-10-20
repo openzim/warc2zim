@@ -16,7 +16,7 @@ from zimscraperlib.types import get_mime_for_name
 from zimscraperlib.zim.items import StaticItem
 
 from warc2zim.rewriting import Rewriter
-from warc2zim.utils import get_record_mime_type
+from warc2zim.utils import get_record_mime_type, remove_unicode_surrogates
 
 
 class WARCPayloadItem(StaticItem):
@@ -54,6 +54,13 @@ class WARCPayloadItem(StaticItem):
             ignore_content_header_charsets=ignore_content_header_charsets,
             ignore_http_header_charsets=ignore_http_header_charsets,
         ).rewrite(pre_head_template, post_head_template)
+
+        # ZIM content must be valid UTF-8 ; some upstream content might hold
+        # surrogate code points which libzim refuses to encode
+        if isinstance(self.title, str):
+            self.title = remove_unicode_surrogates(self.title)
+        if isinstance(self.content, str):
+            self.content = remove_unicode_surrogates(self.content)
 
     def get_hints(self):
         is_front = self.mimetype.startswith("text/html") or self.mimetype.startswith(

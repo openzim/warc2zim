@@ -16,6 +16,8 @@ ENCODING_RE = re.compile(
     re.ASCII,
 )
 
+SURROGATE_RE = re.compile(r"[\ud800-\udfff]")
+
 DEFAULT_ENCODING_ALIASES = {
     "ansi": "windows-1252",
     "65001": "utf-8",
@@ -233,6 +235,18 @@ def to_string(
             pass
 
     raise ValueError(f"No suitable charset found to decode content {input_[:200]}")
+
+
+def remove_unicode_surrogates(text: str) -> str:
+    """Replace lone UTF-16 surrogate code points with the replacement character
+
+    A ZIM must contain only valid UTF-8 content, but some upstream content (e.g.
+    malformed numeric character references, or non-standard JS/JSON holding
+    unpaired surrogate code units) can end up as a Python string holding surrogate
+    code points. These have no valid UTF-8 representation and crash libzim when
+    encoding the content, so we replace them before handing content over.
+    """
+    return SURROGATE_RE.sub("�", text)
 
 
 def get_record_content(record: ArcWarcRecord) -> bytes:

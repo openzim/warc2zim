@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fix `ValueError` when passing multiple ZIM languages as a comma-separated list via `--lang` (#449)
+- Sanitize lone Unicode surrogate code points out of item title/content before handing them to libzim, which refuses to encode them as UTF-8 (#382)
 
 ## [2.3.1] - 2026-07-31
 
