@@ -13,8 +13,10 @@ from libzim.writer import Hint  # pyright: ignore[reportMissingModuleSource]
 from warcio.recordloader import ArcWarcRecord
 from zimscraperlib.rewriting.url_rewriting import ZimPath
 from zimscraperlib.types import get_mime_for_name
+from zimscraperlib.zim.indexing import get_pdf_title
 from zimscraperlib.zim.items import StaticItem
 
+from warc2zim.constants import logger
 from warc2zim.rewriting import Rewriter
 from warc2zim.utils import get_record_mime_type, remove_unicode_surrogates
 
@@ -55,6 +57,9 @@ class WARCPayloadItem(StaticItem):
             ignore_http_header_charsets=ignore_http_header_charsets,
         ).rewrite(pre_head_template, post_head_template)
 
+        if not self.title and self.mimetype.startswith("application/pdf"):
+            self.title = self._get_pdf_title()
+
         # ZIM content must be valid UTF-8 ; some upstream content might hold
         # surrogate code points which libzim refuses to encode
         if isinstance(self.title, str):
@@ -62,9 +67,25 @@ class WARCPayloadItem(StaticItem):
         if isinstance(self.content, str):
             self.content = remove_unicode_surrogates(self.content)
 
+    def _get_pdf_title(self) -> str:
+        """Extract a title from the PDF own metadata (title/author/subject)"""
+        try:
+            return get_pdf_title(content=self.content)
+        except Exception as exc:
+            logger.warning(
+                f"Failed to extract PDF metadata title for {self.path}: {exc}"
+            )
+            return ""
+
     def get_hints(self):
-        is_front = self.mimetype.startswith("text/html") or self.mimetype.startswith(
-            "application/pdf"
+        # Only mark items with an actual title as FRONT_ARTICLE. libzim indexes
+        # FRONT_ARTICLE entries by title, and falls back to the entry's path when
+        # its title is empty ; since a path can be arbitrarily long/unstructured
+        # (e.g. third-party tracker or widget URLs with huge query strings), this
+        # can make libzim's title indexing fail and abort the whole ZIM creation.
+        is_front = bool(self.get_title()) and (
+            self.mimetype.startswith("text/html")
+            or self.mimetype.startswith("application/pdf")
         )
         return {Hint.FRONT_ARTICLE: is_front}
 

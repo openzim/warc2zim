@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix `ValueError` when passing multiple ZIM languages as a comma-separated list via `--lang` (#449)
 - Sanitize lone Unicode surrogate code points out of item title/content before handing them to libzim, which refuses to encode them as UTF-8 (#382)
+- Do not mark a `text/html` or `application/pdf` item as a front article when it has no title, so libzim does not fall back to indexing its (potentially huge/unstructured) path, which could abort ZIM finalization entirely (#462)
+- Extract a title from the PDF's own metadata (title/author/subject) when available, instead of always leaving PDF items untitled (#462)
 
 ## [2.3.1] - 2026-07-31
 
