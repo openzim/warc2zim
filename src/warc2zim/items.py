@@ -13,7 +13,7 @@ from libzim.writer import Hint  # pyright: ignore[reportMissingModuleSource]
 from warcio.recordloader import ArcWarcRecord
 from zimscraperlib.rewriting.url_rewriting import ZimPath
 from zimscraperlib.types import get_mime_for_name
-from zimscraperlib.zim.indexing import get_pdf_index_data
+from zimscraperlib.zim.indexing import get_pdf_title
 from zimscraperlib.zim.items import StaticItem
 
 from warc2zim.constants import logger
@@ -70,7 +70,7 @@ class WARCPayloadItem(StaticItem):
     def _get_pdf_title(self) -> str:
         """Extract a title from the PDF own metadata (title/author/subject)"""
         try:
-            return get_pdf_index_data(content=self.content).get_title()
+            return get_pdf_title(content=self.content)
         except Exception as exc:
             logger.warning(
                 f"Failed to extract PDF metadata title for {self.path}: {exc}"
