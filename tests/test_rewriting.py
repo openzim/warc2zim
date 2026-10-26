@@ -127,3 +127,22 @@ def test_generic_rewriting_encoding_handling(
         assert content == content_bytes
     else:
         assert content == content_str
+
+
+def test_poster_attribute_rewriting(rewrite_generator):
+    """Test that the poster attribute on video elements is properly rewritten."""
+    content = (
+        b"<!DOCTYPE html><html><body>"
+        b'<video id="v1" controls poster="http://www.example.com/images/poster1.jpg">'
+        b'<source src="http://www.example.com/videos/sample1.mp4" type="video/mp4">'
+        b"</video>"
+        b'<video id="v2" controls poster="./images/poster2.jpg">'
+        b'<source src="./videos/sample2.mp4" type="video/mp4">'
+        b"</video>"
+        b"</body></html>"
+    )
+    _, rewritten = rewrite_generator(content=content, content_type="text/html")
+    assert 'poster="images/poster1.jpg"' in rewritten
+    assert "http://www.example.com/images/poster1.jpg" not in rewritten
+    assert 'poster="images/poster2.jpg"' in rewritten
+    assert 'poster="./images/poster2.jpg"' not in rewritten
