@@ -58,8 +58,8 @@ Scenario which are known to work well:
   - HTML tag attributes are always unescaped from any named or numeric character references (e.g. &gt;, &#62;, &#x3e;) for proper processing when they have to be adapted. Only mandatorily escaped characters (`&`, `<`, `>`, `'` and `"`) are escaped-back.
     - Numeric character references are replaced by their named character references equivalence
     - Named character references are always lower-cased
-    - This processing has some bad side-effects when attribute values were not escaped in the original HTML document. E.g. `<img src="image.png?param1=value1&param2=value2">` is transformed into `<img src="image.png%3Fparam1%3Dvalue1%C2%B6m2%3Dvalue2">` because URL was supposed to be `image.png?param1=value1¶m2=value2` because `&para` has been decoded to `¶`. HTML should have been `<img src="image.png?param1=value1&amp;param2=value2">` for the URL to be `image.png?param1=value1&param2=value2`
-    - See https://github.com/openzim/warc2zim/issues/219 for more discussions / details / pointers
+    - Unescaped ampersands in attributes may cause unintended side effects when they match a named character reference. For example, `<img src="image.png?a=1&para">` is parsed as `image.png?a=1¶`. Escape literal ampersands as `&amp;` in HTML.
+    - See https://github.com/openzim/warc2zim/issues/219 and https://github.com/openzim/python-scraperlib/issues/264 for more details.
 - HTTP/2 support is working but limited to same limitations mentioned above
 - HTML/JS importmaps are not yet supported (see https://github.com/openzim/warc2zim/issues/230)
 - Redirections with `meta http-equiv` are not yet supported (see https://github.com/openzim/warc2zim/issues/237)
