@@ -61,6 +61,7 @@ from warc2zim.utils import (
     UNKNOWN_ENCODINGS,
     can_process_status_code,
     get_record_content,
+    get_record_download_filename,
     get_record_mime_type,
     get_record_url,
     get_status_code,
@@ -948,6 +949,25 @@ class Converter:
             HttpUrl(url)
         ) == ArticleUrlRewriter.normalize(HttpUrl(location))
 
+    @staticmethod
+    def get_download_zim_path(
+        record, item_zim_path: ZimPath, mimetype: str
+    ) -> ZimPath | None:
+        """ZIM path ending with Content-Disposition filename, or None."""
+        if (
+            mimetype.startswith("text/")
+            or "javascript" in mimetype
+            or "json" in mimetype
+        ):
+            return None
+        filename = get_record_download_filename(record)
+        if not filename:
+            return None
+        last_segment = item_zim_path.value.rsplit("/", 1)[-1]
+        if last_segment == filename:
+            return None
+        return ZimPath(f"{item_zim_path.value}/{filename}")
+
     def add_items_for_warc_record(self, record):
         if record.rec_type not in ("response", "revisit"):
             return
@@ -1017,9 +1037,18 @@ class Converter:
                 ignore_http_header_charsets=self.ignore_http_header_charsets,
             )
 
+            download_path = self.get_download_zim_path(
+                record, item_zim_path, payload_item.mimetype
+            )
+            if download_path:
+                payload_item.path = download_path.value
+
             if len(payload_item.content) != 0:
                 try:
                     self.creator.add_item(payload_item)
+                    if download_path:
+                        self.redirections[item_zim_path] = download_path
+                        self.added_zim_items.add(download_path)
                 except RuntimeError as exc:
                     if not DUPLICATE_EXC_STR.match(str(exc)):
                         raise exc

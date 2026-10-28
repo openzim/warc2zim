@@ -1,9 +1,11 @@
 import json
 from collections.abc import Generator
 from dataclasses import dataclass
+from email.message import Message
 from pathlib import Path
 
 import pytest
+from warcio.statusandheaders import StatusAndHeaders
 
 import warc2zim.utils as warc2zim_utils
 from warc2zim.utils import (
@@ -469,3 +471,63 @@ def test_remove_unicode_surrogates(text, expected):
     assert result == expected
     # the result must always be encodable as valid UTF-8
     result.encode("UTF-8")
+
+
+class _FakeRecord:
+    def __init__(self, headers: list[tuple[str, str]]):
+        self.http_headers = StatusAndHeaders("200 OK", headers)
+
+
+@pytest.mark.parametrize(
+    "disposition, expected",
+    [
+        pytest.param('attachment; filename="Milne.pdf"', "Milne.pdf", id="quoted"),
+        pytest.param("attachment; filename=Milne.pdf", "Milne.pdf", id="unquoted"),
+        pytest.param(
+            "attachment; filename*=UTF-8''Mi%C3%A9.pdf", "Mié.pdf", id="rfc5987"
+        ),
+        pytest.param(
+            'attachment; filename="../../etc/passwd.pdf"', "passwd.pdf", id="path"
+        ),
+        pytest.param('attachment; filename=""', None, id="empty"),
+        pytest.param('attachment; filename="."', None, id="dot"),
+        pytest.param('attachment; filename=".."', None, id="dotdot"),
+        pytest.param('attachment; filename="   "', None, id="whitespace"),
+        pytest.param("attachment", None, id="no_filename"),
+        pytest.param(None, None, id="no_header"),
+    ],
+)
+def test_get_record_download_filename(disposition, expected):
+    headers = [("Content-Disposition", disposition)] if disposition is not None else []
+    assert (
+        warc2zim_utils.get_record_download_filename(
+            _FakeRecord(headers)  # pyright: ignore[reportArgumentType]
+        )
+        == expected
+    )
+
+
+def test_get_record_download_filename_no_http_headers():
+    class _FakeRecordNoHeaders:
+        http_headers = None
+
+    assert (
+        warc2zim_utils.get_record_download_filename(
+            _FakeRecordNoHeaders()  # pyright: ignore[reportArgumentType]
+        )
+        is None
+    )
+
+
+def test_get_record_download_filename_exception(monkeypatch):
+    def mock_get_filename(_self: object):
+        raise ValueError("corrupt")
+
+    monkeypatch.setattr(Message, "get_filename", mock_get_filename)
+    headers = [("Content-Disposition", 'attachment; filename="test.pdf"')]
+    assert (
+        warc2zim_utils.get_record_download_filename(
+            _FakeRecord(headers)  # pyright: ignore[reportArgumentType]
+        )
+        is None
+    )
