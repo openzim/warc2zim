@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Test website - JSONP</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16x16.png">
+  <link rel="manifest" href="./icons/site.webmanifest">
+  <link rel="shortcut icon" href="./icons/favicon.ico">
+  <style>
+    .status {
+        color: red;
+    }
+    .status.green {
+        color: green;
+    }
+  </style>
+  <script>
+    function setOk(id, text) {
+      const span = document.getElementById(id);
+      span.innerHTML = text;
+      span.classList.add("green");
+    }
+
+    function handleObject(data) {
+      if (data.message === "This is working OK") {
+        setOk("span01", data.message);
+      }
+    }
+
+    function handleArray(data) {
+      if (Array.isArray(data) && data.length === 3 && data[2] === "This is working OK") {
+        setOk("span02", data[2]);
+      }
+    }
+
+    function handleJsonpParam(data) {
+      if (data.message === "This is working OK") {
+        setOk("span03", data.message);
+      }
+    }
+
+    function handleExtraParams(data) {
+      if (data.message === "This is working OK") {
+        setOk("span04", data.message);
+      }
+    }
+
+    window.MyApp = {
+      handle: function (data) {
+        if (data.message === "This is working OK") {
+          setOk("span05", data.message);
+        }
+      },
+    };
+
+    function handleCommented(data) {
+      if (data.message === "This is working OK") {
+        setOk("span06", data.message);
+      }
+    }
+
+    function handleAccents(data) {
+      if (data.message === "This is working OK, même avec des accents : éàç🎁") {
+        setOk("span07", data.message);
+      }
+    }
+
+    function initLoader(message) {
+      setOk("span08", message);
+    }
+  </script>
+</head>
+
+<body>
+
+  <h2>JSONP</h2>
+
+  <p>On every lines below, you should see written "This is working OK"</p>
+
+  <p>
+    01. JSONP with an object payload and the <code>callback</code> query parameter: <span class="status" id="span01">This is not working</span>
+  </p>
+
+  <p>
+    02. JSONP with an array payload: <span class="status" id="span02">This is not working</span>
+  </p>
+
+  <p>
+    03. JSONP with the <code>jsonp</code> query parameter: <span class="status" id="span03">This is not working</span>
+  </p>
+
+  <p>
+    04. JSONP with other query parameters around the callback: <span class="status" id="span04">This is not working</span>
+  </p>
+
+  <p>
+    05. JSONP with a callback name containing a dot: <span class="status" id="span05">This is not working</span>
+  </p>
+
+  <p>
+    06. JSONP with a comment before the callback: <span class="status" id="span06">This is not working</span>
+  </p>
+
+  <p>
+    07. JSONP with a payload containing non-ASCII characters: <span class="status" id="span07">This is not working</span>
+  </p>
+
+  <p>
+    08. Regular script (not JSONP) loaded with a <code>callback</code> query parameter: <span class="status" id="span08">This is not working</span>
+  </p>
+
+  <script src="./jsonp/object.js?callback=handleObject"></script>
+  <script src="./jsonp/array.js?callback=handleArray"></script>
+  <script src="./jsonp/jsonp-param.js?jsonp=handleJsonpParam"></script>
+  <script src="./jsonp/extra-params.js?q=test&callback=handleExtraParams&_=1700000000000"></script>
+  <script src="./jsonp/dotted.js?callback=MyApp.handle"></script>
+  <script src="./jsonp/comment.js?callback=handleCommented"></script>
+  <script src="./jsonp/accents.js?callback=handleAccents"></script>
+  <script src="./jsonp/not-jsonp.js?callback=initLoader"></script>
+
+</body>
+
+</html>
