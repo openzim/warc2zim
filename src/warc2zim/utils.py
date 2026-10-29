@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import re
+from email.message import Message
 from http import HTTPStatus
 
 from bs4 import BeautifulSoup
@@ -141,6 +142,28 @@ def get_record_content_type(record: ArcWarcRecord) -> str:
 def get_record_mime_type(record: ArcWarcRecord) -> str:
     content_type = get_record_content_type(record)
     return content_type.split(";")[0]
+
+
+def get_record_download_filename(record: ArcWarcRecord) -> str | None:
+    """Bare filename advertised in Content-Disposition, if any."""
+    if not record.http_headers:
+        return None
+    header = record.http_headers.get_header("Content-Disposition")
+    if not header:
+        return None
+    message = Message()
+    message["Content-Disposition"] = header
+    try:
+        filename = message.get_filename()
+    except Exception:
+        return None
+    if not filename:
+        return None
+    filename = re.split(r"[\\/]", filename)[-1].strip()
+    filename = remove_unicode_surrogates(filename)
+    if filename in ("", ".", ".."):
+        return None
+    return filename
 
 
 def parse_title(content):

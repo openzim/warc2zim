@@ -10,6 +10,8 @@ from urllib.parse import unquote
 
 import pytest
 import requests
+from warcio.statusandheaders import StatusAndHeaders
+from warcio.warcwriter import WARCWriter
 from zimscraperlib.image.conversion import convert_image, convert_svg2png
 from zimscraperlib.image.optimization import optimize_png
 from zimscraperlib.image.probing import format_for
@@ -928,3 +930,64 @@ class TestWarc2Zim:
         with pytest.raises(SystemExit) as e:
             main(no_overwrite_full_run_args)
         assert e.value.code == 2
+
+    def test_download_filename_content_disposition(self, tmp_path):
+
+        warc_path = tmp_path / "test.warc.gz"
+        with open(warc_path, "wb") as output:
+            writer = WARCWriter(output, gzip=True)
+            html = b'<html><body><a href="https://example.com/download?id=1">Download</a></body></html>'
+            rec1 = writer.create_warc_record(
+                "https://example.com/index.html",
+                "response",
+                http_headers=StatusAndHeaders(
+                    "HTTP/1.1 200 OK",
+                    [
+                        ("Content-Type", "text/html; charset=utf-8"),
+                        ("Content-Length", str(len(html))),
+                    ],
+                ),
+                payload=io.BytesIO(html),
+            )
+            writer.write_record(rec1)
+
+            pdf = b"%PDF-1.4 test pdf content %%EOF"
+            rec2 = writer.create_warc_record(
+                "https://example.com/download?id=1",
+                "response",
+                http_headers=StatusAndHeaders(
+                    "HTTP/1.1 200 OK",
+                    [
+                        ("Content-Type", "application/pdf"),
+                        ("Content-Disposition", 'attachment; filename="book.pdf"'),
+                        ("Content-Length", str(len(pdf))),
+                    ],
+                ),
+                payload=io.BytesIO(pdf),
+            )
+            writer.write_record(rec2)
+
+        zim_file = "test_disposition.zim"
+        main(
+            [
+                str(warc_path),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_file,
+                "--name",
+                "test-disposition",
+                "--title",
+                "Test Disposition",
+                "--lang",
+                "eng",
+            ]
+        )
+
+        zim_path = tmp_path / zim_file
+        archive = Archive(zim_path)
+        redirect_entry = archive.get_entry_by_path("example.com/download?id=1")
+        assert redirect_entry.is_redirect
+        target = redirect_entry.get_redirect_entry()
+        assert target.path == "example.com/download?id=1/book.pdf"
+        assert not target.is_redirect
