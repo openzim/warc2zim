@@ -991,3 +991,44 @@ class TestWarc2Zim:
         target = redirect_entry.get_redirect_entry()
         assert target.path == "example.com/download?id=1/book.pdf"
         assert not target.is_redirect
+
+    def test_jsonp_rewriting_end_to_end(self, tmp_path):
+        zim_output = "jsonp-test.zim"
+
+        ret = main(
+            [
+                str(TEST_DATA_SPECIAL_DIR / "jsonp.warc.gz"),
+                "--url",
+                "https://website.test.openzim.org/jsonp.html",
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "jsonp-test",
+            ]
+        )
+        assert ret in (None, 0)
+
+        zim_path = tmp_path / zim_output
+        zim = Archive(zim_path)
+        article_paths = {zim.get_entry_by_id(i).path for i in range(zim.entry_count)}
+
+        jsonp_path = next(
+            path
+            for path in article_paths
+            if path.startswith("website.test.openzim.org/jsonp/object.js")
+        )
+        jsonp_content = self.get_article(zim_path, jsonp_path)
+        assert b'handleObject({"message":"hello","count":3});' in jsonp_content
+        assert b"recordedCallback" not in jsonp_content
+
+        regular_js_path = next(
+            path
+            for path in article_paths
+            if path.startswith("website.test.openzim.org/jsonp/not-jsonp.js")
+        )
+        regular_js_content = self.get_article(zim_path, regular_js_path)
+        assert b"function initLoader()" in regular_js_content
+        assert b"loaderReady" in regular_js_content
+        assert b"wombat" in regular_js_content.lower()

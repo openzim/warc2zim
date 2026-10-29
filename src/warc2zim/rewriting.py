@@ -46,7 +46,7 @@ def no_title(
 
 
 def extract_jsonp_callback(url: str):
-    callback = JSONP_CALLBACK_REGEX.match(url)
+    callback = JSONP_CALLBACK_REGEX.search(url)
     if not callback or callback.group(1) == "?":
         return None
 
@@ -118,7 +118,10 @@ class Rewriter:
             return self.rewrite_js(opts)
 
         if self.rewrite_mode == "jsonp":
-            return self.rewrite_jsonp()
+            if JSONP_REGEX.match(self.content_str):
+                return self.rewrite_jsonp()
+
+            return self.rewrite_js(opts)
 
         if self.rewrite_mode == "json":
             return self.rewrite_json()
@@ -273,7 +276,7 @@ class Rewriter:
         if not callback:
             return content
 
-        return callback + match.group(1)
+        return content[: match.start(1)] + callback + content[match.end(1) :]
 
     @no_title
     def rewrite_json(self) -> str | bytes:

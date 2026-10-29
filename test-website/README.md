@@ -13,6 +13,7 @@ It contains all kind of situations we currently cope with:
 
 - invalid inline CSS
 - invalid rule in a CSS file
+- JSONP scripts (loaded with a `callback` or `jsonp` query parameter)
 
 
 ## How to use locally
