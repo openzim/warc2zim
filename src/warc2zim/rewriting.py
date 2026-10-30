@@ -10,7 +10,7 @@ from zimscraperlib.rewriting.html import HtmlRewriter
 from zimscraperlib.rewriting.js import JsRewriter
 from zimscraperlib.rewriting.url_rewriting import ArticleUrlRewriter, HttpUrl, ZimPath
 
-from warc2zim.constants import logger
+from warc2zim.constants import HTML_TYPES, logger
 from warc2zim.utils import (
     get_record_content,
     get_record_encoding,
@@ -159,7 +159,7 @@ class Rewriter:
     def get_resourcetype_rewrite_mode(self, record, resourcetype, mimetype):
         """Get current record rewrite mode based on WARC-Resource-Type and mimetype"""
 
-        if resourcetype in ["document", "xhr", "fetch"] and mimetype == "text/html":
+        if resourcetype in ["document", "xhr", "fetch"] and mimetype in HTML_TYPES:
             # TODO : Handle header "Accept" == "application/json"
             if getattr(record, "method", "GET") == "GET":
                 return "html"
@@ -189,7 +189,7 @@ class Rewriter:
     def get_mimetype_rewrite_mode(self, record, mimetype):
         """Get current record rewrite mode based on mimetype"""
 
-        if mimetype == "text/html":
+        if mimetype in HTML_TYPES:
             if getattr(record, "method", "GET") == "POST":
                 return None
 

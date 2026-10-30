@@ -53,7 +53,7 @@ from zimscraperlib.zim.creator import Creator
 
 import warc2zim.utils as warc2zim_utils
 from warc2zim.cdxj_indexer import buffering_record_iter, iter_file_or_dir
-from warc2zim.constants import logger
+from warc2zim.constants import HTML_TYPES, logger
 from warc2zim.icon_finder import Icon, get_sorted_icons, icons_in_html
 from warc2zim.items import StaticArticle, StaticFile, WARCPayloadItem
 from warc2zim.language import parse_language
@@ -70,9 +70,6 @@ from warc2zim.utils import (
     set_encoding_aliases,
     status_code_is_processable_redirect,
 )
-
-# HTML mime types
-HTML_TYPES = ("text/html", "application/xhtml", "application/xhtml+xml")
 
 # head insert template
 HEAD_INSERT_FILE = "head_insert.html"
@@ -572,13 +569,13 @@ class Converter:
             if record.rec_type == "revisit":
                 continue
 
-            # if no main_path, use first 'text/html' record as the main page by default
+            # if no main_path, use first HTML record as the main page by default
             # not guaranteed to always work
             mime = get_record_mime_type(record)
 
             if (
                 not self.main_path
-                and mime == "text/html"
+                and mime in HTML_TYPES
                 and record.payload_length != 0
                 and (
                     not record.http_headers
