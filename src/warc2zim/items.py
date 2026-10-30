@@ -45,7 +45,7 @@ class WARCPayloadItem(StaticItem):
 
         self.path = path.value
         self.mimetype = get_record_mime_type(record)
-        self.title, self.content = Rewriter(
+        rewriter = Rewriter(
             path,
             record,
             existing_zim_paths,
@@ -55,7 +55,14 @@ class WARCPayloadItem(StaticItem):
             content_header_bytes_length,
             ignore_content_header_charsets=ignore_content_header_charsets,
             ignore_http_header_charsets=ignore_http_header_charsets,
-        ).rewrite(pre_head_template, post_head_template)
+        )
+        self.title, self.content = rewriter.rewrite(
+            pre_head_template, post_head_template
+        )
+
+        if rewriter.rewrite_mode == "html":
+            # XHTML is serialized as HTML, so serve it as text/html
+            self.mimetype = "text/html"
 
         if not self.title and self.mimetype.startswith("application/pdf"):
             self.title = self._get_pdf_title()

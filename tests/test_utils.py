@@ -1,3 +1,4 @@
+import io
 import json
 from collections.abc import Generator
 from dataclasses import dataclass
@@ -5,11 +6,13 @@ from email.message import Message
 from pathlib import Path
 
 import pytest
+from warcio.recordloader import ArcWarcRecord
 from warcio.statusandheaders import StatusAndHeaders
 
 import warc2zim.utils as warc2zim_utils
 from warc2zim.utils import (
     get_encoding_by_alias,
+    get_record_mime_type,
     remove_unicode_surrogates,
     set_encoding_aliases,
     to_string,
@@ -531,3 +534,31 @@ def test_get_record_download_filename_exception(monkeypatch):
         )
         is None
     )
+
+
+@pytest.mark.parametrize(
+    "content_type, expected",
+    [
+        pytest.param("text/html", "text/html", id="plain"),
+        pytest.param("text/html; charset=UTF-8", "text/html", id="with_charset"),
+        pytest.param(
+            "application/xhtml+xml;charset=utf-8",
+            "application/xhtml+xml",
+            id="no_space_before_params",
+        ),
+        pytest.param("Text/HTML", "text/html", id="mixed_case"),
+        pytest.param("  text/html  ; charset=UTF-8", "text/html", id="whitespaces"),
+        pytest.param("", "", id="empty"),
+    ],
+)
+def test_get_record_mime_type(content_type, expected):
+    record = ArcWarcRecord(
+        "warc",
+        "response",
+        StatusAndHeaders("WARC/1.1", headers=[]),
+        io.BytesIO(b""),
+        StatusAndHeaders("HTTP/1.1 200 OK", headers=[("Content-Type", content_type)]),
+        "application/http; msgtype=response",
+        0,
+    )
+    assert get_record_mime_type(record) == expected

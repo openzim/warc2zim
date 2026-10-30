@@ -114,6 +114,31 @@ def test_html_with_title_is_front_article():
     assert item.get_hints()[Hint.FRONT_ARTICLE] is True
 
 
+@pytest.mark.parametrize(
+    "content_type",
+    [
+        pytest.param("text/html; charset=UTF-8", id="html"),
+        pytest.param("application/xhtml+xml", id="xhtml_plus_xml"),
+        pytest.param("application/xhtml+xml; charset=UTF-8", id="xhtml_charset"),
+        pytest.param("Application/XHTML+XML", id="xhtml_mixed_case"),
+        pytest.param("application/xhtml", id="xhtml"),
+    ],
+)
+def test_html_and_xhtml_are_stored_as_text_html(content_type):
+    item = make_item(
+        b"<html><head><title>Hello</title></head><body>hi</body></html>",
+        content_type,
+    )
+    assert item.get_mimetype() == "text/html"
+    assert item.get_title() == "Hello"
+    assert item.get_hints()[Hint.FRONT_ARTICLE] is True
+
+
+def test_non_html_mimetype_is_left_untouched():
+    item = make_item(b"body { color: red; }", "text/css")
+    assert item.get_mimetype() == "text/css"
+
+
 def test_html_without_title_is_not_front_article():
     item = make_item(
         b"<html><head></head><body>no title tag here</body></html>",

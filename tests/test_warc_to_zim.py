@@ -992,6 +992,62 @@ class TestWarc2Zim:
         assert target.path == "example.com/download?id=1/book.pdf"
         assert not target.is_redirect
 
+    def test_xhtml_end_to_end(self, tmp_path):
+        warc_path = tmp_path / "xhtml.warc.gz"
+        xhtml = (
+            b'<?xml version="1.0" encoding="UTF-8"?>'
+            b'<html xmlns="http://www.w3.org/1999/xhtml"><head><title>XHTML page'
+            b"</title></head><body>"
+            b'<img src="https://example.com/images/image1.jpg" />'
+            b"</body></html>"
+        )
+        with open(warc_path, "wb") as output:
+            writer = WARCWriter(output, gzip=True)
+            writer.write_record(
+                writer.create_warc_record(
+                    "https://example.com/index.xhtml",
+                    "response",
+                    http_headers=StatusAndHeaders(
+                        "HTTP/1.1 200 OK",
+                        [
+                            ("Content-Type", "application/xhtml+xml; charset=utf-8"),
+                            ("Content-Length", str(len(xhtml))),
+                        ],
+                    ),
+                    payload=io.BytesIO(xhtml),
+                )
+            )
+
+        zim_file = "xhtml.zim"
+        # no --url: main page must be guessed from the first HTML-like record
+        main(
+            [
+                str(warc_path),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_file,
+                "--name",
+                "xhtml-test",
+                "--title",
+                "XHTML test",
+                "--lang",
+                "eng",
+            ]
+        )
+
+        archive = Archive(tmp_path / zim_file)
+        main_entry = self.get_main_entry_with_redirect(tmp_path / zim_file)
+        assert main_entry.path == "example.com/index.xhtml"
+        item = main_entry.get_item()
+        assert item.mimetype == "text/html"
+        content = bytes(item.content).decode()
+        assert ' src="images/image1.jpg"' in content
+        assert ' src="https://example.com/images/image1.jpg"' not in content
+        assert archive.get_entry_by_path("example.com/index.xhtml").title == (
+            "XHTML page"
+        )
+
     def test_jsonp_rewriting_end_to_end(self, tmp_path):
         zim_output = "jsonp-test.zim"
 

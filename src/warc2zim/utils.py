@@ -141,7 +141,7 @@ def get_record_content_type(record: ArcWarcRecord) -> str:
 
 def get_record_mime_type(record: ArcWarcRecord) -> str:
     content_type = get_record_content_type(record)
-    return content_type.split(";")[0]
+    return content_type.split(";")[0].strip().lower()
 
 
 def get_record_download_filename(record: ArcWarcRecord) -> str | None:

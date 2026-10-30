@@ -152,6 +152,32 @@ def test_poster_attribute_rewriting(rewrite_generator):
 
 
 @pytest.mark.parametrize(
+    "content_type",
+    [
+        pytest.param("text/html", id="html"),
+        pytest.param("application/xhtml+xml", id="xhtml_plus_xml"),
+        pytest.param("application/xhtml+xml; charset=UTF-8", id="xhtml_with_charset"),
+        pytest.param("application/xhtml", id="xhtml"),
+    ],
+)
+@pytest.mark.parametrize("resource_type", [None, "document", "xhr", "fetch"])
+def test_xhtml_rewritten_like_html(rewrite_generator, content_type, resource_type):
+    content = (
+        b'<?xml version="1.0" encoding="UTF-8"?>'
+        b'<html xmlns="http://www.w3.org/1999/xhtml"><head><title>My title</title>'
+        b"</head><body>"
+        b'<img src="http://www.example.com/images/image1.jpg" />'
+        b"</body></html>"
+    )
+    title, rewritten = rewrite_generator(
+        content=content, content_type=content_type, resource_type=resource_type
+    )
+    assert title == "My title"
+    assert ' src="images/image1.jpg"' in rewritten
+    assert ' src="http://www.example.com/images/image1.jpg"' not in rewritten
+
+
+@pytest.mark.parametrize(
     "url, expected",
     [
         pytest.param(
