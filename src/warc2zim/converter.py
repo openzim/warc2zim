@@ -54,7 +54,12 @@ from zimscraperlib.zim.creator import Creator
 import warc2zim.utils as warc2zim_utils
 from warc2zim.cdxj_indexer import buffering_record_iter, iter_file_or_dir
 from warc2zim.constants import HTML_TYPES, logger
-from warc2zim.icon_finder import Icon, get_sorted_icons, icons_in_html
+from warc2zim.icon_finder import (
+    Icon,
+    favicon_from_pages_jsonl,
+    get_sorted_icons,
+    icons_in_html,
+)
 from warc2zim.items import StaticArticle, StaticFile, WARCPayloadItem
 from warc2zim.language import parse_language
 from warc2zim.utils import (
@@ -215,6 +220,21 @@ class Converter:
         )
         logger.debug(f"{len(self.warc_files)} WARC files found")
 
+        self.main_url = main_url
+
+        self.pages_metadata: Path | None = (
+            Path(args.pages_metadata)
+            if args.pages_metadata
+            else self._find_pages_metadata()
+        )
+        if self.pages_metadata and not self.pages_metadata.is_file():
+            logger.warning(f"Pages metadata {self.pages_metadata} is not a file")
+            self.pages_metadata = None
+        if self.pages_metadata:
+            logger.debug(f"Using pages metadata present at {self.pages_metadata}")
+
+        self.crawler_favicon_url: HttpUrl | None = None
+
         self.include_domains = args.include_domains
 
         self.custom_css = args.custom_css
@@ -251,6 +271,23 @@ class Converter:
         self.ignore_content_header_charsets = bool(args.ignore_content_header_charsets)
         self.ignore_http_header_charsets = bool(args.ignore_http_header_charsets)
         warc2zim_utils.IGNORE_UNKNOWN_CHARSETS = bool(args.ignore_unknown_charsets)
+
+    def _find_pages_metadata(self) -> Path | None:
+        """Find pages.jsonl in supported Browsertrix input layouts."""
+        candidates: list[Path] = []
+        for input_item in self.inputs:
+            input_path = Path(input_item)
+            if input_path.is_dir():
+                candidates.append(input_path / "pages" / "pages.jsonl")
+                candidates.append(input_path / "pages.jsonl")
+        for warc_file in self.warc_files:
+            warc_dir = Path(warc_file).parent
+            if warc_dir.name == "archive":
+                candidates.append(warc_dir.parent / "pages" / "pages.jsonl")
+        for candidate in candidates:
+            if candidate.is_file():
+                return candidate
+        return None
 
     def update_stats(self):
         """write progress as JSON to self.stats_filename if requested"""
@@ -724,17 +761,33 @@ class Converter:
         if len(self.favicon_urls) == 0:
             # search for favicons in HTML only if user did provided one to use
 
-            # add icons found in document head, sorted by fit for warc2zim usage
-            icons_urls = icons_in_html(content)
             record_url = get_record_url(record)
-            if len(icons_urls) == 0:
-                icons_urls = ["/favicon.ico"]
+            icons_urls: list[str] = []
+
+            if self.pages_metadata:
+                page_url = HttpUrl(self.main_url or record_url)
+                crawler_favicon = favicon_from_pages_jsonl(
+                    self.pages_metadata, page_url=page_url
+                )
+                if crawler_favicon:
+                    logger.info(
+                        f"Using crawler favicon from {self.pages_metadata}: "
+                        f"{crawler_favicon.value}"
+                    )
+                    self.crawler_favicon_url = crawler_favicon
+                    icons_urls.append(crawler_favicon.value)
+
+            # add icons found in document head, sorted by fit for warc2zim usage
+            html_icons = icons_in_html(content)
+            if len(html_icons) == 0:
+                html_icons = {"/favicon.ico"}
             # transform into absolute URL
-            icons_urls = [urljoin(record_url, icon_url) for icon_url in icons_urls]
+            icons_urls.extend(urljoin(record_url, icon_url) for icon_url in html_icons)
+
             # add HttpUrl to favicon_urls if absolute URL is indeed HTTP(S)
             self.favicon_urls.extend(
                 HttpUrl(icon_url)
-                for icon_url in icons_urls
+                for icon_url in dict.fromkeys(icons_urls)
                 if re.match(r"^https?\://", icon_url)
             )
 
@@ -876,8 +929,13 @@ class Converter:
             del self.favicon_contents
         del self.favicon_urls
 
+        sorted_favicons = get_sorted_icons(favicons)
+        if self.crawler_favicon_url is not None:
+            crawler_favicon_url = self.crawler_favicon_url.value
+            sorted_favicons.sort(key=lambda favicon: favicon.url != crawler_favicon_url)
+
         # Try to find best working favicon
-        for favicon in get_sorted_icons(favicons):
+        for favicon in sorted_favicons:
             try:
                 illustration = io.BytesIO()
                 if favicon.format == "SVG":

@@ -44,6 +44,14 @@ def _create_arguments_parser() -> ArgumentParser:
     )
 
     parser.add_argument(
+        "--pages-metadata",
+        help="Path to crawler pages.jsonl metadata file. "
+        "Its favicon is used if --favicon is not set. "
+        "If unspecified, will attempt to auto-discover it",
+        default="",
+    )
+
+    parser.add_argument(
         "--custom-css",
         help="URL or path to a CSS file to be added to ZIM "
         "and injected on every HTML page",

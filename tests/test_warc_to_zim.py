@@ -5,6 +5,7 @@ import io
 import json
 import pathlib
 import re
+import shutil
 import time
 from urllib.parse import unquote
 
@@ -444,6 +445,256 @@ class TestWarc2Zim:
             "_ftindex:yes",
             "_category:other",
         }
+
+    CANOPE = "https://lesfondamentaux.reseau-canope.fr"
+    CANOPE_ZIM = "lesfondamentaux.reseau-canope.fr/fileadmin/template/img"
+
+    def _write_canope_pages(self, path: pathlib.Path) -> None:
+        path.write_text(
+            json.dumps(
+                {
+                    "url": f"{self.CANOPE}/",
+                    "seed": True,
+                    "favicon": f"{self.CANOPE}/fileadmin/template/img/logo_canope.png",
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+    def test_crawler_favicon_overrides_size_ranking(self, tmp_path):
+        png = f"{self.CANOPE_ZIM}/logo_canope.png"
+        ico = f"{self.CANOPE_ZIM}/favicon.ico"
+        base_args = [
+            str(TEST_DATA_DIR / "single-page-test.warc"),
+            "-i",
+            "reseau-canope.fr",
+            "--output",
+            str(tmp_path),
+        ]
+
+        main([*base_args, "--zim-file", "default.zim", "--name", "default"])
+        default_zim = tmp_path / "default.zim"
+        default_icon = self.get_metadata(default_zim, "Illustration_48x48@1")
+        png_bytes = self.rebuild_favicon_bytes(default_zim, png)
+        ico_bytes = self.rebuild_favicon_bytes(default_zim, ico)
+        assert png_bytes != ico_bytes
+        default_is_png = default_icon == png_bytes
+        assert default_is_png or default_icon == ico_bytes
+
+        loser = "img/favicon.ico" if default_is_png else "img/logo_canope.png"
+        pages_file = tmp_path / "pages.jsonl"
+        pages_file.write_text(
+            json.dumps(
+                {
+                    "url": f"{self.CANOPE}/",
+                    "seed": True,
+                    "favicon": f"{self.CANOPE}/fileadmin/template/{loser}",
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        main(
+            [
+                *base_args,
+                "--pages-metadata",
+                str(pages_file),
+                "--zim-file",
+                "crawler.zim",
+                "--name",
+                "crawler",
+            ]
+        )
+        crawler_icon = self.get_metadata(
+            tmp_path / "crawler.zim", "Illustration_48x48@1"
+        )
+        assert crawler_icon == (ico_bytes if default_is_png else png_bytes)
+
+    def test_crawler_favicon_cli_override(self, tmp_path):
+        zim_output = "spt_override.zim"
+        pages_file = tmp_path / "pages.jsonl"
+        self._write_canope_pages(pages_file)
+        main(
+            [
+                str(TEST_DATA_DIR / "single-page-test.warc"),
+                "-i",
+                "reseau-canope.fr",
+                "--pages-metadata",
+                str(pages_file),
+                "--favicon",
+                f"{self.CANOPE}/fileadmin/template/img/favicon.ico",
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "spt_override",
+            ]
+        )
+
+        zim_output_path = tmp_path / zim_output
+        zim_favicon = self.get_metadata(zim_output_path, "Illustration_48x48@1")
+        assert zim_favicon
+
+        assert zim_favicon == self.rebuild_favicon_bytes(
+            zim_output_path, f"{self.CANOPE_ZIM}/favicon.ico"
+        )
+
+    def test_crawler_favicon_auto_discovery(self, tmp_path):
+        crawl_dir = tmp_path / "crawl"
+        archive_dir = crawl_dir / "archive"
+        pages_dir = crawl_dir / "pages"
+        archive_dir.mkdir(parents=True)
+        pages_dir.mkdir(parents=True)
+
+        shutil.copy(
+            TEST_DATA_DIR / "single-page-test.warc",
+            archive_dir / "single-page-test.warc",
+        )
+        self._write_canope_pages(pages_dir / "pages.jsonl")
+
+        zim_output = "spt_autodiscover.zim"
+        main(
+            [
+                str(crawl_dir),
+                "-i",
+                "reseau-canope.fr",
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "spt_autodiscover",
+            ]
+        )
+
+        zim_output_path = tmp_path / zim_output
+        # pages.jsonl must not have been processed as a WARC, ZIM must be valid
+        actual_icon = self.get_metadata(zim_output_path, "Illustration_48x48@1")
+        expected_icon = self.rebuild_favicon_bytes(
+            zim_output_path,
+            f"{self.CANOPE_ZIM}/logo_canope.png",
+        )
+        assert actual_icon == expected_icon
+
+    def test_crawler_favicon_absent_from_warc(self, tmp_path):
+        """Falls back when the crawler favicon is not captured."""
+        pages_file = tmp_path / "pages.jsonl"
+        pages_file.write_text(
+            json.dumps(
+                {
+                    "url": f"{self.CANOPE}/",
+                    "seed": True,
+                    "favicon": f"{self.CANOPE}/absent_favicon.ico",
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        zim_output = "spt_absent.zim"
+        main(
+            [
+                str(TEST_DATA_DIR / "single-page-test.warc"),
+                "-i",
+                "reseau-canope.fr",
+                "--pages-metadata",
+                str(pages_file),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "spt_absent",
+            ]
+        )
+
+        zim_output_path = tmp_path / zim_output
+        assert zim_output_path.is_file()
+        actual_icon = self.get_metadata(zim_output_path, "Illustration_48x48@1")
+        assert actual_icon
+        expected_fallback = self.rebuild_favicon_bytes(
+            zim_output_path,
+            f"{self.CANOPE_ZIM}/favicon.ico",
+        )
+        assert actual_icon == expected_fallback
+
+    def test_crawler_favicon_auto_discovery_from_warc_file(self, tmp_path):
+        """Auto-discover pages.jsonl when WARC file in archive/ is given directly."""
+        crawl_dir = tmp_path / "crawl"
+        archive_dir = crawl_dir / "archive"
+        pages_dir = crawl_dir / "pages"
+        archive_dir.mkdir(parents=True)
+        pages_dir.mkdir(parents=True)
+
+        warc_path = archive_dir / "single-page-test.warc"
+        shutil.copy(TEST_DATA_DIR / "single-page-test.warc", warc_path)
+        self._write_canope_pages(pages_dir / "pages.jsonl")
+
+        zim_output = "autodiscover_warc.zim"
+        main(
+            [
+                str(warc_path),
+                "-i",
+                "reseau-canope.fr",
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "autodiscover_warc",
+            ]
+        )
+        zim_output_path = tmp_path / zim_output
+        assert zim_output_path.is_file()
+        actual_icon = self.get_metadata(zim_output_path, "Illustration_48x48@1")
+        expected_icon = self.rebuild_favicon_bytes(
+            zim_output_path,
+            f"{self.CANOPE_ZIM}/logo_canope.png",
+        )
+        assert actual_icon == expected_icon
+
+    def test_pages_metadata_not_a_file_and_empty_metadata(self, tmp_path):
+        """Handle --pages-metadata pointing to a directory and empty pages.jsonl."""
+        invalid_meta_dir = tmp_path / "not_a_file"
+        invalid_meta_dir.mkdir()
+        zim_output = "dir_meta.zim"
+        main(
+            [
+                str(TEST_DATA_DIR / "single-page-test.warc"),
+                "-i",
+                "reseau-canope.fr",
+                "--pages-metadata",
+                str(invalid_meta_dir),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "dir_meta",
+            ]
+        )
+        assert (tmp_path / zim_output).is_file()
+
+        empty_pages = tmp_path / "empty_pages.jsonl"
+        empty_pages.write_text("", encoding="utf-8")
+        zim_output2 = "empty_meta.zim"
+        main(
+            [
+                str(TEST_DATA_DIR / "single-page-test.warc"),
+                "-i",
+                "reseau-canope.fr",
+                "--pages-metadata",
+                str(empty_pages),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output2,
+                "--name",
+                "empty_meta",
+            ]
+        )
+        assert (tmp_path / zim_output2).is_file()
 
     def test_website_with_redirect(self, tmp_path):
         zim_output = "kiwix.zim"
