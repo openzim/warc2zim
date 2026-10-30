@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Use favicon from crawler metadata (`pages.jsonl`) when available, with automatic discovery in crawler output folders and a `--pages-metadata` option (#120)
+
 ### Fixed
 
 - Rewrite XHTML (`application/xhtml+xml` and `application/xhtml`) like HTML, and store it in the ZIM as `text/html` since rewritten content is not well-formed XML anymore (#419)

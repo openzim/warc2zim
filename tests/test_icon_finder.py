@@ -1,8 +1,16 @@
+import json
 from pathlib import Path
 
 import pytest
+from zimscraperlib.rewriting.url_rewriting import HttpUrl
 
-from warc2zim.icon_finder import Icon, get_sorted_icons, icons_in_html
+from warc2zim.icon_finder import (
+    Icon,
+    _normalized,
+    favicon_from_pages_jsonl,
+    get_sorted_icons,
+    icons_in_html,
+)
 
 
 @pytest.mark.parametrize(
@@ -159,3 +167,139 @@ def test_get_sorted_icons(unsorted, expected):
         if unsorted[0] == expected[1]:
             assert unsorted[0] < unsorted[1]
             assert unsorted[1] > unsorted[0]
+
+
+def _write_pages(tmp_path: Path, lines: list) -> Path:
+    pages_file = tmp_path / "pages.jsonl"
+    pages_file.write_text(
+        "\n".join(line if isinstance(line, str) else json.dumps(line) for line in lines)
+        + "\n",
+        encoding="utf-8",
+    )
+    return pages_file
+
+
+def test_favicon_from_pages_jsonl_matching_target(tmp_path):
+    pages_file = _write_pages(
+        tmp_path,
+        [
+            {"format": "json-pages-1.0", "id": "pages"},
+            {"url": "https://example.com/", "seed": True, "favicon": "/favicon.ico"},
+            {
+                "url": "https://example.com/other",
+                "seed": False,
+                "favicon": "https://example.com/other.png",
+            },
+        ],
+    )
+    root_icon = HttpUrl("https://example.com/favicon.ico")
+    assert (
+        favicon_from_pages_jsonl(pages_file, HttpUrl("https://example.com/"))
+        == root_icon
+    )
+    assert (
+        favicon_from_pages_jsonl(pages_file, HttpUrl("https://example.com"))
+        == root_icon
+    )
+    assert favicon_from_pages_jsonl(
+        pages_file, HttpUrl("https://example.com/other")
+    ) == HttpUrl("https://example.com/other.png")
+    assert (
+        favicon_from_pages_jsonl(pages_file, HttpUrl("https://example.com/nope"))
+        == root_icon
+    )
+
+
+def test_favicon_from_pages_jsonl_seed_not_subpage(tmp_path):
+    pages_file = _write_pages(
+        tmp_path,
+        [
+            {"url": "https://example.com/sub", "seed": False, "favicon": "/sub.ico"},
+            {"url": "https://example.com/", "seed": True, "favicon": "/seed.ico"},
+        ],
+    )
+    seed_icon = HttpUrl("https://example.com/seed.ico")
+    assert (
+        favicon_from_pages_jsonl(pages_file, HttpUrl("https://example.com/"))
+        == seed_icon
+    )
+    assert (
+        favicon_from_pages_jsonl(pages_file, HttpUrl("https://other.com/")) == seed_icon
+    )
+
+
+def test_favicon_from_pages_jsonl_relative_paths(tmp_path):
+    pages_file = _write_pages(
+        tmp_path,
+        [
+            {
+                "url": "https://example.com/sub/page.html",
+                "seed": True,
+                "favicon": "../assets/icon.png",
+            }
+        ],
+    )
+    assert favicon_from_pages_jsonl(
+        pages_file, HttpUrl("https://example.com/sub/page.html")
+    ) == HttpUrl("https://example.com/assets/icon.png")
+
+
+def test_favicon_from_pages_jsonl_first_entry_fallback(tmp_path):
+    pages_file = _write_pages(
+        tmp_path,
+        [
+            {"url": "https://example.com/p1", "seed": False, "favicon": "/1.ico"},
+            {"url": "https://example.com/p2", "seed": False, "favicon": "/2.ico"},
+        ],
+    )
+    assert favicon_from_pages_jsonl(pages_file) == HttpUrl("https://example.com/1.ico")
+    assert favicon_from_pages_jsonl(pages_file, HttpUrl("https://unknown.com")) is None
+
+
+def test_favicon_from_pages_jsonl_missing_file(tmp_path):
+    assert favicon_from_pages_jsonl(tmp_path / "non_existent.jsonl") is None
+
+
+def test_favicon_from_pages_jsonl_malformed_and_empty(tmp_path):
+    pages_file = _write_pages(
+        tmp_path,
+        [
+            "",
+            "{malformed json",
+            {"url": "https://example.com/no-fav"},
+            {"url": "https://example.com/empty-fav", "favicon": "  "},
+            {"url": "https://example.com/null-fav", "favicon": None},
+            {"url": "https://example.com/data", "favicon": "data:image/png;base64,1"},
+            {"url": "https://example.com/valid", "favicon": "/valid.ico"},
+        ],
+    )
+    assert favicon_from_pages_jsonl(pages_file) == HttpUrl(
+        "https://example.com/valid.ico"
+    )
+
+
+def test_favicon_from_pages_jsonl_no_valid_favicons(tmp_path):
+    pages_file = _write_pages(
+        tmp_path,
+        [
+            123,
+            ["not", "a", "dict"],
+            {"url": 123, "favicon": "/1.ico"},
+            {"url": "https://example.com/1", "favicon": None},
+            {"url": "https://example.com/2", "favicon": ""},
+        ],
+    )
+    assert favicon_from_pages_jsonl(pages_file) is None
+
+
+def test_normalized_url_coverage():
+    assert _normalized("http://example.com:80/") == "http://example.com/"
+    assert _normalized("http://example.com:80") == "http://example.com/"
+    assert _normalized("https://example.com:443/test/") == "https://example.com/test"
+    assert _normalized("http://example.com:8080/") == "http://example.com:8080/"
+    assert _normalized("http://[::1]:8080/") == "http://[::1]:8080/"
+    assert _normalized("http://:80/") is None
+    assert _normalized("ftp://example.com") is None
+    assert _normalized("https://") is None
+    assert _normalized("http://example.com:notaport") is None
+    assert _normalized(None) is None  # type: ignore[arg-type]
