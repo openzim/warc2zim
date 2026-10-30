@@ -26,10 +26,11 @@ class WARCPayloadItem(StaticItem):
     Usually stored under A namespace
     """
 
-    def __init__(  # noqa: PLR0917
+    def __init__(
         self,
         path: ZimPath,
         record: ArcWarcRecord,
+        *,
         pre_head_template: Template,
         post_head_template: Template,
         existing_zim_paths: set[ZimPath],
@@ -37,7 +38,6 @@ class WARCPayloadItem(StaticItem):
         js_modules: set[ZimPath],
         charsets_to_try: list[str],
         content_header_bytes_length: int,
-        *,
         ignore_content_header_charsets: bool,
         ignore_http_header_charsets: bool,
     ):
@@ -48,11 +48,11 @@ class WARCPayloadItem(StaticItem):
         self.title, self.content = Rewriter(
             path,
             record,
-            existing_zim_paths,
-            missing_zim_paths,
-            js_modules,
-            charsets_to_try,
-            content_header_bytes_length,
+            existing_zim_paths=existing_zim_paths,
+            missing_zim_paths=missing_zim_paths,
+            js_modules=js_modules,
+            charsets_to_try=charsets_to_try,
+            content_header_bytes_length=content_header_bytes_length,
             ignore_content_header_charsets=ignore_content_header_charsets,
             ignore_http_header_charsets=ignore_http_header_charsets,
         ).rewrite(pre_head_template, post_head_template)

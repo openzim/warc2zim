@@ -54,16 +54,16 @@ def extract_jsonp_callback(url: str):
 
 
 class Rewriter:
-    def __init__(  # noqa: PLR0917
+    def __init__(
         self,
         path: ZimPath,
         record: ArcWarcRecord,
+        *,
         existing_zim_paths: set[ZimPath],
         missing_zim_paths: set[ZimPath] | None,
         js_modules: set[ZimPath],
         charsets_to_try: list[str],
         content_header_bytes_length: int,
-        *,
         ignore_content_header_charsets: bool,
         ignore_http_header_charsets: bool,
     ):
