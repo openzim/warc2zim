@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Be more resilient to strange codepoints in encoding names: HTML entities (e.g. `iso-8859&#8211;1`) and unusual dashes (en dash, em dash, minus sign, ...) used in place of a hyphen are now normalized to `-` (#417)
 - Rewrite XHTML (`application/xhtml+xml` and `application/xhtml`) like HTML, and store it in the ZIM as `text/html` since rewritten content is not well-formed XML anymore (#419)
 - Fix `ValueError` when passing multiple ZIM languages as a comma-separated list via `--lang` (#449)
 - Sanitize lone Unicode surrogate code points out of item title/content before handing them to libzim, which refuses to encode them as UTF-8 (#382)
