@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import html
 import re
 from email.message import Message
 from http import HTTPStatus
@@ -12,8 +13,21 @@ from warcio.recordloader import ArcWarcRecord
 
 from warc2zim.__about__ import __version__
 
+DASH_CHARS = "\u00ad\u2010\u2011\u2012\u2013\u2014\u2015\u2212"
+DASH_RE = re.compile(f"[{DASH_CHARS}]")
+
+DASH_ENTITY_PATTERN = (
+    r"&(?:"
+    r"#(?:0*(?:173|8208|8209|8210|8211|8212|8213|8722)"
+    r"|[xX]0*(?:[aA][dD]|2010|2011|2012|2013|2014|2015|2212))"
+    r"|ndash|mdash|minus|hyphen|dash|horbar"
+    r");"
+)
+
 ENCODING_RE = re.compile(
-    r"(charset|encoding)=(?P<quote>['\"]?)(?P<encoding>[a-wA-Z0-9_\-]+)(?P=quote)",
+    r"(charset|encoding)=(?P<quote>['\"]?)"
+    rf"(?P<encoding>(?:[a-wA-Z0-9_\-{DASH_CHARS}]|{DASH_ENTITY_PATTERN})+)"
+    r"(?P=quote)",
     re.ASCII,
 )
 
@@ -44,9 +58,19 @@ def set_encoding_aliases(aliases: dict[str, str]):
     ENCODING_ALIASES.update({**DEFAULT_ENCODING_ALIASES, **aliases})
 
 
+def normalize_encoding_name(name: str) -> str:
+    """Make an encoding name found in the wild more resilient to typos
+
+    Some websites use HTML entities (e.g. `&#8211;`) or unusual unicode dashes (e.g.
+    en dash) instead of a plain hyphen in their encoding declaration. This decodes
+    HTML entities and replaces all these dashes by an ASCII hyphen.
+    """
+    return DASH_RE.sub("-", html.unescape(name))
+
+
 def get_encoding_by_alias(alias: str) -> str:
     """Get the encoding method for alias."""
-    key = alias.lower().strip()
+    key = normalize_encoding_name(alias).lower().strip()
     return ENCODING_ALIASES.get(key, key)
 
 
