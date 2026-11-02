@@ -443,6 +443,88 @@ def test_get_unknown_encoding():
 
 
 @pytest.mark.parametrize(
+    "alias",
+    [
+        "iso-8859&#8211;1",
+        "iso-8859&#x2013;1",
+        "iso-8859&#X2013;1",
+        "iso-8859&ndash;1",
+        "iso-8859&mdash;1",
+        "iso-8859&minus;1",
+        "iso-8859&#8722;1",
+        "iso-8859&#00173;1",
+        "iso-8859\u20131",
+        "iso-8859\u20141",
+        "iso-8859\u22121",
+        "ISO\u20138859\u20131",
+        "iso&#8211;8859&mdash;1",
+        "iso&#8211;8859&#x2013;1",
+        "ISO\u20138859&#8211;1",
+    ],
+)
+def test_encoding_alias_with_strange_dashes(alias):
+    assert get_encoding_by_alias(alias) == "iso-8859-1"
+
+
+@pytest.mark.parametrize(
+    "alias",
+    ["iso-8859-1", "utf-8", "windows-1252", "shift_jis", "euc-kr", "gb2312", "ascii"],
+)
+def test_encoding_alias_without_strange_dashes_unchanged(alias):
+    assert get_encoding_by_alias(alias) == alias
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ('<meta charset="iso-8859&#8211;1" />', "iso-8859&#8211;1"),
+        (
+            (
+                '<meta http-equiv="content-type" '
+                'content="text/html; charset=iso-8859&#8211;1" />'
+            ),
+            "iso-8859&#8211;1",
+        ),
+        ("charset=iso-8859&#x2013;1", "iso-8859&#x2013;1"),
+        ("charset=iso-8859&ndash;1", "iso-8859&ndash;1"),
+        ("charset=iso&#8211;8859&#8211;1", "iso&#8211;8859&#8211;1"),
+        ("charset=iso-8859\u20131", "iso-8859\u20131"),
+        ("charset='iso-8859\u20141'", "iso-8859\u20141"),
+        ("text/html; charset=utf-8", "utf-8"),
+        ("charset=utf-8&amp;foo=bar", "utf-8"),
+        ("charset=utf-8&#38;foo=bar", "utf-8"),
+    ],
+)
+def test_encoding_regex_with_strange_dashes(text, expected):
+    match = warc2zim_utils.ENCODING_RE.search(text)
+    assert match
+    assert match.group("encoding") == expected
+
+
+@pytest.mark.parametrize(
+    "dash",
+    ["&#8211;", "&#x2013;", "&ndash;", "&#8212;", "&minus;"],
+)
+def test_decode_html_header_with_strange_dash(dash):
+    content = "Latin1 contént"
+    encoded = (
+        "<html><head>"
+        '<meta http-equiv="content-type" '
+        f'content="text/html; charset=iso-8859{dash}1" />'
+        f"</head><body>{content}</body></html>"
+    ).encode("latin1")
+    result = to_string(
+        encoded,
+        None,
+        [],
+        1024,
+        ignore_http_header_charsets=False,
+        ignore_content_header_charsets=False,
+    )
+    assert content in result
+
+
+@pytest.mark.parametrize(
     "alias, expected",
     [
         ("Unicode", "latin1"),
