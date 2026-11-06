@@ -3,6 +3,7 @@ import json
 from collections.abc import Generator
 from dataclasses import dataclass
 from email.message import Message
+from http import HTTPStatus
 from pathlib import Path
 
 import pytest
@@ -562,3 +563,46 @@ def test_get_record_mime_type(content_type, expected):
         0,
     )
     assert get_record_mime_type(record) == expected
+
+
+class _FakeRecordWithType:
+    def __init__(
+        self,
+        rec_type: str,
+        http_headers: StatusAndHeaders | None,
+        rec_headers: StatusAndHeaders | None = None,
+    ):
+        self.rec_type = rec_type
+        self.http_headers = http_headers
+        self.rec_headers = rec_headers
+
+
+def test_get_status_code_response():
+    record = _FakeRecordWithType("response", StatusAndHeaders("200 OK", []))
+    assert (
+        warc2zim_utils.get_status_code(record)  # pyright: ignore[reportArgumentType]
+        == HTTPStatus.OK
+    )
+
+
+def test_get_status_code_revisit_reads_embedded_http_headers():
+    # a revisit record never has an HTTP status line on its WARC-level
+    # rec_headers ; the status must be read from the embedded original
+    # response headers instead
+    record = _FakeRecordWithType(
+        "revisit",
+        http_headers=StatusAndHeaders("200 OK", []),
+        rec_headers=StatusAndHeaders("WARC/1.0", []),
+    )
+    assert (
+        warc2zim_utils.get_status_code(record)  # pyright: ignore[reportArgumentType]
+        == HTTPStatus.OK
+    )
+
+
+def test_get_status_code_revisit_without_http_headers():
+    record = _FakeRecordWithType("revisit", http_headers=None)
+    assert (
+        warc2zim_utils.get_status_code(record)  # pyright: ignore[reportArgumentType]
+        is None
+    )

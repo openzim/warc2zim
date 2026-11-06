@@ -67,8 +67,10 @@ def get_status_code(record: ArcWarcRecord) -> HTTPStatus | int | None:
 
     Returns HTTPStatus value or None if status code is not found / supported
     """
-    if record.rec_type == "response":
-        status_code = record.http_headers.get_statuscode()
+    if record.rec_type in ("response", "revisit"):
+        status_code = (
+            record.http_headers.get_statuscode() if record.http_headers else None
+        )
     else:
         status_code = record.rec_headers.get_statuscode()
 

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Revisit at different path depth</title>
+</head>
+
+<body>
+
+  <h1>Revisit at different path depth</h1>
+
+  <p>
+    Reproduces <a href="https://github.com/openzim/warc2zim/issues/471">openzim/warc2zim#471</a>:
+    several documentation-style pages (mimicking docs.python.org's "Improve this
+    page" links) all point to the exact same <code>improve-page.html</code>, each
+    with a different query string containing another URL (with un-encoded
+    slashes), just like the real docs.python.org pages do. Since the server
+    ignores the query string, every request to <code>improve-page.html</code>
+    returns byte-identical content, so a crawler with content de-duplication
+    enabled (e.g. Browsertrix Crawler) will capture it once as a real response
+    and record the rest as WARC <em>revisit</em> records.
+  </p>
+
+  <p>
+    <code>improve-page.html</code> loads a relative stylesheet
+    (<code>../style.css</code>). Open each link below and check the resulting
+    page: if the box is green, the relative link resolved correctly for that
+    particular copy of the page; if it is unstyled, the link broke.
+  </p>
+
+  <ul>
+    <li><a href="./docs/3.14/using/cmdline.html">docs/3.14/using/cmdline.html</a></li>
+    <li><a href="./docs/3.15/whatsnew/3.15.html">docs/3.15/whatsnew/3.15.html</a></li>
+  </ul>
+
+</body>
+
+</html>

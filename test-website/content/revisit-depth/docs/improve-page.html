@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Improve this page</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+
+<body>
+
+  <h1>Improve this page</h1>
+
+  <div id="marker">
+    If this box has a green background and a green border, the relative
+    stylesheet link (<code>../style.css</code>) resolved correctly for this
+    particular copy of the page. If it is unstyled, the link broke.
+  </div>
+
+  <p>Thanks for wanting to improve this page!</p>
+
+  <p><a href="../index.html">Back to the revisit-depth demo</a></p>
+
+  <h2>URL seen by JS</h2>
+  <p>window.location.href: <code id="raw-href"></code></p>
+  <p>window.location.pathname: <code id="raw-pathname"></code></p>
+  <p>window.location.search: <code id="raw-search"></code></p>
+  <ul id="query-params"></ul>
+
+  <script>
+    document.getElementById("raw-href").textContent = window.location.href || "(empty)";
+    document.getElementById("raw-pathname").textContent = window.location.pathname || "(empty)";
+    document.getElementById("raw-search").textContent = window.location.search || "(empty)";
+    var params = new URLSearchParams(window.location.search);
+    var list = document.getElementById("query-params");
+    params.forEach(function (value, key) {
+      var item = document.createElement("li");
+      item.textContent = key + " = " + value;
+      list.appendChild(item);
+    });
+  </script>
+
+</body>
+
+</html>
