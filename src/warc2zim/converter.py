@@ -6,7 +6,7 @@
 This utility provides a conversion from WARC records to ZIM files.
 WARC record are directly stored in a zim file as:
 - Response WARC record as item "normalized" <url>
-- Revisit record as alias (using "normalized" <url> to)
+- Revisit record as redirect (using "normalized" <url> to)
 
 If the WARC contains multiple entries for the same URL, only the first entry is added,
 and later entries are ignored. A warning is printed as well.
@@ -81,11 +81,6 @@ DUPLICATE_EXC_STR = re.compile(
     r"^Impossible to add(.+)"
     r"dirent\'s title to add is(.+)"
     r"existing dirent's title is(.+)",
-    re.MULTILINE | re.DOTALL,
-)
-
-ALIAS_EXC_STR = re.compile(
-    r"^Impossible to alias(.+)(.+) doesn't exist.",
     re.MULTILINE | re.DOTALL,
 )
 
@@ -447,14 +442,10 @@ class Converter:
         # process revisits
         for normalized_url, target_url in self.revisits.items():
             if normalized_url not in self.added_zim_items:
-                logger.debug(f"Adding alias {normalized_url} -> {target_url}")
-                try:
-                    self.creator.add_alias(
-                        normalized_url.value, "", target_url.value, {}
-                    )
-                except RuntimeError as exc:
-                    if not ALIAS_EXC_STR.match(str(exc)):
-                        raise exc
+                logger.debug(f"Adding redirect {normalized_url} -> {target_url}")
+                self.creator.add_redirect(
+                    normalized_url.value, target_url.value, is_front=False
+                )
                 self.added_zim_items.add(normalized_url)
 
         logger.debug(f"Found {self.total_records} records in WARCs")

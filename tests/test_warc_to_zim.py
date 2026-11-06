@@ -397,6 +397,70 @@ class TestWarc2Zim:
 
         zim_output = tmp_path / zim_output
 
+    def test_revisit_at_different_path_depth_creates_redirect(self, tmp_path):
+        """A revisit record must become a ZIM redirect, not a ZIM alias.
+
+        The target's content has its relative links rewritten based on the
+        target's own path depth. Serving that same content as an alias under
+        the revisit's own (shallower) path would break those relative links,
+        since the reader would resolve them against the alias's path instead.
+        A ZIM redirect makes the reader navigate to the target path, where
+        relative links resolve correctly.
+        """
+        warc_path = tmp_path / "revisit-depth.warc.gz"
+        with open(warc_path, "wb") as output:
+            writer = WARCWriter(output, gzip=True)
+            html = b"<html><body>deep page</body></html>"
+            target_record = writer.create_warc_record(
+                "https://example.com/a/b/page.html",
+                "response",
+                http_headers=StatusAndHeaders(
+                    "HTTP/1.1 200 OK",
+                    [
+                        ("Content-Type", "text/html; charset=utf-8"),
+                        ("Content-Length", str(len(html))),
+                    ],
+                ),
+                payload=io.BytesIO(html),
+            )
+            writer.write_record(target_record)
+
+            revisit_record = writer.create_revisit_record(
+                "https://example.com/page.html",
+                "sha1:3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ",
+                "https://example.com/a/b/page.html",
+                "2026-01-01T00:00:00Z",
+                http_headers=StatusAndHeaders(
+                    "HTTP/1.1 200 OK",
+                    [("Content-Type", "text/html; charset=utf-8")],
+                ),
+            )
+            writer.write_record(revisit_record)
+
+        zim_file = "revisit-depth.zim"
+        main(
+            [
+                str(warc_path),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_file,
+                "--name",
+                "revisit-depth",
+                "--title",
+                "Revisit Depth",
+                "--lang",
+                "eng",
+                "--url",
+                "https://example.com/a/b/page.html",
+            ]
+        )
+
+        archive = Archive(tmp_path / zim_file)
+        revisit_entry = archive.get_entry_by_path("example.com/page.html")
+        assert revisit_entry.is_redirect
+        assert revisit_entry.get_redirect_entry().path == "example.com/a/b/page.html"
+
     def test_include_domains_favicon_and_language(self, tmp_path):
         zim_output = "spt.zim"
         main(

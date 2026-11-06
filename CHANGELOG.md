@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Store downloadable (non-text) files under a path ending with the filename advertised in `Content-Disposition`, redirecting the original path to it, so readers save them with their proper name and extension (#426)
 - Extract a title from the PDF's own metadata (title/author/subject) when available, instead of always leaving PDF items untitled (#462)
 - Fix JSONP rewriting: the callback was never detected in URLs, and the rewriting would have replaced the whole payload by the callback name concatenated with the recorded one. Scripts loaded with a callback parameter but which are not JSONP are now rewritten as regular Javascript. Add JSONP automated tests and a JSONP page in the test website (#307)
+- Store WARC revisit records as ZIM redirects instead of ZIM aliases, since an alias serves the target's content under the revisit's own path, breaking relative links rewritten for the target's path depth (#471)
+- Read the HTTP status of a WARC revisit record from its embedded original response headers instead of from the (never present) WARC-level headers, so links pointing to a revisit's own URL are resolved to an internal ZIM path instead of leaking the original crawl URL verbatim (#471)
 
 ## [2.3.1] - 2026-07-31
 
