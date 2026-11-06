@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Make `WARCPayloadItem` and `Rewriter` constructors accept their settings as keyword arguments (only `path` and `record` remain positional), removing the need for `noqa: PLR0917` pragmas (#467)
+
 ### Fixed
 
 - Rewrite XHTML (`application/xhtml+xml` and `application/xhtml`) like HTML, and store it in the ZIM as `text/html` since rewritten content is not well-formed XML anymore (#419)
