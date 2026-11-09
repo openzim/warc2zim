@@ -221,3 +221,8 @@ extraPaths = ["src"]
 pythonVersion = "3.14"
 typeCheckingMode = "basic"
 disableBytesTypePromotions = true
+# Without this, pyright falls back to inferring types from a dependency's own
+# source whenever it ships no stubs -- fine for most deps, but pymupdf's
+# Python layer is a ~69k-line generated SWIG binding file with no stubs, and
+# that inference pass over it alone takes tens of minutes.
+useLibraryCodeForTypes = false

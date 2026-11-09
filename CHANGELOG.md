@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Store WARC revisit records as ZIM redirects instead of ZIM aliases, since an alias serves the target's content under the revisit's own path, breaking relative links rewritten for the target's path depth (#471)
 - Read the HTTP status of a WARC revisit record from its embedded original response headers instead of from the (never present) WARC-level headers, so links pointing to a revisit's own URL are resolved to an internal ZIM path instead of leaking the original crawl URL verbatim (#471)
 
+### Changed
+
+- Set pyright's `useLibraryCodeForTypes = false`, since inferring types from pymupdf's unstubbed, ~69k-line generated binding file made `check-type` take tens of minutes instead of seconds
+
 ## [2.3.1] - 2026-07-31
 
 ### Added
