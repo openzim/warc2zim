@@ -84,6 +84,9 @@ def test_tags_validation(tags, is_valid):
     [
         pytest.param("eng", True, id="single_lang"),
         pytest.param("eng,fra,nld", True, id="multiple_langs_csv"),
+        pytest.param("esp", False, id="invalid_country_code"),
+        pytest.param("eng,esp", False, id="multiple_langs_with_invalid"),
+        pytest.param("patois", False, id="unrecognized_lang"),
     ],
 )
 def test_language_validation(lang, is_valid):

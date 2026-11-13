@@ -25,3 +25,34 @@ from warc2zim.language import parse_language
 )
 def test_parse_language(input_lang, expected_lang):
     assert parse_language(input_lang) == expected_lang
+
+
+@pytest.mark.parametrize(
+    "input_lang, expected_lang",
+    [
+        pytest.param("en", "eng", id="english_2_chars"),
+        pytest.param("eng", "eng", id="english_3_chars"),
+        pytest.param("spa", "spa", id="spanish_3_chars"),
+        pytest.param("es", "spa", id="spanish_2_chars"),
+        pytest.param("eng,fra", "eng,fra", id="two_langs"),
+        pytest.param("  eng ,   fra    ", "eng,fra", id="two_langs_spaces"),
+    ],
+)
+def test_parse_language_no_fallback_valid(input_lang, expected_lang):
+    assert parse_language(input_lang, allow_fallback=False) == expected_lang
+
+
+@pytest.mark.parametrize(
+    "input_lang",
+    [
+        pytest.param("esp", id="country_code_not_lang"),
+        pytest.param("patois", id="unrecognized_name"),
+        pytest.param("eng,esp", id="one_valid_one_invalid"),
+        pytest.param("unknown,fra", id="unknown_and_valid"),
+        pytest.param("", id="empty_string"),
+        pytest.param("   ", id="blank_string"),
+    ],
+)
+def test_parse_language_no_fallback_invalid(input_lang):
+    with pytest.raises(ValueError):
+        parse_language(input_lang, allow_fallback=False)

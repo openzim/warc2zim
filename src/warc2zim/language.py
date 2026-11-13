@@ -3,7 +3,7 @@ from zimscraperlib.i18n import get_language_or_none
 from warc2zim.constants import logger
 
 
-def parse_language(input_lang: str) -> str:
+def parse_language(input_lang: str, *, allow_fallback: bool = True) -> str:
     """Transform the input language into a valid ZIM Language Metadata
 
     Support many ways to describe the language (all ISO 639 + English label)
@@ -14,14 +14,25 @@ def parse_language(input_lang: str) -> str:
     """
 
     # transform input language into Language object (or None if not found)
-    langs = [get_language_or_none(lang.strip()) for lang in input_lang.split(",")]
+    raw_langs = [lang.strip() for lang in input_lang.split(",")]
+    langs_objects = [get_language_or_none(lang) if lang else None for lang in raw_langs]
+
+    if not allow_fallback:
+        invalid_codes = [
+            raw_langs[i]
+            for i, lang in enumerate(langs_objects)
+            if lang is None or lang.iso_639_3 is None
+        ]
+        if invalid_codes:
+            details = ", ".join(repr(c) for c in invalid_codes)
+            raise ValueError(f"No valid language found for {details} in `{input_lang}`")
 
     # get unique iso_639_3 codes, removing duplicates and None values, preserving order
     langs = list(
         dict.fromkeys(
             [
                 lang.iso_639_3
-                for lang in langs
+                for lang in langs_objects
                 if lang is not None and lang.iso_639_3 is not None
             ]
         )

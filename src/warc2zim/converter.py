@@ -320,7 +320,7 @@ class Converter:
             if self.long_description:
                 metadata.LongDescriptionMetadata(self.long_description)
             if self.language:
-                self.language = parse_language(self.language)
+                self.language = parse_language(self.language, allow_fallback=False)
                 metadata.LanguageMetadata(self.language.split(","))
             # Nota: we do not validate illustration since logic in the scraper is made
             # to always provide a valid image, at least a fallback transparent PNG and
