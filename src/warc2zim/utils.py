@@ -10,8 +10,10 @@ from http import HTTPStatus
 
 from bs4 import BeautifulSoup
 from warcio.recordloader import ArcWarcRecord
+from zimscraperlib.filesystem import get_content_mimetype
 
 from warc2zim.__about__ import __version__
+from warc2zim.constants import ALLOWED_OVERRIDE_MIMES, HTML_TYPES, logger
 
 DASH_CHARS = "\u00ad\u2010\u2011\u2012\u2013\u2014\u2015\u2212"
 DASH_RE = re.compile(f"[{DASH_CHARS}]")
@@ -168,6 +170,25 @@ def get_record_content_type(record: ArcWarcRecord) -> str:
 def get_record_mime_type(record: ArcWarcRecord) -> str:
     content_type = get_record_content_type(record)
     return content_type.split(";")[0].strip().lower()
+
+
+def resolve_record_mime_type(record: ArcWarcRecord, content: bytes) -> str:
+    """Resolve true MIME type using scraperlib when declared type is often wrong."""
+    declared = get_record_mime_type(record)
+    if declared in (*HTML_TYPES, "text/plain", "", "application/octet-stream"):
+        try:
+            detected = get_content_mimetype(content[:2048])
+            if detected in ALLOWED_OVERRIDE_MIMES and detected != declared:
+                logger.warning(
+                    f"{get_record_url(record)}: declared '{declared}' but content "
+                    f"looks like '{detected}', using '{detected}'"
+                )
+                return detected
+        except Exception as e:
+            logger.debug(
+                f"Failed to detect mime type for {get_record_url(record)}: {e}"
+            )
+    return declared
 
 
 def get_record_download_filename(record: ArcWarcRecord) -> str | None:
