@@ -354,3 +354,45 @@ def test_rewriter_mislabeled_pdf():
     title, rewritten = rewriter.rewrite(Template(""), Template(""))
     assert title == ""
     assert rewritten == content
+
+
+def test_rewrite_html_path_colon_is_not_escaped():
+    """head_insert.html relies on the rendered `path` matching current_url
+    character-length for character-length, to correctly compute wombat's replay
+    prefix; this requires REPLAY_MARKER's `:` to survive quoting unescaped, the
+    same way ArticleUrlRewriter.get_document_uri() keeps it unescaped when building
+    the actual hrefs used to reach the page (see
+    zimscraperlib.rewriting.url_rewriting.REPLAY_MARKER).
+    """
+    content = b"<html><head></head><body></body></html>"
+    rec_headers = StatusAndHeaders(
+        "WARC/1.1",
+        headers=[("WARC-Target-URI", "http://www.example.com")],
+    )
+    http_headers = StatusAndHeaders(
+        "HTTP/1.1 200 OK",
+        headers=[("Content-Type", "text/html; charset=UTF-8")],
+    )
+    rewriter = Rewriter(
+        ZimPath("replay://www.example.com"),
+        ArcWarcRecord(
+            "warc",
+            "response",
+            rec_headers,
+            io.BytesIO(content),
+            http_headers,
+            "application/http; msgtype=response",
+            len(content),
+        ),
+        existing_zim_paths=set(),
+        missing_zim_paths=set(),
+        js_modules=set(),
+        charsets_to_try=["UTF-8"],
+        content_header_bytes_length=1024,
+        ignore_http_header_charsets=False,
+        ignore_content_header_charsets=False,
+    )
+    _, rewritten = rewriter.rewrite(Template("PATH:{{ path }}"), Template(""))
+    assert isinstance(rewritten, str)
+    assert "PATH:replay://www.example.com" in rewritten
+    assert "%3A" not in rewritten

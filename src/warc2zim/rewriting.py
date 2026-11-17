@@ -230,15 +230,22 @@ class Rewriter:
         rel_static_prefix = self.url_rewriter.get_document_uri(
             ZimPath("_zim_static/"), ""
         )
+        # `safe="/=,:"` matches ArticleUrlRewriter.get_document_uri()'s own safe-set:
+        # this `path` is compared, character length for character length, against
+        # `current_url` (built from hrefs produced by that same function) in
+        # head_insert.html, so it must be quoted the exact same way, in particular
+        # keeping the `:` of the `REPLAY_MARKER` prefix unescaped (see
+        # zimscraperlib.rewriting.url_rewriting.REPLAY_MARKER for why that marker
+        # exists)
         pre_head_insert = pre_head_template.render(
-            path=quote(self.path.value),
+            path=quote(self.path.value, safe="/=,:"),
             static_prefix=rel_static_prefix,
             orig_url=self.orig_url_str,
             orig_scheme=orig_url.scheme,
             orig_host=orig_url.netloc,
         )
         post_head_insert = post_head_template.render(
-            path=quote(self.path.value),
+            path=quote(self.path.value, safe="/=,:"),
             static_prefix=rel_static_prefix,
             orig_url=self.orig_url_str,
             orig_scheme=orig_url.scheme,
