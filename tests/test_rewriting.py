@@ -4,7 +4,7 @@ import pytest
 from jinja2 import Template
 from warcio import StatusAndHeaders
 from warcio.recordloader import ArcWarcRecord
-from zimscraperlib.rewriting.url_rewriting import ZimPath
+from zimscraperlib.rewriting.url_rewriting import REPLAY_MARKER, ZimPath
 
 from warc2zim.rewriting import Rewriter, extract_jsonp_callback
 
@@ -354,3 +354,45 @@ def test_rewriter_mislabeled_pdf():
     title, rewritten = rewriter.rewrite(Template(""), Template(""))
     assert title == ""
     assert rewritten == content
+
+
+def test_rewrite_html_path_equal_and_comma_are_not_escaped():
+    """head_insert.html relies on the rendered `path` matching current_url
+    character-length for character-length, to correctly compute wombat's replay
+    prefix; this requires a `=`/`,` in a query string to survive quoting unescaped,
+    the same way ArticleUrlRewriter.get_document_uri() keeps them unescaped when
+    building the actual hrefs used to reach the page.
+    """
+    content = b"<html><head></head><body></body></html>"
+    rec_headers = StatusAndHeaders(
+        "WARC/1.1",
+        headers=[("WARC-Target-URI", "http://www.example.com/?a=1,2")],
+    )
+    http_headers = StatusAndHeaders(
+        "HTTP/1.1 200 OK",
+        headers=[("Content-Type", "text/html; charset=UTF-8")],
+    )
+    rewriter = Rewriter(
+        ZimPath(REPLAY_MARKER + "www.example.com/?a=1,2"),
+        ArcWarcRecord(
+            "warc",
+            "response",
+            rec_headers,
+            io.BytesIO(content),
+            http_headers,
+            "application/http; msgtype=response",
+            len(content),
+        ),
+        existing_zim_paths=set(),
+        missing_zim_paths=set(),
+        js_modules=set(),
+        charsets_to_try=["UTF-8"],
+        content_header_bytes_length=1024,
+        ignore_http_header_charsets=False,
+        ignore_content_header_charsets=False,
+    )
+    _, rewritten = rewriter.rewrite(Template("PATH:{{ path }}"), Template(""))
+    assert isinstance(rewritten, str)
+    assert f"PATH:{REPLAY_MARKER}www.example.com/%3Fa=1,2" in rewritten
+    assert "%3D" not in rewritten
+    assert "%2C" not in rewritten

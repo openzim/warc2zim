@@ -354,7 +354,9 @@ class Converter:
 
         # autoescape=False to allow injecting html entities from translated text
         self.env = Environment(
-            loader=PackageLoader("warc2zim", "templates"),
+            # head_insert.html lives in zimscraperlib (not warc2zim's own
+            # templates/), so a fix only needs to happen in one place
+            loader=PackageLoader("zimscraperlib.rewriting", "templates"),
             autoescape=False,  # noqa: S701
         )
 

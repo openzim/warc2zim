@@ -17,6 +17,7 @@ from zimscraperlib.image.conversion import convert_image, convert_svg2png
 from zimscraperlib.image.optimization import optimize_png
 from zimscraperlib.image.probing import format_for
 from zimscraperlib.image.transformation import resize_image
+from zimscraperlib.rewriting.url_rewriting import REPLAY_MARKER
 from zimscraperlib.zim import Archive
 
 from warc2zim.__about__ import __version__
@@ -64,22 +65,27 @@ FUZZYCHECKS = [
     {
         "filename": "video-yt.warc.gz",
         "entries": [
-            "youtube.fuzzy.replayweb.page/get_video_info?video_id=aT-Up5Y4uRI",
-            "youtube.fuzzy.replayweb.page/videoplayback?id=o-AE3bg3qVNY-gAWwYgL52vgpHKJe9ijdbu2eciNi5Uo_w",
+            REPLAY_MARKER
+            + "youtube.fuzzy.replayweb.page/get_video_info?video_id=aT-Up5Y4uRI",
+            REPLAY_MARKER + "youtube.fuzzy.replayweb.page/videoplayback?id="
+            "o-AE3bg3qVNY-gAWwYgL52vgpHKJe9ijdbu2eciNi5Uo_w",
         ],
     },
     {
         "filename": "video-yt-2.warc.gz",
         "entries": [
-            "youtube.fuzzy.replayweb.page/youtubei/v1/player?videoId=aT-Up5Y4uRI",
-            "youtube.fuzzy.replayweb.page/videoplayback?id=o-AGDtIqpFRmvgVVZk96wgGyFxL_SFSdpBxs0iBHatQpRD",
+            REPLAY_MARKER
+            + "youtube.fuzzy.replayweb.page/youtubei/v1/player?videoId=aT-Up5Y4uRI",
+            REPLAY_MARKER + "youtube.fuzzy.replayweb.page/videoplayback?id="
+            "o-AGDtIqpFRmvgVVZk96wgGyFxL_SFSdpBxs0iBHatQpRD",
         ],
     },
     {
         "filename": "video-vimeo.warc.gz",
         "entries": [
-            "vimeo.fuzzy.replayweb.page/video/347119375",
-            "vimeo-cdn.fuzzy.replayweb.page/01/4423/13/347119375/1398505169.mp4",
+            REPLAY_MARKER + "vimeo.fuzzy.replayweb.page/video/347119375",
+            REPLAY_MARKER
+            + "vimeo-cdn.fuzzy.replayweb.page/01/4423/13/347119375/1398505169.mp4",
         ],
     },
 ]
@@ -189,7 +195,7 @@ class TestWarc2Zim:
 
             # ensure payloads match
             try:
-                payload = zim_fh.get_item(url_no_scheme)
+                payload = zim_fh.get_item(REPLAY_MARKER + url_no_scheme)
             except KeyError:
                 payload = None
 
@@ -282,7 +288,7 @@ class TestWarc2Zim:
 
         assert all_articles == {
             # entries from WARC
-            "example.com/": "Example Domain",
+            REPLAY_MARKER + "example.com/": "Example Domain",
             "_zim_static/__wb_module_decl.js": "_zim_static/__wb_module_decl.js",
             "_zim_static/wombat.js": "_zim_static/wombat.js",
             "_zim_static/wombatSetup.js": "_zim_static/wombatSetup.js",
@@ -380,7 +386,7 @@ class TestWarc2Zim:
             url = article.path
             # ignore the replay files, which have only one path segment
             if not url.startswith("_zim_static/"):
-                assert url.startswith("example.com/")
+                assert url.startswith(REPLAY_MARKER + "example.com/")
 
     def test_skip_self_redirect(self, tmp_path):
         zim_output = "self-redir.zim"
@@ -458,9 +464,14 @@ class TestWarc2Zim:
         )
 
         archive = Archive(tmp_path / zim_file)
-        revisit_entry = archive.get_entry_by_path("example.com/page.html")
+        revisit_entry = archive.get_entry_by_path(
+            REPLAY_MARKER + "example.com/page.html"
+        )
         assert revisit_entry.is_redirect
-        assert revisit_entry.get_redirect_entry().path == "example.com/a/b/page.html"
+        assert (
+            revisit_entry.get_redirect_entry().path
+            == REPLAY_MARKER + "example.com/a/b/page.html"
+        )
 
     def test_include_domains_favicon_and_language(self, tmp_path):
         zim_output = "spt.zim"
@@ -496,7 +507,8 @@ class TestWarc2Zim:
         assert (
             self.rebuild_favicon_bytes(
                 zim_output,
-                "lesfondamentaux.reseau-canope.fr/fileadmin/template/img/favicon.ico",
+                REPLAY_MARKER
+                + "lesfondamentaux.reseau-canope.fr/fileadmin/template/img/favicon.ico",
             )
             == zim_favicon
         )
@@ -511,7 +523,9 @@ class TestWarc2Zim:
         }
 
     CANOPE = "https://lesfondamentaux.reseau-canope.fr"
-    CANOPE_ZIM = "lesfondamentaux.reseau-canope.fr/fileadmin/template/img"
+    CANOPE_ZIM = (
+        REPLAY_MARKER + "lesfondamentaux.reseau-canope.fr/fileadmin/template/img"
+    )
 
     def _write_canope_pages(self, path: pathlib.Path) -> None:
         path.write_text(
@@ -779,7 +793,10 @@ class TestWarc2Zim:
         zim_output = tmp_path / zim_output
 
         # check that redirections have been followed
-        assert self.get_main_entry_with_redirect(zim_output).path == "kiwix.org/en/"
+        assert (
+            self.get_main_entry_with_redirect(zim_output).path
+            == REPLAY_MARKER + "kiwix.org/en/"
+        )
 
         # test detected language
         assert self.get_metadata(zim_output, "Language") == b"eng"
@@ -791,7 +808,7 @@ class TestWarc2Zim:
         assert (
             self.rebuild_favicon_bytes(
                 zim_output,
-                "kiwix.org/favicon.ico",
+                REPLAY_MARKER + "kiwix.org/favicon.ico",
             )
             == zim_favicon
         )
@@ -816,18 +833,21 @@ class TestWarc2Zim:
         # check articles from different warc records in tests/data dir
 
         # from example.warc.gz
-        assert self.get_article(zim_output, "example.com/") != b""
+        assert self.get_article(zim_output, REPLAY_MARKER + "example.com/") != b""
 
         # from single-page-test.warc
         assert (
             self.get_article(
-                zim_output, "lesfondamentaux.reseau-canope.fr/accueil.html"
+                zim_output,
+                REPLAY_MARKER + "lesfondamentaux.reseau-canope.fr/accueil.html",
             )
             != b""
         )
 
         # timestamp fuzzy match from example-with-timestamp.warc
-        assert self.get_article(zim_output, "example.com/path.txt") != b""
+        assert (
+            self.get_article(zim_output, REPLAY_MARKER + "example.com/path.txt") != b""
+        )
 
     def test_fuzzy_urls(self, tmp_path, fuzzycheck):
         zim_output = fuzzycheck["filename"] + ".zim"
@@ -932,7 +952,7 @@ class TestWarc2Zim:
         )
         zim_output = tmp_path / zim_output
 
-        res = self.get_article(zim_output, "example.com/")
+        res = self.get_article(zim_output, REPLAY_MARKER + "example.com/")
         assert b"static_prefix" not in res
         assert b"../_zim_static/custom.css" in res
 
@@ -960,7 +980,7 @@ class TestWarc2Zim:
         )
         zim_output = tmp_path / zim_output
 
-        res = self.get_article(zim_output, "example.com/")
+        res = self.get_article(zim_output, REPLAY_MARKER + "example.com/")
         assert b"static_prefix" not in res
         assert b"../_zim_static/custom.css" in res
 
@@ -997,10 +1017,11 @@ class TestWarc2Zim:
             "308-external-redirect-ok",
         ]:
             self.assert_item_exist(
-                zim_output, f"website.test.openzim.org/{exising_website_items}"
+                zim_output,
+                REPLAY_MARKER + f"website.test.openzim.org/{exising_website_items}",
             )
 
-        self.assert_item_exist(zim_output, "www.example.com/")
+        self.assert_item_exist(zim_output, REPLAY_MARKER + "www.example.com/")
 
         for ignored_website_items in [
             "204-response",
@@ -1028,7 +1049,8 @@ class TestWarc2Zim:
             "308-external-redirect-ko",
         ]:
             self.assert_item_does_not_exist(
-                zim_output, f"website.test.openzim.org/{ignored_website_items}"
+                zim_output,
+                REPLAY_MARKER + f"website.test.openzim.org/{ignored_website_items}",
             )
 
     def test_bad_redirections(self, tmp_path):
@@ -1051,7 +1073,8 @@ class TestWarc2Zim:
             "bad-redirections.html",
         ]:
             self.assert_item_exist(
-                zim_output, f"website.test.openzim.org/{exising_website_items}"
+                zim_output,
+                REPLAY_MARKER + f"website.test.openzim.org/{exising_website_items}",
             )
 
         for ignored_website_items in [
@@ -1063,7 +1086,8 @@ class TestWarc2Zim:
             "/bad-redir-target-B",
         ]:
             self.assert_item_does_not_exist(
-                zim_output, f"website.test.openzim.org/{ignored_website_items}"
+                zim_output,
+                REPLAY_MARKER + f"website.test.openzim.org/{ignored_website_items}",
             )
 
     def test_content_resource_types(self, tmp_path):
@@ -1083,7 +1107,8 @@ class TestWarc2Zim:
         zim_output = tmp_path / zim_output
 
         res = self.get_article(
-            zim_output, "website.test.openzim.org/content-types/index.html"
+            zim_output,
+            REPLAY_MARKER + "website.test.openzim.org/content-types/index.html",
         )
         assert b"<!-- WB Insert -->" in res  # simple check that rewriting has been done
 
@@ -1091,7 +1116,7 @@ class TestWarc2Zim:
             "website.test.openzim.org/content-types/script1.js",
             "website.test.openzim.org/content-types/script2.js",
         ]:
-            res = self.get_article(zim_output, js_file)
+            res = self.get_article(zim_output, REPLAY_MARKER + js_file)
             assert b"wombat" in res  # simple check that rewriting has been done
 
     def test_content_encoding_aliases(self, tmp_path):
@@ -1114,7 +1139,9 @@ class TestWarc2Zim:
         )
         zim_output = tmp_path / zim_output
 
-        res = self.get_article(zim_output, "www.qsl.net/vk2jem/swlogs.htm")
+        res = self.get_article(
+            zim_output, REPLAY_MARKER + "www.qsl.net/vk2jem/swlogs.htm"
+        )
         assert b"<!-- WB Insert -->" in res  # simple check that rewriting has been done
 
     def test_solidaritenum(self, tmp_path):
@@ -1149,7 +1176,8 @@ class TestWarc2Zim:
         assert (
             self.rebuild_favicon_bytes(
                 zim_output,
-                "www.solidarite-numerique.fr/wp-content/themes/snum-v2/images//ico/"
+                REPLAY_MARKER
+                + "www.solidarite-numerique.fr/wp-content/themes/snum-v2/images//ico/"
                 "favicon.svg",
             )
             == zim_favicon
@@ -1301,10 +1329,12 @@ class TestWarc2Zim:
 
         zim_path = tmp_path / zim_file
         archive = Archive(zim_path)
-        redirect_entry = archive.get_entry_by_path("example.com/download?id=1")
+        redirect_entry = archive.get_entry_by_path(
+            REPLAY_MARKER + "example.com/download?id=1"
+        )
         assert redirect_entry.is_redirect
         target = redirect_entry.get_redirect_entry()
-        assert target.path == "example.com/download?id=1/book.pdf"
+        assert target.path == REPLAY_MARKER + "example.com/download?id=1/book.pdf"
         assert not target.is_redirect
 
     def test_xhtml_end_to_end(self, tmp_path):
@@ -1353,15 +1383,15 @@ class TestWarc2Zim:
 
         archive = Archive(tmp_path / zim_file)
         main_entry = self.get_main_entry_with_redirect(tmp_path / zim_file)
-        assert main_entry.path == "example.com/index.xhtml"
+        assert main_entry.path == REPLAY_MARKER + "example.com/index.xhtml"
         item = main_entry.get_item()
         assert item.mimetype == "text/html"
         content = bytes(item.content).decode()
         assert ' src="images/image1.jpg"' in content
         assert ' src="https://example.com/images/image1.jpg"' not in content
-        assert archive.get_entry_by_path("example.com/index.xhtml").title == (
-            "XHTML page"
-        )
+        assert archive.get_entry_by_path(
+            REPLAY_MARKER + "example.com/index.xhtml"
+        ).title == ("XHTML page")
 
     def test_jsonp_rewriting_end_to_end(self, tmp_path):
         zim_output = "jsonp-test.zim"
@@ -1388,7 +1418,9 @@ class TestWarc2Zim:
         jsonp_path = next(
             path
             for path in article_paths
-            if path.startswith("website.test.openzim.org/jsonp/object.js")
+            if path.startswith(
+                REPLAY_MARKER + "website.test.openzim.org/jsonp/object.js"
+            )
         )
         jsonp_content = self.get_article(zim_path, jsonp_path)
         assert b'handleObject({"message":"hello","count":3});' in jsonp_content
@@ -1397,7 +1429,9 @@ class TestWarc2Zim:
         regular_js_path = next(
             path
             for path in article_paths
-            if path.startswith("website.test.openzim.org/jsonp/not-jsonp.js")
+            if path.startswith(
+                REPLAY_MARKER + "website.test.openzim.org/jsonp/not-jsonp.js"
+            )
         )
         regular_js_content = self.get_article(zim_path, regular_js_path)
         assert b"function initLoader()" in regular_js_content
