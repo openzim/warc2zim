@@ -18,7 +18,7 @@ from zimscraperlib.zim.items import StaticItem
 
 from warc2zim.constants import logger
 from warc2zim.rewriting import Rewriter
-from warc2zim.utils import get_record_mime_type, remove_unicode_surrogates
+from warc2zim.utils import remove_unicode_surrogates
 
 
 class WARCPayloadItem(StaticItem):
@@ -44,7 +44,6 @@ class WARCPayloadItem(StaticItem):
         super().__init__()
 
         self.path = path.value
-        self.mimetype = get_record_mime_type(record)
         rewriter = Rewriter(
             path,
             record,
@@ -56,6 +55,7 @@ class WARCPayloadItem(StaticItem):
             ignore_content_header_charsets=ignore_content_header_charsets,
             ignore_http_header_charsets=ignore_http_header_charsets,
         )
+        self.mimetype = rewriter.mimetype
         self.title, self.content = rewriter.rewrite(
             pre_head_template, post_head_template
         )

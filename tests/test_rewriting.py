@@ -315,3 +315,42 @@ def test_jsonp_callback_in_url_but_not_jsonp_content(rewrite_generator):
     assert rewritten != content.decode()
     assert "initMap" in rewritten
     assert "_____WB$wombat$" in rewritten
+
+
+def test_rewriter_mislabeled_pdf():
+    content = b"%PDF-1.4 sample binary pdf content"
+    rec_headers = StatusAndHeaders(
+        "WARC/1.1",
+        headers=[
+            ("WARC-Target-URI", "https://example.com/doc.pdf"),
+            ("WARC-Resource-Type", "document"),
+        ],
+    )
+    http_headers = StatusAndHeaders(
+        "HTTP/1.1 200 OK",
+        headers=[("Content-Type", "text/html; charset=UTF-8")],
+    )
+    rewriter = Rewriter(
+        ZimPath("example.com/doc.pdf"),
+        ArcWarcRecord(
+            "warc",
+            "response",
+            rec_headers,
+            io.BytesIO(content),
+            http_headers,
+            "application/http; msgtype=response",
+            len(content),
+        ),
+        existing_zim_paths=set(),
+        missing_zim_paths=set(),
+        js_modules=set(),
+        charsets_to_try=["UTF-8"],
+        content_header_bytes_length=1024,
+        ignore_http_header_charsets=False,
+        ignore_content_header_charsets=False,
+    )
+    assert rewriter.mimetype == "application/pdf"
+    assert rewriter.rewrite_mode is None
+    title, rewritten = rewriter.rewrite(Template(""), Template(""))
+    assert title == ""
+    assert rewritten == content

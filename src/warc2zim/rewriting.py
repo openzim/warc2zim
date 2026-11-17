@@ -14,8 +14,8 @@ from warc2zim.constants import HTML_TYPES, logger
 from warc2zim.utils import (
     get_record_content,
     get_record_encoding,
-    get_record_mime_type,
     get_record_url,
+    resolve_record_mime_type,
     to_string,
 )
 
@@ -69,7 +69,7 @@ class Rewriter:
     ):
         self.content = get_record_content(record)
 
-        mimetype = get_record_mime_type(record)
+        self.mimetype = resolve_record_mime_type(record, self.content)
 
         self.encoding = get_record_encoding(record)
 
@@ -81,7 +81,7 @@ class Rewriter:
             missing_zim_paths=missing_zim_paths,
         )
 
-        self.rewrite_mode = self.get_rewrite_mode(record, mimetype)
+        self.rewrite_mode = self.get_rewrite_mode(record, self.mimetype)
         self.js_modules = js_modules
         self.charsets_to_try = charsets_to_try
         self.content_header_bytes_length = content_header_bytes_length

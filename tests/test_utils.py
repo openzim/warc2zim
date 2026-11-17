@@ -688,3 +688,68 @@ def test_get_status_code_revisit_without_http_headers():
         warc2zim_utils.get_status_code(record)  # pyright: ignore[reportArgumentType]
         is None
     )
+
+
+@pytest.mark.parametrize(
+    "declared_mime,content,expected_mime",
+    [
+        ("text/html", b"%PDF-1.4 binary data", "application/pdf"),
+        ("text/html", b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR", "image/png"),
+        ("text/html", b"\xff\xd8\xff\xe0\x00\x10JFIF", "image/jpeg"),
+        ("text/html", b"GIF89a\x01\x00\x01\x00", "image/gif"),
+        (
+            "text/html",
+            b"RIFF\x14\x00\x00\x00WEBPVP8 \n\x00\x00\x00",
+            "image/webp",
+        ),
+        (
+            "text/html",
+            (
+                b'<?xml version="1.0" encoding="UTF-8"?>\n'
+                b"<!DOCTYPE html><html><body>ok</body></html>"
+            ),
+            "text/html",
+        ),
+        ("", b"%PDF-1.4 binary data", "application/pdf"),
+        ("text/plain", b"%PDF-1.4 binary data", "application/pdf"),
+        ("application/octet-stream", b"%PDF-1.4 binary data", "application/pdf"),
+        ("application/pdf", b"%PDF-1.4 binary data", "application/pdf"),
+        (
+            "text/html",
+            b"<!DOCTYPE html><html><body>regular page</body></html>",
+            "text/html",
+        ),
+    ],
+)
+def test_resolve_record_mime_type(declared_mime, content, expected_mime):
+    record = _FakeRecordWithType(
+        "response",
+        http_headers=StatusAndHeaders("200 OK", [("Content-Type", declared_mime)]),
+        rec_headers=StatusAndHeaders(
+            "WARC/1.0", [("WARC-Target-URI", "https://example.com/test")]
+        ),
+    )
+    assert (
+        warc2zim_utils.resolve_record_mime_type(record, content)  # pyright: ignore[reportArgumentType]
+        == expected_mime
+    )
+
+
+def test_resolve_record_mime_type_exception(monkeypatch):
+    def mock_get_content_mimetype(_content):
+        raise RuntimeError("magic failure")
+
+    monkeypatch.setattr(
+        warc2zim_utils, "get_content_mimetype", mock_get_content_mimetype
+    )
+    record = _FakeRecordWithType(
+        "response",
+        http_headers=StatusAndHeaders("200 OK", [("Content-Type", "text/html")]),
+        rec_headers=StatusAndHeaders(
+            "WARC/1.0", [("WARC-Target-URI", "https://example.com/test")]
+        ),
+    )
+    assert (
+        warc2zim_utils.resolve_record_mime_type(record, b"some content")  # pyright: ignore[reportArgumentType]
+        == "text/html"
+    )
