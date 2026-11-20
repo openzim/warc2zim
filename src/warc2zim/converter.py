@@ -122,6 +122,8 @@ class Converter:
         self.favicon_urls: list[HttpUrl] = (
             [HttpUrl(args.favicon)] if args.favicon else []
         )
+        self.favicon_paths: dict[ZimPath, HttpUrl] = {}
+        self.favicon_contents: dict[HttpUrl, bytes | None] = {}
         self.language = args.lang
         self.description = args.description
         self.long_description = args.long_description
@@ -642,15 +644,11 @@ class Converter:
                     )
                     continue
 
-            # if main page is not html, still allow (eg. could be text, img),
-            # but print warning
             if mime not in HTML_TYPES:
-                logger.warning(
-                    f"Main page is not an HTML Page, mime type is: {mime} "
-                    "- Skipping Favicon and Language detection"
+                raise UnprocessableWarcError(
+                    f"Main page is not an HTML page, mime type is: {mime}. "
+                    "warc2zim only supports websites whose main page is HTML."
                 )
-                main_page_found = True
-                continue
 
             content = get_record_content(record)
 
@@ -898,7 +896,7 @@ class Converter:
         for favicon_url in self.favicon_urls:
             if (
                 icon := _retrieve_icon_from_existing_content(
-                    favicon_url.value, self.favicon_contents[favicon_url]
+                    favicon_url.value, self.favicon_contents.get(favicon_url)
                 )
             ) is not None:
                 # Favicon found in WARC
