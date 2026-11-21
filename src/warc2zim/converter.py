@@ -252,7 +252,7 @@ class Converter:
         if self.stats_filename and not self.stats_filename.is_absolute():
             self.stats_filename = self.output / self.stats_filename
 
-        self.written_records = self.total_records = 0
+        self.processed_records = self.total_records = 0
 
         self.scraper_suffix = args.scraper_suffix
 
@@ -288,10 +288,9 @@ class Converter:
         """write progress as JSON to self.stats_filename if requested"""
         if not self.stats_filename:
             return
-        self.written_records += 1
         with open(self.stats_filename, "w") as fh:
             json.dump(
-                {"written": self.written_records, "total": self.total_records}, fh
+                {"written": self.processed_records, "total": self.total_records}, fh
             )
 
     def add_custom_css_item(self):
@@ -443,6 +442,8 @@ class Converter:
         if self.custom_css:
             self.add_custom_css_item()
 
+        self.update_stats()
+
         for record in iter_warc_records(self.warc_files):
             try:
                 self.add_items_for_warc_record(record)
@@ -470,6 +471,9 @@ class Converter:
                         "Scraper will stop. Pass --verbose flag for more details."
                     )
                     raise
+            finally:
+                self.processed_records += 1
+                self.update_stats()
 
         # process redirects
         for redirect_source, redirect_target in self.redirections.items():
@@ -517,6 +521,7 @@ class Converter:
     def gather_information_from_warc(self):
         main_page_found = False
         for record in iter_warc_records(self.warc_files):
+            self.total_records += 1
             if record.rec_type == "warcinfo":
                 self.extract_warcinfo(record)
 
@@ -1100,8 +1105,6 @@ class Converter:
                 except RuntimeError as exc:
                     if not DUPLICATE_EXC_STR.match(str(exc)):
                         raise exc
-                self.total_records += 1
-                self.update_stats()
             else:
                 logger.debug(
                     f"Skipping item at {payload_item.path} whose content length is 0"

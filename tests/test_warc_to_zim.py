@@ -352,11 +352,9 @@ class TestWarc2Zim:
         if "--progress-file" in cmdline:
             with open(tmp_path / "progress.json") as fh:
                 progress = json.load(fh)
-                assert (
-                    progress["written"] > 0
-                    and progress["total"] > 0
-                    and progress["written"] <= progress["total"]
-                )
+                expected_total = sum(1 for _ in iter_warc_records([warcfile]))
+                assert progress["total"] == expected_total
+                assert progress["written"] == progress["total"]
 
         self.verify_warc_and_zim(warcfile, tmp_path / zimfile)
 
