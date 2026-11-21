@@ -11,7 +11,7 @@ Content-Length: 818
 
 HTTP/1.1 200 OK
 Date: Thu, 09 Jul 2020 20:41:58 GMT
-Content-Type: application/json
+Content-Type: text/html       
 Content-Length: 588
 Connection: keep-alive
 Server: gunicorn/19.9.0
@@ -75,7 +75,7 @@ Content-Length: 818
 
 HTTP/1.1 200 OK
 Date: Sun, 12 Jul 2020 04:55:45 GMT
-Content-Type: application/json
+Content-Type: text/html       
 Content-Length: 588
 Connection: keep-alive
 Server: gunicorn/19.9.0
@@ -139,7 +139,7 @@ Content-Length: 771
 
 HTTP/1.1 200 OK
 Date: Sun, 12 Jul 2020 04:55:45 GMT
-Content-Type: application/json
+Content-Type: text/html       
 Content-Length: 541
 Connection: keep-alive
 Server: gunicorn/19.9.0
@@ -201,7 +201,7 @@ Content-Length: 763
 
 HTTP/1.1 200 OK
 Date: Sun, 12 Jul 2020 04:55:45 GMT
-Content-Type: application/json
+Content-Type: text/html       
 Content-Length: 533
 Connection: keep-alive
 Server: gunicorn/19.9.0

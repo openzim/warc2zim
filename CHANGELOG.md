@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Do not create ZIM if seed URL is not HTML (#442)
 - Quote the `path` template variable passed to `head_insert.html` with the same safe-charset as `ArticleUrlRewriter.get_document_uri()` (adding `:`), so the `REPLAY_MARKER` prefix zimscraperlib now adds to every ZIM path survives unescaped, keeping wombat.js's replay-prefix detection non-degenerate (openzim/python-scraperlib#396, openzim/zimit#589)
 - Use the detected MIME type when a server labels a PDF or image as HTML, text or binary, so it is no longer corrupted by HTML rewriting (#346)
 - Raise a `ValueError` on invalid explicit `--lang` arguments instead of silently falling back to English (#494)

@@ -910,6 +910,35 @@ class TestWarc2Zim:
         )
         assert not (pathlib.Path(tmp_path) / zim_output_not_created).exists()
 
+    @pytest.mark.parametrize(
+        "extra_args",
+        [
+            [],
+            ["--favicon", "https://website.test.openzim.org/icons/favicon.ico"],
+        ],
+    )
+    def test_error_main_page_not_html(self, tmp_path, extra_args):
+        zim_output_not_created = "zim-out-not-created.zim"
+        assert (
+            main(
+                [
+                    "-v",
+                    str(TEST_DATA_DIR / "content-resource-types.warc.gz"),
+                    "-u",
+                    "https://website.test.openzim.org/content-types/small.pdf",
+                    "--output",
+                    str(tmp_path),
+                    "--name",
+                    "bad",
+                    "--zim-file",
+                    zim_output_not_created,
+                    *extra_args,
+                ]
+            )
+            == 4
+        )
+        assert not (pathlib.Path(tmp_path) / zim_output_not_created).exists()
+
     def test_args_only(self):
         # error, name required
         with pytest.raises(SystemExit) as e:
