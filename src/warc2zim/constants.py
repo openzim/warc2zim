@@ -14,3 +14,9 @@ ALLOWED_OVERRIDE_MIMES = {
     "image/gif",
     "image/webp",
 }
+
+# Defaults for mandatory ZIM metadata fields.
+DEFAULT_TITLE = "Untitled"
+DEFAULT_DESCRIPTION = "-"
+DEFAULT_CREATOR = "-"
+DEFAULT_PUBLISHER = "openZIM"

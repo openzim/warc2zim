@@ -4,6 +4,7 @@
 import sys
 from argparse import ArgumentParser
 
+from warc2zim.constants import DEFAULT_CREATOR, DEFAULT_DESCRIPTION, DEFAULT_PUBLISHER
 from warc2zim.converter import Converter
 from warc2zim.utils import get_version
 
@@ -65,7 +66,9 @@ def _create_arguments_parser() -> ArgumentParser:
     # optional metadata
     parser.add_argument("--title", help="ZIM Title", default="")
     parser.add_argument(
-        "--description", help="ZIM Description (<=30 chars)", default="-"
+        "--description",
+        help="ZIM Description (<=30 chars)",
+        default=DEFAULT_DESCRIPTION,
     )
     parser.add_argument("--long-description", help="Longer description (<=4K chars)")
     parser.add_argument(
@@ -80,8 +83,8 @@ def _create_arguments_parser() -> ArgumentParser:
         "If unspecified, will attempt to detect from main page, or use 'eng'",
         default="",
     )
-    parser.add_argument("--publisher", help="ZIM publisher", default="openZIM")
-    parser.add_argument("--creator", help="ZIM creator", default="-")
+    parser.add_argument("--publisher", help="ZIM publisher", default=DEFAULT_PUBLISHER)
+    parser.add_argument("--creator", help="ZIM creator", default=DEFAULT_CREATOR)
     parser.add_argument("--source", help="ZIM source", default="")
 
     parser.add_argument(
