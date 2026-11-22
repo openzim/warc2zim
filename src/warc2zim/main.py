@@ -59,7 +59,7 @@ def _create_arguments_parser() -> ArgumentParser:
     )
 
     # output
-    parser.add_argument("--name", help="ZIM Name metadata", default="", required=True)
+    parser.add_argument("--name", help="ZIM Name metadata", default="")
     parser.add_argument("--output", help="Output directory", default="/output")
     parser.add_argument("--zim-file", help="ZIM Filename", default="")
 

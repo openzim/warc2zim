@@ -56,6 +56,7 @@ from warc2zim.cdxj_indexer import buffering_record_iter, iter_file_or_dir
 from warc2zim.constants import (
     DEFAULT_CREATOR,
     DEFAULT_DESCRIPTION,
+    DEFAULT_NAME,
     DEFAULT_PUBLISHER,
     DEFAULT_TITLE,
     HTML_TYPES,
@@ -126,6 +127,11 @@ class Converter:
                 main_url = urlunsplit(parts)
 
         self.name = args.name
+        if is_blank(self.name):
+            logger.warning(
+                f"Missing or blank ZIM name; using fallback {DEFAULT_NAME!r}."
+            )
+            self.name = DEFAULT_NAME
         self.title = args.title
         self.favicon_urls: list[HttpUrl] = (
             [HttpUrl(args.favicon)] if args.favicon else []

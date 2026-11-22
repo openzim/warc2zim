@@ -16,6 +16,7 @@ ALLOWED_OVERRIDE_MIMES = {
 }
 
 # Defaults for mandatory ZIM metadata fields.
+DEFAULT_NAME = "warc2zim"
 DEFAULT_TITLE = "Untitled"
 DEFAULT_DESCRIPTION = "-"
 DEFAULT_CREATOR = "-"
