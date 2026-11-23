@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Add a ZIM redirect from the site-root `index.html` path to the main entry when the WARC has no record for it, so relative homepage links such as `../index.html` are rewritten as internal links instead of leaking an external URL (#477)
+
 ## [2.4.0] - 2026-11-23
 
 ### Added

@@ -289,6 +289,8 @@ class TestWarc2Zim:
         assert all_articles == {
             # entries from WARC
             REPLAY_MARKER + "example.com/": "Example Domain",
+            REPLAY_MARKER + "example.com/index.html": REPLAY_MARKER
+            + "example.com/index.html",
             "_zim_static/__wb_module_decl.js": "_zim_static/__wb_module_decl.js",
             "_zim_static/wombat.js": "_zim_static/wombat.js",
             "_zim_static/wombatSetup.js": "_zim_static/wombatSetup.js",
@@ -1392,6 +1394,74 @@ class TestWarc2Zim:
         assert archive.get_entry_by_path(
             REPLAY_MARKER + "example.com/index.xhtml"
         ).title == ("XHTML page")
+
+    def test_root_index_link_rewritten_to_homepage(self, tmp_path):
+        warc_path = tmp_path / "root-index.warc"
+        with open(warc_path, "wb") as output:
+            writer = WARCWriter(output, gzip=True)
+            home_html = b"<html><body><h1>Home</h1></body></html>"
+            writer.write_record(
+                writer.create_warc_record(
+                    "https://example.com/",
+                    "response",
+                    http_headers=StatusAndHeaders(
+                        "HTTP/1.1 200 OK",
+                        [
+                            ("Content-Type", "text/html; charset=utf-8"),
+                            ("Content-Length", str(len(home_html))),
+                        ],
+                    ),
+                    payload=io.BytesIO(home_html),
+                )
+            )
+            post_html = (
+                b'<html><body><a href="../index.html">Home</a>'
+                b'<a href="https://external.example/x">External</a>'
+                b"</body></html>"
+            )
+            writer.write_record(
+                writer.create_warc_record(
+                    "https://example.com/site/post.html",
+                    "response",
+                    http_headers=StatusAndHeaders(
+                        "HTTP/1.1 200 OK",
+                        [
+                            ("Content-Type", "text/html; charset=utf-8"),
+                            ("Content-Length", str(len(post_html))),
+                        ],
+                    ),
+                    payload=io.BytesIO(post_html),
+                )
+            )
+
+        zim_output = "root-index.zim"
+        main(
+            [
+                str(warc_path),
+                "--url",
+                "https://example.com/",
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "root-index",
+                "--title",
+                "Root Index",
+                "--lang",
+                "eng",
+            ]
+        )
+
+        zim_path = tmp_path / zim_output
+        archive = Archive(zim_path)
+        post = archive.get_entry_by_path("-/example.com/site/post.html")
+        html = bytes(post.get_item().content).decode("utf-8")
+        assert 'href="../index.html"' in html
+        assert 'href="https://external.example/x"' in html
+        redirect = archive.get_entry_by_path("-/example.com/index.html")
+        assert redirect.is_redirect
+        assert redirect.get_redirect_entry().path == "-/example.com/"
 
     def test_jsonp_rewriting_end_to_end(self, tmp_path):
         zim_output = "jsonp-test.zim"

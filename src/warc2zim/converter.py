@@ -678,6 +678,14 @@ class Converter:
                 f"Unable to find WARC record for main page: {self.main_path}, aborting"
             )
 
+        if self.main_path and self.main_path.value.endswith("/"):
+            main_index_path = ZimPath(f"{self.main_path.value}index.html")
+            if (
+                main_index_path not in self.expected_zim_items
+                and main_index_path not in self.redirections
+            ):
+                self.redirections[main_index_path] = self.main_path
+
         redirections_to_ignore = set()
 
         logger.debug(f"Preparing {len(self.redirections)} redirections")
