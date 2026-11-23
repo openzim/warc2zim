@@ -295,7 +295,7 @@ def get_testdata_id(test_data: CharsetsTestData) -> str:
     return test_data.filename
 
 
-@pytest.mark.parametrize("testdata", get_testdata(), ids=get_testdata_id)
+@pytest.mark.parametrize("testdata", list(get_testdata()), ids=get_testdata_id)
 def test_decode_files(testdata: CharsetsTestData):
     result = to_string(
         (Path(__file__).parent / "encodings" / testdata.filename).read_bytes(),
