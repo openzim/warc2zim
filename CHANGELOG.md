@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (as of version 1.4.0).
 
 ## [Unreleased]
+### Fixed
+
+- Fall back to defaults with warnings when mandatory ZIM metadata is missing or blank, including whitespace-only titles (#427)
+
+
+## [2.4.0] - 2026-11-23
 
 ### Added
 
@@ -14,23 +20,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Make `WARCPayloadItem` and `Rewriter` constructors accept their settings as keyword arguments (only `path` and `record` remain positional), removing the need for `noqa: PLR0917` pragmas (#467)
+- Upgrade dependencies especially zimscraperlib 5.6.0, now pinned to a released version instead of tracking python-scraperlib's `main` branch (#502)
 
 ### Fixed
 
-- Fall back to defaults with warnings when mandatory ZIM metadata is missing or blank, including whitespace-only titles (#427)
 - Quote the `path` template variable passed to `head_insert.html` with the same safe-charset as `ArticleUrlRewriter.get_document_uri()` (adding `:`), so the `REPLAY_MARKER` prefix zimscraperlib now adds to every ZIM path survives unescaped, keeping wombat.js's replay-prefix detection non-degenerate (openzim/python-scraperlib#396, openzim/zimit#589)
+- Point `head_insert.html`'s Jinja loader at zimscraperlib's own copy instead of a stale, out-of-sync fork, and quote the `path` template variable with the same safe-charset as `ArticleUrlRewriter.get_document_uri()` (`/=,`), so a `=`/`,` in a query string stays unescaped on both sides of `head_insert.html`'s length-based replay-prefix computation (#497, openzim/python-scraperlib#408, openzim/zimit#589)
 - Use the detected MIME type when a server labels a PDF or image as HTML, text or binary, so it is no longer corrupted by HTML rewriting (#346)
 - Raise a `ValueError` on invalid explicit `--lang` arguments instead of silently falling back to English (#494)
 - Be more resilient to strange codepoints in encoding names: HTML entities (e.g. `iso-8859&#8211;1`) and unusual dashes (en dash, em dash, minus sign, ...) used in place of a hyphen are now normalized to `-` (#417)
 - Rewrite XHTML (`application/xhtml+xml` and `application/xhtml`) like HTML, and store it in the ZIM as `text/html` since rewritten content is not well-formed XML anymore (#419)
 - Fix `ValueError` when passing multiple ZIM languages as a comma-separated list via `--lang` (#449)
 - Sanitize lone Unicode surrogate code points out of item title/content before handing them to libzim, which refuses to encode them as UTF-8 (#382)
-- Do not mark a `text/html` or `application/pdf` item as a front article when it has no title, so libzim does not fall back to indexing its (potentially huge/unstructured) path, which could abort ZIM finalization entirely (#462)
+- Do not mark a `text/html` or `application/pdf` item as a front article when it has no title, so libzim does not fall back to indexing its (potentially huge/unstructured) path, which could abort ZIM finalization entirely (#483, part of the #462 investigation)
 - Store downloadable (non-text) files under a path ending with the filename advertised in `Content-Disposition`, redirecting the original path to it, so readers save them with their proper name and extension (#426)
-- Extract a title from the PDF's own metadata (title/author/subject) when available, instead of always leaving PDF items untitled (#462)
+- Extract a title from the PDF's own metadata (title/author/subject) when available, instead of always leaving PDF items untitled (#483, part of the #462 investigation)
 - Fix JSONP rewriting: the callback was never detected in URLs, and the rewriting would have replaced the whole payload by the callback name concatenated with the recorded one. Scripts loaded with a callback parameter but which are not JSONP are now rewritten as regular Javascript. Add JSONP automated tests and a JSONP page in the test website (#307)
 - Store WARC revisit records as ZIM redirects instead of ZIM aliases, since an alias serves the target's content under the revisit's own path, breaking relative links rewritten for the target's path depth (#471)
 - Read the HTTP status of a WARC revisit record from its embedded original response headers instead of from the (never present) WARC-level headers, so links pointing to a revisit's own URL are resolved to an internal ZIM path instead of leaking the original crawl URL verbatim (#471)
+- Stop double-rewriting `src`/`href`/`xlink:href` attributes both statically (at ZIM creation) and again dynamically (at replay time), which could corrupt an already-correct URL (#413, openzim/python-scraperlib#338, webrecorder/wombat#238)
+- Fix Next.js (and other bundler-based, e.g. Vite) sites failing to hydrate in replay, by keeping a rewritten `<script>`'s original `src` available to the bundler's chunk-identification logic (#473, openzim/python-scraperlib#337)
+- Fix MDN (developer.mozilla.org) "Results" sections not showing up, caused by the JS URL rewriter confusing a percent-encoded `%2B` with a raw `+` in query strings (#327, openzim/python-scraperlib#389)
+- Fix non-GET (POST, PUT, ...) requests rewriting for cases like YouTube's embedded player, which performs a mandatory POST request: wombat's `fetch()` now converts it to GET like `XMLHttpRequest` already did (#308, openzim/python-scraperlib#379, webrecorder/wombat#242)
 
 ## [2.3.1] - 2026-07-31
 

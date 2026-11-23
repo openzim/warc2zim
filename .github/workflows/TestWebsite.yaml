@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build and push Docker image
         uses: openzim/docker-publish-action@v10
@@ -28,7 +28,7 @@ jobs:
           repo_overview: auto
 
       - name: Deploy Test website changes to openzim.org
-        uses: actions-hub/kubectl@master
+        uses: actions-hub/kubectl@v1.37.2
         env:
           KUBE_CONFIG: ${{ secrets.TEST_KUBE_CONFIG }}
         with:

@@ -12,7 +12,7 @@ If the WARC contains multiple entries for the same URL, only the first entry is 
 and later entries are ignored. A warning is printed as well.
 """
 
-import datetime
+import datetime as dt
 import importlib.resources
 import io
 import json
@@ -415,9 +415,7 @@ class Converter:
                 ),
                 Creator=metadata.CreatorMetadata(self.creator_metadata),
                 Publisher=metadata.PublisherMetadata(self.publisher),
-                Date=metadata.DateMetadata(
-                    datetime.datetime.now(tz=datetime.UTC).date()
-                ),
+                Date=metadata.DateMetadata(dt.datetime.now(tz=dt.UTC).date()),
                 Illustration_48x48_at_1=metadata.DefaultIllustrationMetadata(
                     self.illustration
                 ),
