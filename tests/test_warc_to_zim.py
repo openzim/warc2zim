@@ -1463,6 +1463,96 @@ class TestWarc2Zim:
         assert redirect.is_redirect
         assert redirect.get_redirect_entry().path == "-/example.com/"
 
+    def test_no_root_index_redirect_for_non_root_main_path(self, tmp_path):
+        warc_path = tmp_path / "non-root-main.warc"
+        with open(warc_path, "wb") as output:
+            writer = WARCWriter(output, gzip=True)
+            html = b"<html><body><h1>Blog</h1></body></html>"
+            writer.write_record(
+                writer.create_warc_record(
+                    "https://example.com/blog",
+                    "response",
+                    http_headers=StatusAndHeaders(
+                        "HTTP/1.1 200 OK",
+                        [
+                            ("Content-Type", "text/html; charset=utf-8"),
+                            ("Content-Length", str(len(html))),
+                        ],
+                    ),
+                    payload=io.BytesIO(html),
+                )
+            )
+
+        zim_output = "non-root-main.zim"
+        main(
+            [
+                str(warc_path),
+                "--url",
+                "https://example.com/blog",
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "non-root-main",
+                "--title",
+                "Blog",
+                "--lang",
+                "eng",
+            ]
+        )
+
+        archive = Archive(tmp_path / zim_output)
+        assert archive.has_entry_by_path("-/example.com/blog")
+        assert not archive.has_entry_by_path("-/example.com/blogindex.html")
+
+    def test_real_root_index_item_is_not_redirected(self, tmp_path):
+        warc_path = tmp_path / "real-root-index.warc"
+        with open(warc_path, "wb") as output:
+            writer = WARCWriter(output, gzip=True)
+            for url, title in (
+                ("https://example.com/", "Home"),
+                ("https://example.com/index.html", "Index"),
+            ):
+                html = f"<html><body><h1>{title}</h1></body></html>".encode()
+                writer.write_record(
+                    writer.create_warc_record(
+                        url,
+                        "response",
+                        http_headers=StatusAndHeaders(
+                            "HTTP/1.1 200 OK",
+                            [
+                                ("Content-Type", "text/html; charset=utf-8"),
+                                ("Content-Length", str(len(html))),
+                            ],
+                        ),
+                        payload=io.BytesIO(html),
+                    )
+                )
+
+        zim_output = "real-root-index.zim"
+        main(
+            [
+                str(warc_path),
+                "--url",
+                "https://example.com/",
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_output,
+                "--name",
+                "real-root-index",
+                "--title",
+                "Root Index",
+                "--lang",
+                "eng",
+            ]
+        )
+
+        archive = Archive(tmp_path / zim_output)
+        index = archive.get_entry_by_path("-/example.com/index.html")
+        assert not index.is_redirect
+
     def test_jsonp_rewriting_end_to_end(self, tmp_path):
         zim_output = "jsonp-test.zim"
 
