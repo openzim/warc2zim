@@ -388,6 +388,68 @@ class TestWarc2Zim:
             if not url.startswith("_zim_static/"):
                 assert url.startswith(REPLAY_MARKER + "example.com/")
 
+    def test_revisit_with_unresolvable_target_is_skipped(self, tmp_path):
+        """A revisit whose referenced response cannot be found anywhere in the
+        WARC(s) must be safely skipped, not crash the scraper."""
+        warc_path = tmp_path / "revisit-unresolvable.warc.gz"
+        with open(warc_path, "wb") as output:
+            writer = WARCWriter(output, gzip=True)
+
+            home_html = b"<html><body>home</body></html>"
+            writer.write_record(
+                writer.create_warc_record(
+                    "https://example.com/",
+                    "response",
+                    http_headers=StatusAndHeaders(
+                        "HTTP/1.1 200 OK",
+                        [
+                            ("Content-Type", "text/html; charset=utf-8"),
+                            ("Content-Length", str(len(home_html))),
+                        ],
+                    ),
+                    payload=io.BytesIO(home_html),
+                )
+            )
+
+            # refers to a URL that was never actually captured as a response
+            writer.write_record(
+                writer.create_revisit_record(
+                    "https://example.com/orphan-revisit",
+                    "sha1:3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ",
+                    "https://example.com/never-captured",
+                    "2026-01-01T00:00:00Z",
+                    http_headers=StatusAndHeaders(
+                        "HTTP/1.1 200 OK",
+                        [("Content-Type", "text/html; charset=utf-8")],
+                    ),
+                )
+            )
+
+        zim_file = "revisit-unresolvable.zim"
+        main(
+            [
+                str(warc_path),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_file,
+                "--name",
+                "revisit-unresolvable",
+                "--title",
+                "Revisit Unresolvable",
+                "--lang",
+                "eng",
+                "--url",
+                "https://example.com/",
+            ]
+        )
+
+        zim_output = tmp_path / zim_file
+        assert b"home" in self.get_article(zim_output, REPLAY_MARKER + "example.com/")
+        self.assert_item_does_not_exist(
+            zim_output, REPLAY_MARKER + "example.com/orphan-revisit"
+        )
+
     def test_skip_self_redirect(self, tmp_path):
         zim_output = "self-redir.zim"
         main(
@@ -404,20 +466,42 @@ class TestWarc2Zim:
 
         zim_output = tmp_path / zim_output
 
-    def test_revisit_at_different_path_depth_creates_redirect(self, tmp_path):
-        """A revisit record must become a ZIM redirect, not a ZIM alias.
+    def test_revisit_at_different_path_depth_rewrites_relative_links(self, tmp_path):
+        """A revisit record must become an independent ZIM item, not an alias or
+        a redirect.
 
-        The target's content has its relative links rewritten based on the
-        target's own path depth. Serving that same content as an alias under
-        the revisit's own (shallower) path would break those relative links,
-        since the reader would resolve them against the alias's path instead.
-        A ZIM redirect makes the reader navigate to the target path, where
-        relative links resolve correctly.
+        Neither representation is safe in general: an alias would reuse the
+        target's content verbatim, whose relative links were rewritten for the
+        target's own path depth and would break under the revisit's (different)
+        depth. A redirect would send the reader to the target URL instead,
+        breaking any page whose behavior depends on its own URL (e.g. a
+        client-side-routed single-page application). Resolving the actual
+        payload and rewriting it fresh for the revisit's own path is correct for
+        both cases.
         """
         warc_path = tmp_path / "revisit-depth.warc.gz"
         with open(warc_path, "wb") as output:
             writer = WARCWriter(output, gzip=True)
-            html = b"<html><body>deep page</body></html>"
+
+            image = b"\x89PNG\r\n\x1a\n fake image bytes"
+            writer.write_record(
+                writer.create_warc_record(
+                    "https://example.com/a/image.png",
+                    "response",
+                    http_headers=StatusAndHeaders(
+                        "HTTP/1.1 200 OK",
+                        [
+                            ("Content-Type", "image/png"),
+                            ("Content-Length", str(len(image))),
+                        ],
+                    ),
+                    payload=io.BytesIO(image),
+                )
+            )
+
+            # relative to this record's own path (a/b/page.html), "../image.png"
+            # correctly points at a/image.png
+            html = b'<html><body><img src="../image.png"></body></html>'
             target_record = writer.create_warc_record(
                 "https://example.com/a/b/page.html",
                 "response",
@@ -432,6 +516,9 @@ class TestWarc2Zim:
             )
             writer.write_record(target_record)
 
+            # same bytes, but captured one level up ; from here, the very same
+            # relative link content ("../image.png") would be WRONG - the right
+            # path from here is "a/image.png", with no "../"
             revisit_record = writer.create_revisit_record(
                 "https://example.com/page.html",
                 "sha1:3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ",
@@ -463,14 +550,238 @@ class TestWarc2Zim:
             ]
         )
 
-        archive = Archive(tmp_path / zim_file)
+        zim_output = tmp_path / zim_file
+
+        archive = Archive(zim_output)
         revisit_entry = archive.get_entry_by_path(
             REPLAY_MARKER + "example.com/page.html"
         )
-        assert revisit_entry.is_redirect
-        assert (
-            revisit_entry.get_redirect_entry().path
-            == REPLAY_MARKER + "example.com/a/b/page.html"
+        assert not revisit_entry.is_redirect
+
+        target_content = self.get_article(
+            zim_output, REPLAY_MARKER + "example.com/a/b/page.html"
+        )
+        assert b'src="../image.png"' in target_content
+
+        revisit_content = self.get_article(
+            zim_output, REPLAY_MARKER + "example.com/page.html"
+        )
+        assert b'src="a/image.png"' in revisit_content
+
+    def test_revisit_is_served_at_its_own_url_not_redirected(self, tmp_path):
+        """A revisit record must be reachable at its own URL, not redirected.
+
+        A single-page application's client-side router decides what to render
+        by reading its own URL ; byte-identical static shell markup across two
+        different routes (e.g. the same app shell reused as a custom "page not
+        found" document) does not mean the two routes are interchangeable for a
+        reader. Redirecting one to the other would permanently hide whatever
+        that route was meant to render.
+        """
+        warc_path = tmp_path / "revisit-own-url.warc.gz"
+        with open(warc_path, "wb") as output:
+            writer = WARCWriter(output, gzip=True)
+
+            shell_html = b"<html><body>app shell</body></html>"
+            writer.write_record(
+                writer.create_warc_record(
+                    "https://example.com/",
+                    "response",
+                    http_headers=StatusAndHeaders(
+                        "HTTP/1.1 200 OK",
+                        [
+                            ("Content-Type", "text/html; charset=utf-8"),
+                            ("Content-Length", str(len(shell_html))),
+                        ],
+                    ),
+                    payload=io.BytesIO(shell_html),
+                )
+            )
+
+            # same bytes as the homepage, captured as a revisit at a sibling path -
+            # exactly the shape of a single-page app reusing its shell as the
+            # document for an otherwise-dynamic, client-rendered route
+            revisit_record = writer.create_revisit_record(
+                "https://example.com/app-route",
+                "sha1:3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ",
+                "https://example.com/",
+                "2026-01-01T00:00:00Z",
+                http_headers=StatusAndHeaders(
+                    "HTTP/1.1 200 OK",
+                    [("Content-Type", "text/html; charset=utf-8")],
+                ),
+            )
+            writer.write_record(revisit_record)
+
+        zim_file = "revisit-own-url.zim"
+        main(
+            [
+                str(warc_path),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_file,
+                "--name",
+                "revisit-own-url",
+                "--title",
+                "Revisit Own URL",
+                "--lang",
+                "eng",
+                "--url",
+                "https://example.com/",
+            ]
+        )
+
+        zim_output = tmp_path / zim_file
+        archive = Archive(zim_output)
+        revisit_entry = archive.get_entry_by_path(
+            REPLAY_MARKER + "example.com/app-route"
+        )
+        assert not revisit_entry.is_redirect
+
+        assert b"app shell" in self.get_article(
+            zim_output, REPLAY_MARKER + "example.com/app-route"
+        )
+
+    def test_revisit_resolves_payload_across_warc_files(self, tmp_path):
+        """A revisit must resolve its payload even when the response it refers to
+        was captured in a different WARC file than the revisit itself."""
+        warc_dir = tmp_path / "input"
+        warc_dir.mkdir()
+
+        html = b"<html><body>shared content</body></html>"
+        with open(warc_dir / "0-response.warc.gz", "wb") as output:
+            writer = WARCWriter(output, gzip=True)
+            writer.write_record(
+                writer.create_warc_record(
+                    "https://example.com/",
+                    "response",
+                    http_headers=StatusAndHeaders(
+                        "HTTP/1.1 200 OK",
+                        [
+                            ("Content-Type", "text/html; charset=utf-8"),
+                            ("Content-Length", str(len(html))),
+                        ],
+                    ),
+                    payload=io.BytesIO(html),
+                )
+            )
+
+        with open(warc_dir / "1-revisit.warc.gz", "wb") as output:
+            writer = WARCWriter(output, gzip=True)
+            writer.write_record(
+                writer.create_revisit_record(
+                    "https://example.com/other-page",
+                    "sha1:3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ",
+                    "https://example.com/",
+                    "2026-01-01T00:00:00Z",
+                    http_headers=StatusAndHeaders(
+                        "HTTP/1.1 200 OK",
+                        [("Content-Type", "text/html; charset=utf-8")],
+                    ),
+                )
+            )
+
+        zim_file = "revisit-cross-file.zim"
+        main(
+            [
+                str(warc_dir),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_file,
+                "--name",
+                "revisit-cross-file",
+                "--title",
+                "Revisit Cross File",
+                "--lang",
+                "eng",
+                "--url",
+                "https://example.com/",
+            ]
+        )
+
+        zim_output = tmp_path / zim_file
+        assert b"shared content" in self.get_article(
+            zim_output, REPLAY_MARKER + "example.com/other-page"
+        )
+
+    def test_revisit_of_a_revisit_resolves_payload(self, tmp_path):
+        """A revisit referring to another, earlier revisit (rather than directly
+        to a `response` record) must still resolve to the real payload."""
+        warc_path = tmp_path / "revisit-chain.warc.gz"
+        with open(warc_path, "wb") as output:
+            writer = WARCWriter(output, gzip=True)
+
+            html = b"<html><body>shared content</body></html>"
+            writer.write_record(
+                writer.create_warc_record(
+                    "https://example.com/",
+                    "response",
+                    http_headers=StatusAndHeaders(
+                        "HTTP/1.1 200 OK",
+                        [
+                            ("Content-Type", "text/html; charset=utf-8"),
+                            ("Content-Length", str(len(html))),
+                        ],
+                    ),
+                    payload=io.BytesIO(html),
+                )
+            )
+
+            # revisit of the response above
+            writer.write_record(
+                writer.create_revisit_record(
+                    "https://example.com/first-revisit",
+                    "sha1:3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ",
+                    "https://example.com/",
+                    "2026-01-01T00:00:00Z",
+                    http_headers=StatusAndHeaders(
+                        "HTTP/1.1 200 OK",
+                        [("Content-Type", "text/html; charset=utf-8")],
+                    ),
+                )
+            )
+
+            # revisit of the revisit above, not of the original response
+            writer.write_record(
+                writer.create_revisit_record(
+                    "https://example.com/second-revisit",
+                    "sha1:3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ",
+                    "https://example.com/first-revisit",
+                    "2026-01-01T00:00:01Z",
+                    http_headers=StatusAndHeaders(
+                        "HTTP/1.1 200 OK",
+                        [("Content-Type", "text/html; charset=utf-8")],
+                    ),
+                )
+            )
+
+        zim_file = "revisit-chain.zim"
+        main(
+            [
+                str(warc_path),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_file,
+                "--name",
+                "revisit-chain",
+                "--title",
+                "Revisit Chain",
+                "--lang",
+                "eng",
+                "--url",
+                "https://example.com/",
+            ]
+        )
+
+        zim_output = tmp_path / zim_file
+        assert b"shared content" in self.get_article(
+            zim_output, REPLAY_MARKER + "example.com/first-revisit"
+        )
+        assert b"shared content" in self.get_article(
+            zim_output, REPLAY_MARKER + "example.com/second-revisit"
         )
 
     def test_error_status_with_content_is_included(self, tmp_path):

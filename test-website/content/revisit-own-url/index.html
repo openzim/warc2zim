@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Revisit served at its own URL</title>
+</head>
+
+<body>
+
+  <h1>Revisit served at its own URL</h1>
+
+  <p>
+    Reproduces <a href="https://github.com/openzim/warc2zim/issues/507">openzim/warc2zim#507</a>:
+    <code>route-a.html</code> and <code>nested/route-b.html</code> are
+    byte-for-byte identical files at two different path depths, like a
+    single-page application reusing its static shell markup across different
+    routes. The shell reads its own <code>window.location.pathname</code> to
+    decide what to display, and links back to this page using an absolute
+    path (<code>/revisit-own-url/index.html</code>), just like a real site
+    would, rather than one already written relative to its own depth.
+  </p>
+
+  <p>
+    A crawler with content de-duplication enabled (e.g. Browsertrix Crawler)
+    will capture one of these pages as a real response and record the other as
+    a WARC <em>revisit</em>. Open each link below and check two things: the
+    displayed path should match the URL you're actually on (not the other
+    page's), and the "Back to this demo" link should work correctly from
+    both, despite being written identically in both files.
+  </p>
+
+  <ul>
+    <li><a href="./route-a.html">route-a.html</a></li>
+    <li><a href="./nested/route-b.html">nested/route-b.html</a></li>
+  </ul>
+
+</body>
+
+</html>

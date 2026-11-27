@@ -4,7 +4,12 @@ import pytest
 from jinja2 import Template
 from warcio import StatusAndHeaders
 from warcio.recordloader import ArcWarcRecord
-from zimscraperlib.rewriting.url_rewriting import REPLAY_MARKER, ZimPath
+from zimscraperlib.rewriting.url_rewriting import (
+    REPLAY_MARKER,
+    ArticleUrlRewriter,
+    HttpUrl,
+    ZimPath,
+)
 
 from warc2zim.rewriting import Rewriter, extract_jsonp_callback
 
@@ -28,7 +33,7 @@ def rewrite_generator():
             headers=[("Content-Type", content_type)],
         )
         return Rewriter(
-            ZimPath("www.example.com"),
+            ArticleUrlRewriter.normalize(HttpUrl(url)),
             ArcWarcRecord(
                 "warc",  # format = warc
                 "response",  # rec_type = response
