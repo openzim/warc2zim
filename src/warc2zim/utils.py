@@ -117,11 +117,23 @@ def get_status_code(record: ArcWarcRecord) -> HTTPStatus | int | None:
 
 
 def can_process_status_code(status_code: HTTPStatus | int | None) -> bool:
-    """Return a boolean indicating if this status code is a processable redirect"""
-    return isinstance(status_code, HTTPStatus) and not (
+    """Return a boolean indicating if this status code is processable
+
+    Client and server error statuses (4xx/5xx) are NOT excluded here, including
+    for the main/seed URL: browsers render a 4xx/5xx body exactly like a 200 when
+    one is present (no special "friendly error page" substitution in modern
+    browsers), so a response with real content is just as processable regardless
+    of its error status, whatever role that URL plays. A page returning a 4xx/5xx
+    status for its own, otherwise perfectly valid content is unusual, but that's
+    the page's own business, not something warc2zim should second-guess. Actual
+    bodiless error responses are naturally excluded downstream by the existing
+    empty-content check, same as any other status code.
+    """
+    if not isinstance(status_code, HTTPStatus):
+        return False
+
+    return not (
         status_code.is_informational  # not supposed to exist in WARC files
-        or status_code.is_client_error
-        or status_code.is_server_error
         or (
             status_code.is_success
             and status_code

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Stop ignoring `response` records with a `4xx`/`5xx` HTTP status when they carry real content ; browsers render such bodies exactly like a `200`, so there is no reason to drop them (#506)
+
 ## [2.4.0] - 2026-11-23
 
 ### Added

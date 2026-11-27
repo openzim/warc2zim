@@ -67,6 +67,9 @@
 
     respond /404-response 404
 
+    header /404-response-with-content Content-Type "text/html; charset=utf-8"
+    respond /404-response-with-content "<html><head><title>App shell</title></head><body><h1>This looks like a real page</h1><p>Reproduces <a href=\"https://github.com/openzim/warc2zim/issues/506\">openzim/warc2zim#506</a>: a single-page application serving its full, working app shell as its own \"page not found\" document, with a real HTTP 404 status. Browsers render this exactly like a 200 since there is a real body.</p></body></html>" 404
+
     respond /500-response 500
 
     respond /501-response 501

@@ -473,6 +473,76 @@ class TestWarc2Zim:
             == REPLAY_MARKER + "example.com/a/b/page.html"
         )
 
+    def test_error_status_with_content_is_included(self, tmp_path):
+        """A response with a 4xx/5xx status but real content must be included.
+
+        Browsers render such a body exactly like a 200 when one is present (no
+        special "friendly error page" substitution happens in modern browsers), so
+        there is no reason to drop it just because of its status code. This mimics a
+        single-page application serving its full, working app shell as its own
+        "page not found" document.
+        """
+        warc_path = tmp_path / "error-with-content.warc.gz"
+        with open(warc_path, "wb") as output:
+            writer = WARCWriter(output, gzip=True)
+
+            home_html = b"<html><body><a href='/deep-link'>deep link</a></body></html>"
+            home_record = writer.create_warc_record(
+                "https://example.com/",
+                "response",
+                http_headers=StatusAndHeaders(
+                    "HTTP/1.1 200 OK",
+                    [
+                        ("Content-Type", "text/html; charset=utf-8"),
+                        ("Content-Length", str(len(home_html))),
+                    ],
+                ),
+                payload=io.BytesIO(home_html),
+            )
+            writer.write_record(home_record)
+
+            deep_link_html = (
+                b"<html><head><title>App shell</title></head>"
+                b"<body>real, renderable content</body></html>"
+            )
+            deep_link_record = writer.create_warc_record(
+                "https://example.com/deep-link",
+                "response",
+                http_headers=StatusAndHeaders(
+                    "HTTP/1.1 404 Not Found",
+                    [
+                        ("Content-Type", "text/html; charset=utf-8"),
+                        ("Content-Length", str(len(deep_link_html))),
+                    ],
+                ),
+                payload=io.BytesIO(deep_link_html),
+            )
+            writer.write_record(deep_link_record)
+
+        zim_file = "error-with-content.zim"
+        main(
+            [
+                str(warc_path),
+                "--output",
+                str(tmp_path),
+                "--zim-file",
+                zim_file,
+                "--name",
+                "error-with-content",
+                "--title",
+                "Error With Content",
+                "--lang",
+                "eng",
+                "--url",
+                "https://example.com/",
+            ]
+        )
+
+        res = self.get_article(
+            tmp_path / zim_file, REPLAY_MARKER + "example.com/deep-link"
+        )
+        assert b"real, renderable content" in res
+
     def test_include_domains_favicon_and_language(self, tmp_path):
         zim_output = "spt.zim"
         main(
@@ -889,26 +959,37 @@ class TestWarc2Zim:
             == 4
         )
 
-    def test_error_main_page_unprocessable(self, tmp_path):
-        zim_output_not_created = "zim-out-not-created.zim"
-        assert (
-            main(
-                [
-                    "-v",
-                    str(TEST_DATA_DIR / "main-entry-403.warc.gz"),
-                    "-u",
-                    "https://wikizilla.org/wiki/Doug",
-                    "--output",
-                    str(tmp_path),
-                    "--name",
-                    "bad",
-                    "--zim-file",
-                    zim_output_not_created,
-                ]
-            )
-            == 4
+    def test_main_page_with_error_status_and_content_is_included(self, tmp_path):
+        """A main page returning a 4xx/5xx status with real content must still be
+        included and used as the ZIM's main page.
+
+        A 4xx/5xx status on a page's own URL is unusual, but it's that page's own
+        business - e.g. an anti-bot challenge page, or a single-page application
+        serving its full, working app shell as a "page not found" document for a
+        direct deep link (see #506). warc2zim doesn't second-guess it, whatever
+        role that URL plays in the ZIM.
+        """
+        zim_file = "main-entry-403.zim"
+        main(
+            [
+                str(TEST_DATA_DIR / "main-entry-403.warc.gz"),
+                "-u",
+                "https://wikizilla.org/wiki/Doug",
+                "--output",
+                str(tmp_path),
+                "--name",
+                "main-entry-403",
+                "--zim-file",
+                zim_file,
+            ]
         )
-        assert not (pathlib.Path(tmp_path) / zim_output_not_created).exists()
+
+        zim_output = tmp_path / zim_file
+        assert zim_output.exists()
+
+        main_entry = self.get_main_entry_with_redirect(zim_output)
+        assert main_entry.path == REPLAY_MARKER + "wikizilla.org/wiki/Doug"
+        assert b"Just a moment" in bytes(main_entry.get_item().content)
 
     def test_args_only(self):
         # error, name required

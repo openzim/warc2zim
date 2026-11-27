@@ -52,7 +52,9 @@ Scenario which are known to work well:
 - HTTP return codes have known limitations:
   - in the `2xx` range, only `200`, `201`, `202` and `203` are supported ; others are simply ignored
   - in the `3xx` range, only `301`, `302`, `306` and `307` are supported if they redirect to a payload which is present in the WARC ; others are simply ignored
-  - all payloads with HTTP return codes in the `1xx` (not supposed to exist in WARC files anyway), `4xx` and `5xx` ranges are ignored
+  - all payloads with HTTP return codes in the `1xx` range (not supposed to exist in WARC files anyway) are ignored
+  - the `4xx` and `5xx` ranges are supported like any other return code, including for the main/seed URL ; a page using an error status for its own valid content is unusual, but it's not warc2zim's job to second-guess it - the crawler is responsible for failing before producing a WARC that would make for an invalid ZIM
+- A response without real content is ignored, regardless of its HTTP return code
 - HTML documents are always interpreted since we have to rewrite all URLs as well as inline documents (JS, CSS). This has some side-effects even if we try to minimize them.
   - HTML tag attributes values are always surrounded by double quotes in the ZIM HTML documents
   - HTML tag attributes are always unescaped from any named or numeric character references (e.g. &gt;, &#62;, &#x3e;) for proper processing when they have to be adapted. Only mandatorily escaped characters (`&`, `<`, `>`, `'` and `"`) are escaped-back.

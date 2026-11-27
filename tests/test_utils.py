@@ -691,6 +691,29 @@ def test_get_status_code_revisit_without_http_headers():
 
 
 @pytest.mark.parametrize(
+    "status_code,expected",
+    [
+        # 4xx/5xx are processable now: browsers render such a body exactly like a
+        # 200 when one is present, there is no status-level reason to exclude it
+        (HTTPStatus.BAD_REQUEST, True),
+        (HTTPStatus.NOT_FOUND, True),
+        (HTTPStatus.INTERNAL_SERVER_ERROR, True),
+        (HTTPStatus.SERVICE_UNAVAILABLE, True),
+        # still excluded: no final status / no meaningful body by spec
+        (HTTPStatus.CONTINUE, False),
+        (HTTPStatus.NO_CONTENT, False),
+        (HTTPStatus.NOT_MODIFIED, False),
+        # still fine: standard success / processable redirect statuses
+        (HTTPStatus.OK, True),
+        (HTTPStatus.FOUND, True),
+        (None, False),
+    ],
+)
+def test_can_process_status_code(status_code, expected):
+    assert warc2zim_utils.can_process_status_code(status_code) == expected
+
+
+@pytest.mark.parametrize(
     "declared_mime,content,expected_mime",
     [
         ("text/html", b"%PDF-1.4 binary data", "application/pdf"),
