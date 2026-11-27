@@ -6,7 +6,8 @@
 This utility provides a conversion from WARC records to ZIM files.
 WARC record are directly stored in a zim file as:
 - Response WARC record as item "normalized" <url>
-- Revisit record as redirect (using "normalized" <url> to)
+- Revisit record as an independent item too, at its own "normalized" <url>,
+  with its payload resolved from the record it refers to
 
 If the WARC contains multiple entries for the same URL, only the first entry is added,
 and later entries are ignored. A warning is printed as well.
@@ -26,6 +27,7 @@ import time
 from collections.abc import Generator
 from http import HTTPStatus
 from pathlib import Path
+from typing import NamedTuple, cast
 from urllib.parse import urljoin, urlsplit, urlunsplit
 from uuid import uuid4
 
@@ -92,6 +94,21 @@ DUPLICATE_EXC_STR = re.compile(
 PY2JS_RULE_RX = re.compile(r"\\(\d)", re.ASCII)
 
 ZIM_ILLUSTRATION_SIZE = 48
+
+
+class AugmentedArcWarcRecord(ArcWarcRecord):
+    """An ArcWarcRecord as yielded by iter_warc_records: carries file location
+    fields set by buffering_record_iter and iter_warc_records themselves."""
+
+    file_name: str
+    file_offset: int
+    file_length: int
+
+
+class ResponseLocation(NamedTuple):
+    file_name: str
+    offset: int
+    length: int
 
 
 class UnprocessableWarcError(Exception):
@@ -235,7 +252,15 @@ class Converter:
         self.custom_css = args.custom_css
 
         self.added_zim_items: set[ZimPath] = set()
-        self.revisits: dict[ZimPath, ZimPath] = {}
+        # ZIM paths ever referred to by a revisit, pre-computed in
+        # gather_information_from_warc() so the two maps below only grow for
+        # paths actually worth resolving later, not for every page
+        self.revisit_target_paths: set[ZimPath] = set()
+        # location of a response's raw bytes, to re-read and resolve a later
+        # revisit's payload on demand, without keeping payloads in memory
+        self.response_locations: dict[ZimPath, ResponseLocation] = {}
+        # target ZIM path of a revisit, to resolve a revisit-of-revisit chain
+        self.revisit_targets: dict[ZimPath, ZimPath] = {}
         self.expected_zim_items: set[ZimPath] = set()
         self.redirections: dict[ZimPath, ZimPath] = {}
         self.missing_zim_paths: set[ZimPath] | None = set() if args.verbose else None
@@ -476,15 +501,6 @@ class Converter:
             )
             self.added_zim_items.add(redirect_source)
 
-        # process revisits
-        for normalized_url, target_url in self.revisits.items():
-            if normalized_url not in self.added_zim_items:
-                logger.debug(f"Adding redirect {normalized_url} -> {target_url}")
-                self.creator.add_redirect(
-                    normalized_url.value, target_url.value, is_front=False
-                )
-                self.added_zim_items.add(normalized_url)
-
         logger.debug(f"Found {self.total_records} records in WARCs")
 
         if UNKNOWN_ENCODINGS:
@@ -538,6 +554,13 @@ class Converter:
                 continue
 
             zim_path = ArticleUrlRewriter.normalize(HttpUrl(url))
+
+            if record.rec_type == "revisit":
+                refers_to_uri = record.rec_headers["WARC-Refers-To-Target-URI"]
+                if refers_to_uri and refers_to_uri != url:
+                    self.revisit_target_paths.add(
+                        ArticleUrlRewriter.normalize(HttpUrl(refers_to_uri))
+                    )
 
             status_code = get_status_code(record)
             if not can_process_status_code(status_code):
@@ -1014,7 +1037,7 @@ class Converter:
             return None
         return ZimPath(f"{item_zim_path.value}/{filename}")
 
-    def add_items_for_warc_record(self, record):
+    def add_items_for_warc_record(self, record: AugmentedArcWarcRecord):
         if record.rec_type not in ("response", "revisit"):
             return
 
@@ -1046,81 +1069,135 @@ class Converter:
             return
 
         if record.rec_type == "response":
-            status_code = get_status_code(record)
-            if not isinstance(status_code, HTTPStatus):
-                logger.warning(
-                    f"Skipping record with unexpected HTTP return code {status_code} "
-                    f"{item_zim_path}"
+            if (
+                item_zim_path in self.revisit_target_paths
+                and item_zim_path not in self.response_locations
+            ):
+                self.response_locations[item_zim_path] = ResponseLocation(
+                    record.file_name, record.file_offset, record.file_length
                 )
-                return
+            self.add_payload_item(item_zim_path, record, url)
+            return
 
-            if not can_process_status_code(status_code):
-                logger.debug(
-                    f"Skipping record with unprocessable HTTP return code {status_code}"
-                    f" {item_zim_path}"
-                )
-                return
-
-            if status_code_is_processable_redirect(status_code):
-                # no log, we will process it afterwards
-                return
-
-            if self.is_self_redirect(record, url):
-                logger.debug("Skipping self-redirect: " + url)
-                return
-
-            payload_item = WARCPayloadItem(
-                item_zim_path,
-                record,
-                pre_head_template=self.pre_head_template,
-                post_head_template=self.post_head_template,
-                existing_zim_paths=self.expected_zim_items,
-                missing_zim_paths=self.missing_zim_paths,
-                js_modules=self.js_modules,
-                charsets_to_try=self.charsets_to_try,
-                content_header_bytes_length=self.content_header_bytes_length,
-                ignore_content_header_charsets=self.ignore_content_header_charsets,
-                ignore_http_header_charsets=self.ignore_http_header_charsets,
+        # revisit: resolve its actual payload and process it like a normal
+        # response, at its own path (neither the two URLs' content nor their
+        # relative-link depth are guaranteed to be interchangeable)
+        refers_to_uri = record.rec_headers["WARC-Refers-To-Target-URI"]
+        if not refers_to_uri or refers_to_uri == url:
+            return
+        target_zim_path = ArticleUrlRewriter.normalize(HttpUrl(refers_to_uri))
+        if (
+            item_zim_path in self.revisit_target_paths
+            and item_zim_path not in self.revisit_targets
+        ):
+            self.revisit_targets[item_zim_path] = target_zim_path
+        resolved_record = self.resolve_revisit_payload(target_zim_path)
+        if resolved_record is None:
+            logger.warning(
+                f"Unable to resolve payload for revisit {item_zim_path.value} "
+                f"(refers to {target_zim_path.value}) ; skipping"
             )
+            return
+        self.add_payload_item(
+            item_zim_path, resolved_record, get_record_url(resolved_record)
+        )
 
-            download_path = self.get_download_zim_path(
-                record, item_zim_path, payload_item.mimetype
+    def resolve_revisit_payload(self, target_zim_path: ZimPath) -> ArcWarcRecord | None:
+        """Resolve a revisit's payload by re-reading the record it refers to.
+
+        Follows a chain of revisits-of-revisits if needed.
+        """
+        current = target_zim_path
+        while current not in self.response_locations:
+            next_target = self.revisit_targets.get(current)
+            if next_target is None:
+                return None
+            current = next_target
+
+        location = self.response_locations[current]
+        try:
+            with open(location.file_name, "rb") as fh:
+                fh.seek(location.offset)
+                raw = fh.read(location.length)
+            return next(iter(ArchiveIterator(io.BytesIO(raw))))
+        except Exception as exc:
+            logger.warning(f"Failed to re-read revisit payload from {location}: {exc}")
+            return None
+
+    def add_payload_item(self, item_zim_path: ZimPath, record: ArcWarcRecord, url: str):
+        """Build and add a ZIM item from a response-like record's payload.
+
+        Used both for a genuine `response` record and for a `revisit` record whose
+        actual payload has been resolved from elsewhere in the WARC(s).
+        """
+        status_code = get_status_code(record)
+        if not isinstance(status_code, HTTPStatus):
+            logger.warning(
+                f"Skipping record with unexpected HTTP return code {status_code} "
+                f"{item_zim_path}"
             )
-            if download_path:
-                payload_item.path = download_path.value
+            return
 
-            if len(payload_item.content) != 0:
-                try:
-                    self.creator.add_item(payload_item)
-                    if download_path:
-                        self.redirections[item_zim_path] = download_path
-                        self.added_zim_items.add(download_path)
-                except RuntimeError as exc:
-                    if not DUPLICATE_EXC_STR.match(str(exc)):
-                        raise exc
-                self.total_records += 1
-                self.update_stats()
-            else:
-                logger.debug(
-                    f"Skipping item at {payload_item.path} whose content length is 0"
-                )  # skipping emtpy items is mandatory according to spec / zimcheck
-
-            self.added_zim_items.add(item_zim_path)
-
-        elif (
-            record.rec_type == "revisit"
-            and record.rec_headers["WARC-Refers-To-Target-URI"] != url
-            and item_zim_path not in self.revisits
-        ):  # pragma: no branch
-            self.revisits[item_zim_path] = ArticleUrlRewriter.normalize(
-                HttpUrl(record.rec_headers["WARC-Refers-To-Target-URI"])
+        if not can_process_status_code(status_code):
+            logger.debug(
+                f"Skipping record with unprocessable HTTP return code {status_code}"
+                f" {item_zim_path}"
             )
+            return
+
+        if status_code_is_processable_redirect(status_code):
+            # no log, we will process it afterwards
+            return
+
+        if self.is_self_redirect(record, url):
+            logger.debug("Skipping self-redirect: " + url)
+            return
+
+        payload_item = WARCPayloadItem(
+            item_zim_path,
+            record,
+            pre_head_template=self.pre_head_template,
+            post_head_template=self.post_head_template,
+            existing_zim_paths=self.expected_zim_items,
+            missing_zim_paths=self.missing_zim_paths,
+            js_modules=self.js_modules,
+            charsets_to_try=self.charsets_to_try,
+            content_header_bytes_length=self.content_header_bytes_length,
+            ignore_content_header_charsets=self.ignore_content_header_charsets,
+            ignore_http_header_charsets=self.ignore_http_header_charsets,
+        )
+
+        download_path = self.get_download_zim_path(
+            record, item_zim_path, payload_item.mimetype
+        )
+        if download_path:
+            payload_item.path = download_path.value
+
+        if len(payload_item.content) != 0:
+            try:
+                self.creator.add_item(payload_item)
+                if download_path:
+                    self.redirections[item_zim_path] = download_path
+                    self.added_zim_items.add(download_path)
+            except RuntimeError as exc:
+                if not DUPLICATE_EXC_STR.match(str(exc)):
+                    raise exc
+            self.total_records += 1
+            self.update_stats()
+        else:
+            logger.debug(
+                f"Skipping item at {payload_item.path} whose content length is 0"
+            )  # skipping emtpy items is mandatory according to spec / zimcheck
+
+        self.added_zim_items.add(item_zim_path)
 
 
-def iter_warc_records(warc_files) -> Generator[ArcWarcRecord]:
+def iter_warc_records(warc_files) -> Generator[AugmentedArcWarcRecord]:
     """iter warc records, including appending request data to matching response"""
     for filename in warc_files:
         with open(filename, "rb") as fh:
             for record in buffering_record_iter(ArchiveIterator(fh), post_append=True):
                 if record:
-                    yield record
+                    augmented = cast(AugmentedArcWarcRecord, record)
+                    augmented.file_name = filename
+                    yield augmented

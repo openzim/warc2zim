@@ -77,6 +77,7 @@ class Rewriter:
         self.orig_url_str = get_record_url(record)
         self.url_rewriter = ArticleUrlRewriter(
             article_url=HttpUrl(self.orig_url_str),
+            article_path=path,
             existing_zim_paths=existing_zim_paths,
             missing_zim_paths=missing_zim_paths,
         )

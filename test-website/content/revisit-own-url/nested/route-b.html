@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>App shell</title>
+</head>
+
+<body>
+
+  <h1>App shell</h1>
+
+  <p>This page's own URL (read from JS): <code id="own-path"></code></p>
+
+  <p><a href="/revisit-own-url/index.html">Back to the revisit-own-url demo</a></p>
+
+  <script>
+    document.getElementById("own-path").textContent = window.location.pathname;
+  </script>
+
+</body>
+
+</html>
