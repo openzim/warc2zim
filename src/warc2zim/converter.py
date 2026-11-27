@@ -55,7 +55,15 @@ from zimscraperlib.zim.creator import Creator
 
 import warc2zim.utils as warc2zim_utils
 from warc2zim.cdxj_indexer import buffering_record_iter, iter_file_or_dir
-from warc2zim.constants import HTML_TYPES, logger
+from warc2zim.constants import (
+    DEFAULT_CREATOR,
+    DEFAULT_DESCRIPTION,
+    DEFAULT_NAME,
+    DEFAULT_PUBLISHER,
+    DEFAULT_TITLE,
+    HTML_TYPES,
+    logger,
+)
 from warc2zim.icon_finder import (
     Icon,
     favicon_from_pages_jsonl,
@@ -73,6 +81,7 @@ from warc2zim.utils import (
     get_record_url,
     get_status_code,
     get_version,
+    is_blank,
     parse_title,
     set_encoding_aliases,
     status_code_is_processable_redirect,
@@ -135,6 +144,11 @@ class Converter:
                 main_url = urlunsplit(parts)
 
         self.name = args.name
+        if is_blank(self.name):
+            logger.warning(
+                f"Missing or blank ZIM name; using fallback {DEFAULT_NAME!r}."
+            )
+            self.name = DEFAULT_NAME
         self.title = args.title
         self.favicon_urls: list[HttpUrl] = (
             [HttpUrl(args.favicon)] if args.favicon else []
@@ -338,9 +352,9 @@ class Converter:
             # Validate ZIM metadata early so that we do not waste time doing operations
             # for a scraper which will fail anyway in the end
             metadata.TagsMetadata(self.tags)
-            if self.title:
+            if not is_blank(self.title):
                 metadata.TitleMetadata(self.title)
-            if self.description:
+            if not is_blank(self.description):
                 metadata.DescriptionMetadata(self.description)
             if self.long_description:
                 metadata.LongDescriptionMetadata(self.long_description)
@@ -372,7 +386,18 @@ class Converter:
         metadata.LanguageMetadata(self.language.split(","))
         if not self.main_path:
             raise ValueError("Unable to find main path, aborting")
-        self.title = self.title or "Untitled"
+        for attribute, label, default in (
+            ("title", "title", DEFAULT_TITLE),
+            ("description", "description", DEFAULT_DESCRIPTION),
+            ("creator_metadata", "creator", DEFAULT_CREATOR),
+            ("publisher", "publisher", DEFAULT_PUBLISHER),
+        ):
+            value = getattr(self, attribute)
+            if is_blank(value):
+                logger.warning(
+                    f"Missing or blank ZIM {label}; using fallback {default!r}."
+                )
+                setattr(self, attribute, default)
         if len(self.title) > RECOMMENDED_MAX_TITLE_LENGTH:
             self.title = f"{self.title[0:29]}…"
         self.retrieve_illustration()
@@ -675,7 +700,7 @@ class Converter:
 
             content = get_record_content(record)
 
-            if not self.title:
+            if is_blank(self.title):
                 self.title = parse_title(content)
 
             self.find_icon_and_language(record, content)

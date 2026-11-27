@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import html
 import re
+import unicodedata
 from email.message import Message
 from http import HTTPStatus
 
@@ -223,6 +224,11 @@ def get_record_download_filename(record: ArcWarcRecord) -> str | None:
     if filename in ("", ".", ".."):
         return None
     return filename
+
+
+def is_blank(value: str | None) -> bool:
+    """Return whether a string is missing or contains only invisible characters."""
+    return not value or all(unicodedata.category(char)[0] in "ZC" for char in value)
 
 
 def parse_title(content):
