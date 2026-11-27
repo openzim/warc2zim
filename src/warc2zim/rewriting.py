@@ -108,6 +108,18 @@ class Rewriter:
         opts = {}
 
         if self.rewrite_mode == "html":
+            content_start = self.content.removeprefix(b"\xef\xbb\xbf").lstrip()[:1]
+            if content_start != b"<":
+                # declared/detected as HTML, but real HTML must start with '<' ;
+                # this is typically a JSON (or other non-HTML) response
+                # mislabeled by a misconfigured server. Parsing it as HTML and
+                # re-serializing it (e.g. normalizing attribute quotes) would
+                # corrupt it, so leave it untouched instead.
+                logger.warning(
+                    f"{self.path.value}: content doesn't look like HTML despite "
+                    "mimetype/resourcetype saying so ; skipping HTML rewriting"
+                )
+                return ("", self.content)
             return self.rewrite_html(pre_head_template, post_head_template)
 
         if self.rewrite_mode == "css":

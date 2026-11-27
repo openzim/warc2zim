@@ -156,6 +156,21 @@ def test_poster_attribute_rewriting(rewrite_generator):
     assert 'poster="./images/poster2.jpg"' not in rewritten
 
 
+def test_json_mislabeled_as_html_is_not_rewritten(rewrite_generator):
+    """A JSON API response mislabeled text/html by a misconfigured server must
+    not be parsed/re-serialized as HTML, which would corrupt it (e.g. by
+    normalizing a single-quoted HTML attribute embedded in a JSON string value
+    into a double-quoted one, breaking the JSON's own quoting)."""
+    content = (
+        b'{"success":true,"fiche":{"html_intro":'
+        b"\"<div class='fiche_intro'>hello</div>\"}}"
+    )
+    _, rewritten = rewrite_generator(
+        content=content, content_type="text/html", resource_type="fetch"
+    )
+    assert rewritten == content
+
+
 @pytest.mark.parametrize(
     "content_type",
     [
