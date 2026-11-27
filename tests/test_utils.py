@@ -6,13 +6,16 @@ from email.message import Message
 from http import HTTPStatus
 from pathlib import Path
 
+import brotlicffi
 import pytest
+from warcio.archiveiterator import ArchiveIterator
 from warcio.recordloader import ArcWarcRecord
 from warcio.statusandheaders import StatusAndHeaders
 
 import warc2zim.utils as warc2zim_utils
 from warc2zim.utils import (
     get_encoding_by_alias,
+    get_record_content,
     get_record_mime_type,
     remove_unicode_surrogates,
     set_encoding_aliases,
@@ -776,3 +779,58 @@ def test_resolve_record_mime_type_exception(monkeypatch):
         warc2zim_utils.resolve_record_mime_type(record, b"some content")  # pyright: ignore[reportArgumentType]
         == "text/html"
     )
+
+
+@pytest.mark.parametrize(
+    "encoding",
+    [
+        pytest.param("br", id="lowercase_br"),
+        pytest.param("BR", id="uppercase_br"),
+    ],
+)
+def test_get_record_content_brotli_decompression(encoding: str):
+    """Verify that a WARC record with Content-Encoding: br is properly decompressed."""
+    raw_content = (
+        b"<!DOCTYPE html><html><body><h1>Brotli compressed text</h1></body></html>"
+    )
+    compressed_content = brotlicffi.compress(raw_content)
+
+    record = ArcWarcRecord(
+        "warc",
+        "response",
+        StatusAndHeaders(
+            "WARC/1.1",
+            headers=[("WARC-Target-URI", "https://example.com/brotli-test")],
+        ),
+        io.BytesIO(compressed_content),
+        StatusAndHeaders(
+            "HTTP/1.1 200 OK",
+            headers=[
+                ("Content-Type", "text/html; charset=utf-8"),
+                ("Content-Encoding", encoding),
+            ],
+        ),
+        "application/http; msgtype=response",
+        len(compressed_content),
+    )
+
+    assert get_record_content(record) == raw_content
+
+
+def test_get_record_content_brotli_from_warc():
+    """Verify decompressing a real Brotli-encoded record from a WARC file."""
+    warc_path = Path(__file__).parent / "data" / "single-page-test.warc"
+    found = False
+    with open(warc_path, "rb") as f:
+        for record in ArchiveIterator(f):
+            if record.rec_type == "response":
+                enc = record.http_headers.get_header("content-encoding")
+                if enc and enc.lower() == "br":
+                    content = get_record_content(record)
+                    assert len(content) > 0
+                    assert content.startswith(b"<!DOCTYPE html>") or content.startswith(
+                        b"{\n"
+                    )
+                    found = True
+                    break
+    assert found

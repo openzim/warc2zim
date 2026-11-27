@@ -21,6 +21,6 @@ cdxj_indexer usefull methods are currently forked in warc2zim, see https://githu
 
 [requests Python library](https://pypi.org/project/requests/) is used to retrieve the custom CSS file when a URL is passed.
 
-## brotlipy
+## brotlicffi
 
-[brotlipy Python library](https://pypi.org/project/brotlipy/) is used to access brotli content in WARC records (not part of warcio because it is an optional dependency).
+[brotlicffi Python library](https://pypi.org/project/brotlicffi/) is used to access brotli content in WARC records (not part of warcio because it is an optional dependency).

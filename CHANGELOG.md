@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Stop ignoring `response` records with a `4xx`/`5xx` HTTP status when they carry real content ; browsers render such bodies exactly like a `200`, so there is no reason to drop them (#506)
 - Resolve a WARC revisit's actual payload and rewrite it fresh for its own ZIM path, instead of representing it as a ZIM alias or redirect ; neither is safe in general, since a revisit only asserts byte-identical payloads, not that the two URLs are interchangeable for a reader (#507)
+- Replace unmaintained `brotlipy` with `brotlicffi` for Brotli decompression (#501)
 
 ## [2.4.0] - 2026-11-23
 

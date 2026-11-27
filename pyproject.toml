@@ -13,7 +13,7 @@ dependencies = [
   "zimscraperlib @ git+https://github.com/openzim/python-scraperlib@main",
   "jinja2==3.1.6",
   # to support possible brotli content in warcs, must be added separately
-  "brotlipy==0.7.0",
+  "brotlicffi==1.2.1.0",
   "tinycss2==1.5.1",
   "beautifulsoup4==4.15.0", # used to parse base href
   "lxml==6.1.3", # used by beautifulsoup4 for parsing html
